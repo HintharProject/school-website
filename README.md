@@ -1,36 +1,106 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Hinthar Education — School Website
 
-## Getting Started
+The official public-facing website for **[Hinthar Education](https://hinthar.education/)**. This repository contains the main landing page, the admissions & enrollment portal, and the Consultation AI interface that helps prospective students and parents engage with the school.
 
-First, run the development server:
+---
+
+## Tech Stack
+
+| Category          | Technology                                                                 |
+| ----------------- | -------------------------------------------------------------------------- |
+| Framework         | [Next.js](https://nextjs.org/)                                             |
+| Styling           | [Tailwind CSS](https://tailwindcss.com/)                                   |
+| UI Components     | [Shadcn/ui](https://ui.shadcn.com/) + [Radix UI](https://www.radix-ui.com/) |
+| Icons             | [Lucide React](https://lucide.dev/)                                        |
+| Animations        | [Framer Motion](https://www.framer.com/motion/)                            |
+| Hosting           | [Vercel](https://vercel.com/)                                              |
+
+---
+
+## Team
+
+| Role            | Member              |
+| --------------- | ------------------- |
+| UI / UX Design  | Thuriza             |
+| Front End Dev   | Nyan Lin Htet       |
+| Front End Dev   | Khant Phone         |
+
+---
+
+## Prerequisites
+
+Before you begin, ensure your machine has the following installed:
+
+- **Node.js** `>= 18.x` (LTS recommended)
+- **npm** `>= 9.x` (ships with Node.js)
+- **Git**
+
+Verify your environment:
+
+```bash
+node -v   # ≥ 18
+npm -v    # ≥ 9
+git --version
+```
+
+---
+
+## Local Development
+
+### 1. Clone the Repository
+
+```bash
+git clone <repo-url> school-website
+cd school-website
+```
+
+### 2. Install Dependencies
+
+```bash
+npm install
+```
+
+### 3. Run the Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser. Hot reload is enabled by default — changes to `app/` pages are reflected instantly.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 4. Build for Production
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build
+npm start
+```
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## Project Structure (Overview)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+school-website/
+├── app/                # Next.js App Router pages & layouts
+├── components/         # Reusable UI components (Shadcn/ui, custom)
+├── lib/                # Utility functions & shared logic
+├── public/             # Static assets (images, fonts, etc.)
+├── next.config.ts      # Next.js configuration
+├── tailwind.config.ts  # Tailwind CSS configuration
+└── tsconfig.json       # TypeScript configuration
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## Deployment
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+This project is deployed on **Vercel**. Pushes to the `main` branch trigger automatic deployments. Preview deployments are created for every pull request.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## Related Links
+
+- [Hinthar Education Website](https://hinthar.education/)
+- [Next.js Documentation](https://nextjs.org/docs)
+- [Tailwind CSS Documentation](https://tailwindcss.com/docs)
+- [Shadcn/ui Documentation](https://ui.shadcn.com/docs)
