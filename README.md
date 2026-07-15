@@ -21,9 +21,8 @@ The official public-facing website for **[Hinthar Education](https://hinthar.edu
 
 | Role            | Member              |
 | --------------- | ------------------- |
-| UI / UX Design  | Thuriza             |
 | Front End Dev   | Nyan Lin Htet       |
-| Front End Dev   | Khant Phone         |
+| Front End Dev   | Khant Phone Zayar   |
 
 ---
 
