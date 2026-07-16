@@ -12,7 +12,7 @@ export default function AboutSection() {
       <div className="max-w-[1200px] mx-auto px-6 md:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-center">
           {/* Image column */}
-          <motion.div 
+          <motion.div
             className="relative order-2 lg:order-1"
             initial={{ opacity: 0, x: -50 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -21,19 +21,19 @@ export default function AboutSection() {
           >
             {/* Glowing background blob */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-gradient-primary rounded-full blur-[80px] opacity-20 -z-10 mix-blend-multiply" />
-            
+
             <div className="aspect-[4/5] sm:aspect-square lg:aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl border-4 border-white max-w-md mx-auto lg:max-w-none relative group">
               <Image
                 src="/images/Dr_KMH.png"
-                alt="Dr. K.M.H – Principal of Hinthar International School"
+                alt="Dr. Kaung Myat Htut – Principal of Hinthar International School"
                 fill
                 className="object-cover transition-transform duration-700 group-hover:scale-105"
                 sizes="(max-width: 1024px) 100vw, 50vw"
               />
             </div>
-            
+
             {/* Quote card (Glassmorphism) */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -54,7 +54,7 @@ export default function AboutSection() {
                   KMH
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-oxford-blue">Dr. K.M.H</p>
+                  <p className="text-sm font-bold text-oxford-blue">Dr. Kaung Myat Htut</p>
                   <p className="text-xs text-on-surface-variant">Principal</p>
                 </div>
               </div>
@@ -62,7 +62,7 @@ export default function AboutSection() {
           </motion.div>
 
           {/* Text column */}
-          <motion.div 
+          <motion.div
             className="space-y-8 order-1 lg:order-2"
             initial={{ opacity: 0, x: 50 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -97,7 +97,7 @@ export default function AboutSection() {
 
             {/* Bento Grid Stats */}
             <div className="grid grid-cols-2 gap-4 pt-4">
-              <motion.div 
+              <motion.div
                 whileHover={{ y: -5 }}
                 className="bg-white p-6 rounded-2xl border border-outline-variant/30 shadow-sm hover:shadow-md transition-all group"
               >
@@ -107,8 +107,8 @@ export default function AboutSection() {
                 <p className="text-3xl lg:text-4xl font-extrabold text-oxford-blue mb-1">100%</p>
                 <p className="text-xs lg:text-sm font-semibold text-on-surface-variant uppercase tracking-wider">Success Rate</p>
               </motion.div>
-              
-              <motion.div 
+
+              <motion.div
                 whileHover={{ y: -5 }}
                 className="bg-gradient-primary p-6 rounded-2xl shadow-md hover:shadow-lg transition-all text-white group"
               >

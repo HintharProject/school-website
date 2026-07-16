@@ -12,10 +12,10 @@ const containerVariants: Variants = {
 
 const itemVariants: Variants = {
   hidden: { opacity: 0, y: 30 },
-  show: { 
-    opacity: 1, 
-    y: 0, 
-    transition: { type: "spring", stiffness: 70, damping: 15 } 
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { type: "spring", stiffness: 70, damping: 15 }
   },
 };
 
@@ -43,33 +43,33 @@ export default function HeroSection() {
           >
             {"Excellence in Education"}
           </motion.span>
-          
+
           <motion.h1
             variants={itemVariants}
             className="text-4xl sm:text-5xl md:text-[64px] lg:text-[72px] font-extrabold leading-[1.1] mb-6 text-shadow-lg tracking-tight"
           >
             Delivering <span className="text-gradient-gold">Quality</span> Education
           </motion.h1>
-          
-          <motion.p 
+
+          <motion.p
             variants={itemVariants}
             className="text-base md:text-xl mb-10 text-shadow-md opacity-90 leading-relaxed max-w-2xl font-light mx-auto"
           >
             Your gateway to a brighter future. Empowering young minds with
             high-quality learning experiences that inspire confidence and success.
           </motion.p>
-          
+
           {/* Quick Inquiry Form */}
           <motion.form variants={itemVariants} className="w-full max-w-md mx-auto relative mb-12">
             <div className="flex bg-white/10 backdrop-blur-md border border-white/20 rounded-full p-1.5 shadow-lg focus-within:ring-2 focus-within:ring-academic-gold transition-all">
               <span className="material-symbols-outlined text-white/50 pl-4 self-center">mail</span>
-              <input 
-                type="email" 
-                placeholder="Enter your email to learn more" 
+              <input
+                type="email"
+                placeholder="Enter your email to learn more"
                 className="w-full bg-transparent text-white px-4 py-3 outline-none placeholder:text-white/50 text-sm md:text-base"
                 required
               />
-              <button 
+              <button
                 type="submit"
                 className="bg-academic-gold text-oxford-blue px-6 py-3 rounded-full font-bold uppercase tracking-wider text-sm hover:bg-white transition-colors whitespace-nowrap flex items-center gap-2"
               >
@@ -86,28 +86,28 @@ export default function HeroSection() {
         <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-primary to-transparent z-40" />
         <div className="flex whitespace-nowrap animate-marquee">
           <span className="mx-8 flex items-center gap-2 text-sm font-medium tracking-wide">
-            <span className="w-2 h-2 rounded-full bg-academic-gold animate-pulse" /> 
-            Admissions open for 2024-2025 Academic Year
+            <span className="w-2 h-2 rounded-full bg-academic-gold animate-pulse" />
+            Admissions open for 2026-2027 Academic Year
           </span>
           <span className="mx-8 flex items-center gap-2 text-sm font-medium tracking-wide">
-            <span className="w-2 h-2 rounded-full bg-academic-gold animate-pulse" /> 
-            New Advanced IT Curriculum Introduced
+            <span className="w-2 h-2 rounded-full bg-academic-gold animate-pulse" />
+            New Advanced CS Curriculum Introduced
           </span>
           <span className="mx-8 flex items-center gap-2 text-sm font-medium tracking-wide">
-            <span className="w-2 h-2 rounded-full bg-academic-gold animate-pulse" /> 
+            <span className="w-2 h-2 rounded-full bg-academic-gold animate-pulse" />
             Scholarship Application Deadline: August 31st
           </span>
           {/* Duplicate for infinite effect */}
           <span className="mx-8 flex items-center gap-2 text-sm font-medium tracking-wide">
-            <span className="w-2 h-2 rounded-full bg-academic-gold animate-pulse" /> 
-            Admissions open for 2024-2025 Academic Year
+            <span className="w-2 h-2 rounded-full bg-academic-gold animate-pulse" />
+            Admissions open for 2026-2027 Academic Year
           </span>
           <span className="mx-8 flex items-center gap-2 text-sm font-medium tracking-wide">
-            <span className="w-2 h-2 rounded-full bg-academic-gold animate-pulse" /> 
-            New Advanced IT Curriculum Introduced
+            <span className="w-2 h-2 rounded-full bg-academic-gold animate-pulse" />
+            New Advanced CS Curriculum Introduced
           </span>
           <span className="mx-8 flex items-center gap-2 text-sm font-medium tracking-wide">
-            <span className="w-2 h-2 rounded-full bg-academic-gold animate-pulse" /> 
+            <span className="w-2 h-2 rounded-full bg-academic-gold animate-pulse" />
             Scholarship Application Deadline: August 31st
           </span>
         </div>
