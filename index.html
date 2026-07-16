@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html class="scroll-smooth" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Hinthar International School | Delivering Quality Education</title>
+    <link rel="shortcut icon" href="/brand/HintharLogo.png" type="image/x-icon">
+    
+    <!-- Tailwind CSS (via CDN with configuration applied) -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="tailwind.config.js"></script>
+    
+    <!-- External Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;600&amp;family=Manrope:wght@600;700;800&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-background text-on-surface font-body-md overflow-x-hidden">
+
+<!-- TopNavBar -->
+<header class="fixed top-0 left-0 w-full z-[100] transition-all duration-300 bg-surface shadow-sm border-b border-outline-variant h-20" id="main-header">
+    <div class="flex justify-between items-center w-full px-4 md:px-8 max-w-[1200px] mx-auto h-full">
+        <div class="flex items-center gap-2 md:gap-4">
+            <img alt="Hinthar Logo" class="h-10 md:h-12 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AP1WRLsRvB8v_se2BcabMiZL2qqifUQiLgatNuqq9Qk9pcdV0keR83ihAWZo4fELXnxbeObI8VLhmjohrZd0GA6Z3Z2htl9o510_A1yGhk6pT_g3QGZas0T5da6oYR9HulJgwV-k-U9-GBX383eSQX4iskfgosxPPd-xmSl9QnG0xcOe4jMup1QGyHzuNDVd-OKRKfjv5fqdqFwaarDYwgVHItBf5LVM8-_yNK6JOcEd_lbl-68Wy3FpROZkTn4"/>
+            <span class="hidden sm:block font-headline-md text-lg md:text-headline-md font-bold text-primary truncate max-w-[200px] lg:max-w-none">Hinthar International School</span>
+        </div>
+        <nav class="hidden gap-4 lg:gap-8 items-center h-full lg:flex" id="top-nav">
+            <a class="nav-link font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-all duration-200 h-full flex items-center nav-link-active whitespace-nowrap" href="#home">Home</a>
+            <a class="nav-link font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-all duration-200 h-full flex items-center whitespace-nowrap" href="#about">About</a>
+            <a class="nav-link font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-all duration-200 h-full flex items-center whitespace-nowrap" href="#specialisations">Specialisations</a>
+            <a class="nav-link font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-all duration-200 h-full flex items-center whitespace-nowrap" href="#faq">FAQ</a>
+            <a class="nav-link font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-all duration-200 h-full flex items-center whitespace-nowrap" href="#contact">Contact</a>
+        </nav>
+        <div class="flex items-center gap-4">
+            <button class="hidden sm:block bg-secondary-container text-on-secondary-container px-4 lg:px-6 py-2 lg:py-3 rounded-lg font-label-caps text-label-caps hover:bg-academic-gold transition-all duration-300 shadow-sm active:scale-95 whitespace-nowrap">
+                Apply Now
+            </button>
+            <!-- Hamburger Button -->
+            <button class="text-primary p-2 focus:outline-none lg:hidden" id="menu-toggle">
+                <span class="material-symbols-outlined text-3xl" id="menu-icon">menu</span>
+            </button>
+        </div>
+    </div>
+</header>
+
+<!-- Mobile Drawer -->
+<div class="fixed inset-0 z-[110] hidden" id="mobile-menu-overlay">
+    <div class="absolute inset-0 bg-oxford-blue/60 backdrop-blur-sm"></div>
+    <div class="absolute top-0 right-0 h-full w-4/5 max-w-sm bg-surface shadow-2xl flex flex-col hidden-drawer" id="mobile-menu">
+        <div class="p-6 flex justify-between items-center border-b border-outline-variant">
+            <span class="font-headline-md text-primary font-bold">Menu</span>
+            <button class="text-on-surface-variant" id="menu-close">
+                <span class="material-symbols-outlined text-3xl">close</span>
+            </button>
+        </div>
+        <nav class="flex-1 overflow-y-auto p-6 space-y-4">
+            <a class="mobile-nav-link block font-label-caps text-lg text-on-surface-variant py-2 border-b border-transparent nav-link-active" href="#home">Home</a>
+            <a class="mobile-nav-link block font-label-caps text-lg text-on-surface-variant py-2 border-b border-transparent" href="#about">About</a>
+            <a class="mobile-nav-link block font-label-caps text-lg text-on-surface-variant py-2 border-b border-transparent" href="#specialisations">Specialisations</a>
+            <a class="mobile-nav-link block font-label-caps text-lg text-on-surface-variant py-2 border-b border-transparent" href="#faq">FAQ</a>
+            <a class="mobile-nav-link block font-label-caps text-lg text-on-surface-variant py-2 border-b border-transparent" href="#contact">Contact</a>
+            <div class="pt-8">
+                <button class="w-full bg-secondary-container text-on-secondary-container py-4 rounded-lg font-label-caps text-label-caps hover:bg-academic-gold transition-all shadow-md">
+                    Apply Now
+                </button>
+            </div>
+        </nav>
+    </div>
+</div>
+
+<!-- Hero Section -->
+<section class="relative min-h-screen flex items-center pt-20" id="home">
+    <div class="absolute inset-0 z-0 overflow-hidden">
+        <div class="absolute inset-0 bg-oxford-blue/50 z-10"></div>
+        <div class="w-full h-full bg-cover bg-center transition-transform duration-[10000ms] hover:scale-110" style="background-image: url(/images/graduation.jpg)"></div>
+    </div>
+    <div class="relative z-20 w-full max-w-[1200px] mx-auto px-6 md:px-8 py-section-padding-mobile md:py-section-padding-desktop text-white">
+        <div class="max-w-2xl">
+            <span class="inline-block px-4 py-1 bg-academic-gold text-oxford-blue font-label-caps text-xs md:text-label-caps mb-4 rounded-sm uppercase tracking-widest">Excellence in Education</span>
+            <h1 class="font-display-hero text-3xl sm:text-4xl md:text-display-hero mb-6 text-shadow-md">Delivering Quality Education</h1>
+            <p class="font-body-lg text-base md:text-body-lg mb-8 text-shadow-md opacity-90">Your gateway to a brighter future. Empowering young minds with high-quality learning experiences that inspire confidence and success.</p>
+            <div class="flex flex-wrap gap-4">
+                <a class="bg-primary text-white px-6 md:px-8 py-3 md:py-4 rounded-lg font-label-caps text-label-caps hover:bg-primary-container transition-all shadow-lg flex items-center gap-2" href="#about">
+                    Discover More <span class="material-symbols-outlined">arrow_forward</span>
+                </a>
+                <a class="bg-white/10 backdrop-blur-md border border-white/30 text-white px-6 md:px-8 py-3 md:py-4 rounded-lg font-label-caps text-label-caps hover:bg-white/20 transition-all" href="#specialisations">
+                    Our Programs
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 animate-bounce">
+        <span class="material-symbols-outlined text-white text-3xl">keyboard_double_arrow_down</span>
+    </div>
+</section>
+
+<!-- About Us Section -->
+<section class="bg-background py-section-padding-mobile md:py-section-padding-desktop scroll-mt-20" id="about">
+    <div class="max-w-[1200px] mx-auto px-6 md:px-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-16 items-center">
+            <div class="relative order-2 md:order-1">
+                <div class="aspect-square rounded-xl overflow-hidden shadow-2xl border-4 border-white max-w-md mx-auto md:max-w-none">
+                    <img alt="DrKMH-img" class="w-full h-full object-cover" src="/images/DrKMH.jpg"/>
+                </div>
+                <div class="absolute -bottom-6 -right-6 lg:-bottom-6 lg:-right-6 bg-primary p-6 lg:p-8 rounded-xl shadow-xl text-white max-w-[200px] sm:max-w-xs hidden sm:block">
+                    <span class="material-symbols-outlined text-academic-gold text-3xl lg:text-4xl mb-2">format_quote</span>
+                    <p class="font-body-md text-sm lg:text-base italic mb-4">"Join us and discover how Hinthar Education can help you reach your educational goals with confidence and skill."</p>
+                    <p class="font-label-caps text-xs lg:text-label-caps font-bold">Dr. K.M.H, Principal</p>
+                </div>
+            </div>
+            <div class="space-y-6 order-1 md:order-2">
+                <div class="inline-flex items-center gap-3">
+                    <div class="h-1 w-12 bg-academic-gold"></div>
+                    <span class="font-label-caps text-label-caps text-primary uppercase">About Us</span>
+                </div>
+                <h2 class="font-headline-lg text-2xl md:text-headline-lg text-oxford-blue">Empowering Students for a Brighter Tomorrow</h2>
+                <div class="font-body-lg text-base md:text-body-lg text-on-surface-variant space-y-4">
+                    <p>Hinthar Education is dedicated to empowering students with high-quality learning experiences that inspire confidence and success.</p>
+                    <p>Located in the heart of Yangon, Myanmar, our institution offers a wide range of educational programs designed to meet the diverse needs of learners at every stage. From Primary and Secondary education to internationally recognized qualifications such as O Level, A Level, and BCS preparation, we provide comprehensive courses delivered by experienced educators committed to excellence.</p>
+                    <p class="hidden lg:block">We believe learning should be engaging, flexible, and accessible. That’s why we offer both on-campus and online classes, enabling students to study in the way that suits them best.</p>
+                </div>
+                <div class="grid grid-cols-2 gap-4 lg:gap-8 pt-8 border-t border-outline-variant">
+                    <div>
+                        <p class="text-primary font-display-hero text-3xl lg:text-4xl mb-1">100%</p>
+                        <p class="font-label-caps text-xs lg:text-label-caps text-on-surface-variant">Success Rate</p>
+                    </div>
+                    <div>
+                        <p class="text-primary font-display-hero text-3xl lg:text-4xl mb-1">15+</p>
+                        <p class="font-label-caps text-xs lg:text-label-caps text-on-surface-variant">Years of Excellence</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Specialisations Section -->
+<section class="bg-neutral-surface py-section-padding-mobile md:py-section-padding-desktop scroll-mt-20" id="specialisations">
+    <div class="max-w-[1200px] mx-auto px-6 md:px-8">
+        <div class="text-center max-w-2xl mx-auto mb-12 md:mb-16">
+            <span class="font-label-caps text-label-caps text-primary uppercase block mb-4">Our Expertise</span>
+            <h2 class="font-headline-lg text-2xl md:text-headline-lg text-oxford-blue mb-4">Our Specialisations</h2>
+            <p class="font-body-lg text-base md:text-body-lg text-on-surface-variant">Develop technical expertise and problem-solving abilities through our specialized academic tracks.</p>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-gutter">
+            <!-- Engineering -->
+            <div class="bg-white rounded-lg overflow-hidden border border-outline-variant hover:border-academic-gold hover:shadow-xl transition-all duration-300 group flex flex-col">
+                <div class="h-40 md:h-48 overflow-hidden">
+                    <img alt="Engineering Specialisation" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" src="https://lh3.googleusercontent.com/aida/AP1WRLuj0jH-Eo42DVI0hnp8rL4wmW3Kth2U8Z4qwH8nYmKmOTyZgYkVp-WRkNfSD5Q6F3fMEzPW_jz0RBtbBF_NTUizCT37mTDIkyuBfa9_nDj-r84_t-t-2gwG1VWjCbaUQsIEJQzocST2R2Ov0qt9bLPyYDY01YT3rbb6JnC63WReDZZTDt8wy92MeZ_DUW_SYtTaBrol6Z_Qi-uPoTq8Y01HGSaZYy3KsM0sS-7xjCHP8G6psHLyA-kwMg"/>
+                </div>
+                <div class="p-5 md:p-6 flex-1 flex flex-col">
+                    <div class="w-10 h-10 md:w-12 md:h-12 bg-primary-fixed rounded-lg flex items-center justify-center mb-4 text-primary">
+                        <span class="material-symbols-outlined text-2xl">engineering</span>
+                    </div>
+                    <h3 class="font-headline-md text-xl md:text-headline-md text-oxford-blue mb-2">Engineering</h3>
+                    <p class="font-body-md text-sm md:text-body-md text-on-surface-variant mb-6 flex-1">Develop technical expertise and problem-solving abilities through hands-on learning.</p>
+                    <a class="text-primary font-label-caps text-sm md:text-label-caps flex items-center gap-2 hover:gap-4 transition-all" href="#">
+                        Read More <span class="material-symbols-outlined text-sm">arrow_forward</span>
+                    </a>
+                </div>
+            </div>
+            <!-- IT -->
+            <div class="bg-white rounded-lg overflow-hidden border border-outline-variant hover:border-academic-gold hover:shadow-xl transition-all duration-300 group flex flex-col">
+                <div class="h-40 md:h-48 overflow-hidden">
+                    <img alt="IT Specialisation" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" src="https://lh3.googleusercontent.com/aida/AP1WRLubSOzy0hIVdU-OIXQJq9sleqvpygjkiLIi-0EtMI78CjSIavfUdFQ232oK_gDg10GOB8nKQG2NbaisHwYQQoT1ggV1es1srgGjtPrfZJWj5-dY_b3-Tv6CguByN649rwstTDWY4879DY4xHvdb9r5gpGvAj_yI4lPMZLVcaHX7WXHd0v0C0f0ipNesCgc6IjPko6YL-JaiRUs3XgFvBuVm4q4XsopEHObf9QUzH6X60_epq_u9NizbvlQ"/>
+                </div>
+                <div class="p-5 md:p-6 flex-1 flex flex-col">
+                    <div class="w-10 h-10 md:w-12 md:h-12 bg-primary-fixed rounded-lg flex items-center justify-center mb-4 text-primary">
+                        <span class="material-symbols-outlined text-2xl">developer_board</span>
+                    </div>
+                    <h3 class="font-headline-md text-xl md:text-headline-md text-oxford-blue mb-2">Information Technology</h3>
+                    <p class="font-body-md text-sm md:text-body-md text-on-surface-variant mb-6 flex-1">Master digital transformation and technical implementation in a connected world.</p>
+                    <a class="text-primary font-label-caps text-sm md:text-label-caps flex items-center gap-2 hover:gap-4 transition-all" href="#">
+                        Read More <span class="material-symbols-outlined text-sm">arrow_forward</span>
+                    </a>
+                </div>
+            </div>
+            <!-- Business -->
+            <div class="bg-white rounded-lg overflow-hidden border border-outline-variant hover:border-academic-gold hover:shadow-xl transition-all duration-300 group flex flex-col">
+                <div class="h-40 md:h-48 overflow-hidden">
+                    <img alt="Business Specialisation" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" src="https://lh3.googleusercontent.com/aida/AP1WRLsHQ4d-Yv2CqNgm6l7b4ysFXR2tj9vMPfbhpr6fAHgFDfqQL6AXsFRDlRw2ZzaoQI3Tl-bGqMV2_mg9OQjJHPAeKE-sd-EWylhk7vaPebUsiCpqsUPIl5RthiE8CmZTctl9Sp3T4CKHeOV5DyqcrCrLAIgYn3YZ7Fq4s1gkee1c5D0kpNTpW1Hiub1L79MKExKyksWqIeC6G7RttBdCQKESfHzuyneWkioWwpnkRDizVR_ghki4T63ebUQ"/>
+                </div>
+                <div class="p-5 md:p-6 flex-1 flex flex-col">
+                    <div class="w-10 h-10 md:w-12 md:h-12 bg-primary-fixed rounded-lg flex items-center justify-center mb-4 text-primary">
+                        <span class="material-symbols-outlined text-2xl">corporate_fare</span>
+                    </div>
+                    <h3 class="font-headline-md text-xl md:text-headline-md text-oxford-blue mb-2">Business</h3>
+                    <p class="font-body-md text-sm md:text-body-md text-on-surface-variant mb-6 flex-1">Cultivate leadership, management skills, and strategic thinking for the global market.</p>
+                    <a class="text-primary font-label-caps text-sm md:text-label-caps flex items-center gap-2 hover:gap-4 transition-all" href="#">
+                        Read More <span class="material-symbols-outlined text-sm">arrow_forward</span>
+                    </a>
+                </div>
+            </div>
+            <!-- Medical -->
+            <div class="bg-white rounded-lg overflow-hidden border border-outline-variant hover:border-academic-gold hover:shadow-xl transition-all duration-300 group flex flex-col">
+                <div class="h-40 md:h-48 overflow-hidden">
+                    <img alt="Medical Specialisation" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" src="https://lh3.googleusercontent.com/aida/AP1WRLsh_skzIdmnZdKSHk8e4gfg4nGWOR9WKXfRtEuk1r6s9jLgr4648f3KCLhrQBMwbi-cJjIK5PyL3oq_573s1FwK-cKOVnRa60RsPNuZDjmjn-PwpTsL5yNfTivUkHCf_P1Pi22-MmjsyHzmNTQutdq9PoMlK5w-Aa0xQYDmNxkw6Z7Nyw7QEwVVA-nqsXg8HVGTGZ1f-F3emoVFDNowNQmdscvgfG0iQ_Js_jmmR1CyL26qInTnsxgzS_w"/>
+                </div>
+                <div class="p-5 md:p-6 flex-1 flex flex-col">
+                    <div class="w-10 h-10 md:w-12 md:h-12 bg-primary-fixed rounded-lg flex items-center justify-center mb-4 text-primary">
+                        <span class="material-symbols-outlined text-2xl">stethoscope</span>
+                    </div>
+                    <h3 class="font-headline-md text-xl md:text-headline-md text-oxford-blue mb-2">Medical</h3>
+                    <p class="font-body-md text-sm md:text-body-md text-on-surface-variant mb-6 flex-1">Foundational science and preparation for prestigious medical careers worldwide.</p>
+                    <a class="text-primary font-label-caps text-sm md:text-label-caps flex items-center gap-2 hover:gap-4 transition-all" href="#">
+                        Read More <span class="material-symbols-outlined text-sm">arrow_forward</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FAQ Section -->
+<section class="bg-background py-section-padding-mobile md:py-section-padding-desktop scroll-mt-20" id="faq">
+    <div class="max-w-[800px] mx-auto px-6 md:px-8">
+        <div class="text-center mb-10 md:mb-12">
+            <h2 class="font-headline-lg text-2xl md:text-headline-lg text-oxford-blue mb-4">Frequently Asked Questions</h2>
+            <div class="w-20 h-1 bg-academic-gold mx-auto"></div>
+        </div>
+        <div class="space-y-4">
+            <!-- Question 1 -->
+            <details class="group bg-white rounded-lg border border-outline-variant" open="">
+                <summary class="flex justify-between items-center p-5 md:p-6 cursor-pointer list-none">
+                    <h3 class="font-headline-md text-lg md:text-headline-md text-oxford-blue pr-4">What courses do you offer?</h3>
+                    <span class="material-symbols-outlined transition-transform duration-300 group-open:rotate-180 shrink-0">expand_more</span>
+                </summary>
+                <div class="px-5 md:px-6 pb-5 md:pb-6 pt-2 border-t border-outline-variant/30 text-on-surface-variant font-body-md text-sm md:text-base">
+                    We offer a variety of courses including Primary, Secondary, O Level, IAL, and BCS preparation.
+                </div>
+            </details>
+            <!-- Question 2 -->
+            <details class="group bg-white rounded-lg border border-outline-variant">
+                <summary class="flex justify-between items-center p-5 md:p-6 cursor-pointer list-none">
+                    <h3 class="font-headline-md text-lg md:text-headline-md text-oxford-blue pr-4">How can I enroll in a course?</h3>
+                    <span class="material-symbols-outlined transition-transform duration-300 group-open:rotate-180 shrink-0">expand_more</span>
+                </summary>
+                <div class="px-5 md:px-6 pb-5 md:pb-6 pt-2 border-t border-outline-variant/30 text-on-surface-variant font-body-md text-sm md:text-base">
+                    You can enroll by visiting our office, contacting us via phone or email, or completing the online registration form on our website.
+                </div>
+            </details>
+            <!-- Question 3 -->
+            <details class="group bg-white rounded-lg border border-outline-variant">
+                <summary class="flex justify-between items-center p-5 md:p-6 cursor-pointer list-none">
+                    <h3 class="font-headline-md text-lg md:text-headline-md text-oxford-blue pr-4">What payment methods do you accept?</h3>
+                    <span class="material-symbols-outlined transition-transform duration-300 group-open:rotate-180 shrink-0">expand_more</span>
+                </summary>
+                <div class="px-5 md:px-6 pb-5 md:pb-6 pt-2 border-t border-outline-variant/30 text-on-surface-variant font-body-md text-sm md:text-base">
+                    We accept bank transfers, cash payments at our office, and mobile payments through popular platforms.
+                </div>
+            </details>
+            <!-- Question 4 -->
+            <details class="group bg-white rounded-lg border border-outline-variant">
+                <summary class="flex justify-between items-center p-5 md:p-6 cursor-pointer list-none">
+                    <h3 class="font-headline-md text-lg md:text-headline-md text-oxford-blue pr-4">Do you offer online and on-campus classes?</h3>
+                    <span class="material-symbols-outlined transition-transform duration-300 group-open:rotate-180 shrink-0">expand_more</span>
+                </summary>
+                <div class="px-5 md:px-6 pb-5 md:pb-6 pt-2 border-t border-outline-variant/30 text-on-surface-variant font-body-md text-sm md:text-base">
+                    Yes, we offer both online and on-campus classes to provide flexible learning options for our students. You can choose the mode that best fits your needs.
+                </div>
+            </details>
+        </div>
+    </div>
+</section>
+
+<!-- Footer / Contact Section -->
+<footer class="bg-oxford-blue text-white py-section-padding-mobile md:py-section-padding-desktop scroll-mt-20" id="contact">
+    <div class="max-w-[1200px] mx-auto px-6 md:px-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 md:gap-gutter">
+        <!-- Brand Column -->
+        <div class="space-y-6">
+            <img alt="Hinthar Logo" class="h-14 md:h-16 w-auto" src="/brand/HintharLogo.png"/>
+            <h4 class="font-headline-md text-xl md:text-headline-md text-academic-gold">Hinthar Education</h4>
+            <p class="opacity-70 font-body-md text-sm md:text-base">Dedicated to empowering students with high-quality learning experiences that inspire confidence and success.</p>
+            <div class="flex gap-4">
+                <a class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-academic-gold transition-colors" href="#">
+                    <span class="material-symbols-outlined text-lg">public</span>
+                </a>
+                <a class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-academic-gold transition-colors" href="#">
+                    <span class="material-symbols-outlined text-lg">mail</span>
+                </a>
+                <a class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-academic-gold transition-colors" href="#">
+                    <span class="material-symbols-outlined text-lg">call</span>
+                </a>
+            </div>
+        </div>
+        <!-- Links Column -->
+        <div class="space-y-6">
+            <h4 class="font-label-caps text-label-caps text-academic-gold uppercase tracking-wider">Quick Links</h4>
+            <ul class="space-y-3 opacity-80 text-sm md:text-base">
+                <li><a class="hover:text-academic-gold transition-colors" href="#home">Home</a></li>
+                <li><a class="hover:text-academic-gold transition-colors" href="#about">About Us</a></li>
+                <li><a class="hover:text-academic-gold transition-colors" href="#specialisations">Specialisations</a></li>
+                <li><a class="hover:text-academic-gold transition-colors" href="#faq">FAQ</a></li>
+                <li><a class="hover:text-academic-gold transition-colors" href="#contact">Contact</a></li>
+            </ul>
+        </div>
+        <!-- Programs Column -->
+        <div class="space-y-6">
+            <h4 class="font-label-caps text-label-caps text-academic-gold uppercase tracking-wider">Our Programs</h4>
+            <ul class="space-y-3 opacity-80 text-sm md:text-base">
+                <li><a class="hover:text-academic-gold transition-colors" href="#">Primary Education</a></li>
+                <li><a class="hover:text-academic-gold transition-colors" href="#">Secondary Education</a></li>
+                <li><a class="hover:text-academic-gold transition-colors" href="#">O Level / A Level</a></li>
+                <li><a class="hover:text-academic-gold transition-colors" href="#">BCS Preparation</a></li>
+                <li><a class="hover:text-academic-gold transition-colors" href="#">Specialized Courses</a></li>
+            </ul>
+        </div>
+        <!-- Contact Column -->
+        <div class="space-y-6">
+            <h4 class="font-label-caps text-label-caps text-academic-gold uppercase tracking-wider">Contact Info</h4>
+            <div class="space-y-4 text-sm md:text-base">
+                <div class="flex gap-3">
+                    <span class="material-symbols-outlined text-academic-gold shrink-0">location_on</span>
+                    <p class="opacity-80">No. 23B, Ywar Ma Kyaung Lane, Hlaing Township, Yangon, Myanmar, 11051</p>
+                </div>
+                <div class="flex gap-3">
+                    <span class="material-symbols-outlined text-academic-gold shrink-0">mail</span>
+                    <p class="opacity-80">info@hinthar.education</p>
+                </div>
+                <div class="flex gap-3">
+                    <span class="material-symbols-outlined text-academic-gold shrink-0">call</span>
+                    <p class="opacity-80">+95 9 894 332200</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="max-w-[1200px] mx-auto px-6 md:px-8 mt-12 md:mt-16 pt-8 border-t border-white/10 text-center opacity-60 text-xs md:text-sm">
+        <p>© 2024 Hinthar International School. All rights reserved.</p>
+    </div>
+</footer>
+
+<!-- Chatbot UI Components -->
+<!-- FAB for Chat -->
+<button class="fixed bottom-8 right-8 z-[120] bg-primary-container text-white w-16 h-16 rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all group overflow-hidden" id="chat-fab">
+    <span class="material-symbols-outlined text-3xl" id="chat-fab-icon">chat</span>
+</button>
+
+<!-- Chat Window -->
+<div class="fixed bottom-28 right-8 z-[120] w-[calc(100%-4rem)] sm:w-96 max-h-[500px] h-[70vh] bg-surface rounded-2xl shadow-2xl flex flex-col overflow-hidden hidden-chat" id="chat-window">
+    <!-- Header -->
+    <div class="bg-primary-container p-4 flex justify-between items-center text-white shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                <span class="material-symbols-outlined text-lg">smart_toy</span>
+            </div>
+            <div>
+                <h4 class="font-label-caps text-sm font-bold">Hinthar AI Assistant</h4>
+                <div class="flex items-center gap-1">
+                    <div class="w-1.5 h-1.5 rounded-full bg-green-400"></div>
+                    <span class="text-[10px] opacity-80 uppercase tracking-tighter">Online</span>
+                </div>
+            </div>
+        </div>
+        <button class="hover:bg-white/10 p-1 rounded-full transition-colors" id="chat-close">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+    </div>
+    <!-- Messages Area -->
+    <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-surface-container-low" id="chat-messages">
+        <!-- AI Welcome Message -->
+        <div class="flex gap-3 max-w-[85%]">
+            <div class="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined text-primary text-sm">smart_toy</span>
+            </div>
+            <div class="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm border border-outline-variant">
+                <p class="font-body-md text-sm text-on-surface">Hello! I'm the Hinthar AI assistant. How can I help you today?</p>
+                <span class="text-[10px] text-on-surface-variant opacity-60 mt-1 block">Just now</span>
+            </div>
+        </div>
+    </div>
+    <!-- Input Area -->
+    <div class="p-4 bg-surface border-t border-outline-variant shrink-0">
+        <form class="flex gap-2" id="chat-form">
+            <input class="flex-1 bg-surface-container-high border-none rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-primary-container font-body-md" placeholder="Type your message..." type="text"/>
+            <button class="bg-primary-container text-white p-2 rounded-lg hover:bg-primary transition-colors flex items-center justify-center" type="submit">
+                <span class="material-symbols-outlined">send</span>
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="script.js"></script>
+</body>
+</html>
