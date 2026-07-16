@@ -1,0 +1,35 @@
+.material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+.text-shadow-md {
+    text-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+.nav-link-active {
+    color: #00328b !important;
+    border-bottom: 2px solid #E5B80B !important;
+    font-weight: 700 !important;
+}
+@media (max-width: 767px) {
+    .nav-link-active {
+        border-bottom: none !important;
+        border-left: 4px solid #E5B80B !important;
+        padding-left: 1rem !important;
+    }
+}
+#mobile-menu {
+    transition: transform 0.3s ease-in-out;
+}
+#mobile-menu.hidden-drawer {
+    transform: translateX(100%);
+}
+
+/* Chat Window Animations */
+#chat-window {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-origin: bottom right;
+}
+#chat-window.hidden-chat {
+    opacity: 0;
+    transform: scale(0.9) translateY(20px);
+    pointer-events: none;
+}
