@@ -15,7 +15,7 @@ export default function NewClubPage() {
     meetingTime: "",
     leadership: "",
     description: "",
-    image: "",
+    image: "/images/g1.jpg",
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {

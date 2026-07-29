@@ -14,7 +14,7 @@ const clubs = [
     meetingTime: "Wednesdays, 3:30 PM",
     leadership: "President: Alex J. | Advisor: Dr. Chen",
     description: "Explore the future by building autonomous robots and learning fundamental machine learning concepts.",
-    image: "https://lh3.googleusercontent.com/aida/AP1WRLubSOzy0hIVdU-OIXQJq9sleqvpygjkiLIi-0EtMI78CjSIavfUdFQ232oK_gDg10GOB8nKQG2NbaisHwYQQoT1ggV1es1srgGjtPrfZJWj5-dY_b3-Tv6CguByN649rwstTDWY4879DY4xHvdb9r5gpGvAj_yI4lPMZLVcaHX7WXHd0v0C0f0ipNesCgc6IjPko6YL-JaiRUs3XgFvBuVm4q4XsopEHObf9QUzH6X60_epq_u9NizbvlQ",
+    image: "/images/g1.jpg",
   },
   {
     id: 2,
@@ -24,7 +24,7 @@ const clubs = [
     meetingTime: "Tuesdays, 4:00 PM",
     leadership: "Captain: Michael C. | Advisor: Mrs. Smith",
     description: "Sharpen your public speaking and critical thinking skills by discussing global issues.",
-    image: "https://lh3.googleusercontent.com/aida/AP1WRLsHQ4d-Yv2CqNgm6l7b4ysFXR2tj9vMPfbhpr6fAHgFDfqQL6AXsFRDlRw2ZzaoQI3Tl-bGqMV2_mg9OQjJHPAeKE-sd-EWylhk7vaPebUsiCpqsUPIl5RthiE8CmZTctl9Sp3T4CKHeOV5DyqcrCrLAIgYn3YZ7Fq4s1gkee1c5D0kpNTpW1Hiub1L79MKExKyksWqIeC6G7RttBdCQKESfHzuyneWkioWwpnkRDizVR_ghki4T63ebUQ",
+    image: "/images/g2.jpg",
   },
   {
     id: 3,
@@ -34,7 +34,7 @@ const clubs = [
     meetingTime: "Fridays, 3:00 PM",
     leadership: "President: Sarah L. | Advisor: Mr. Davis",
     description: "Lead sustainability initiatives on campus and organize community clean-up drives.",
-    image: "https://lh3.googleusercontent.com/aida/AP1WRLsh_skzIdmnZdKSHk8e4gfg4nGWOR9WKXfRtEuk1r6s9jLgr4648f3KCLhrQBMwbi-cJjIK5PyL3oq_573s1FwK-cKOVnRa60RsPNuZDjmjn-PwpTsL5yNfTivUkHCf_P1Pi22-MmjsyHzmNTQutdq9PoMlK5w-Aa0xQYDmNxkw6Z7Nyw7QEwVVA-nqsXg8HVGTGZ1f-F3emoVFDNowNQmdscvgfG0iQ_Js_jmmR1CyL26qInTnsxgzS_w",
+    image: "/images/g3.jpg",
   },
   {
     id: 4,
@@ -44,7 +44,7 @@ const clubs = [
     meetingTime: "Mon & Thu, 4:30 PM",
     leadership: "Director: Ms. Rahman",
     description: "Express yourself through drama, dance, and musical performances in our biannual showcases.",
-    image: "https://lh3.googleusercontent.com/aida/AP1WRLuj0jH-Eo42DVI0hnp8rL4wmW3Kth2U8Z4qwH8nYmKmOTyZgYkVp-WRkNfSD5Q6F3fMEzPW_jz0RBtbBF_NTUizCT37mTDIkyuBfa9_nDj-r84_t-t-2gwG1VWjCbaUQsIEJQzocST2R2Ov0qt9bLPyYDY01YT3rbb6JnC63WReDZZTDt8wy92MeZ_DUW_SYtTaBrol6Z_Qi-uPoTq8Y01HGSaZYy3KsM0sS-7xjCHP8G6psHLyA-kwMg",
+    image: "/images/g4.jpg",
   },
 ];
 

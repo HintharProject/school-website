@@ -16,7 +16,7 @@ const yearbookEntries = [
     category: "Class of 2023",
     role: "Valedictorian",
     quote: "The future belongs to those who prepare for it today.",
-    image: "https://lh3.googleusercontent.com/aida/AP1WRLsHQ4d-Yv2CqNgm6l7b4ysFXR2tj9vMPfbhpr6fAHgFDfqQL6AXsFRDlRw2ZzaoQI3Tl-bGqMV2_mg9OQjJHPAeKE-sd-EWylhk7vaPebUsiCpqsUPIl5RthiE8CmZTctl9Sp3T4CKHeOV5DyqcrCrLAIgYn3YZ7Fq4s1gkee1c5D0kpNTpW1Hiub1L79MKExKyksWqIeC6G7RttBdCQKESfHzuyneWkioWwpnkRDizVR_ghki4T63ebUQ",
+    image: "/images/g5.jpg",
   },
   {
     id: 2,
@@ -24,14 +24,14 @@ const yearbookEntries = [
     category: "Class of 2024",
     role: "Student Council President",
     quote: "Leadership is an action, not a position.",
-    image: "https://lh3.googleusercontent.com/aida/AP1WRLsh_skzIdmnZdKSHk8e4gfg4nGWOR9WKXfRtEuk1r6s9jLgr4648f3KCLhrQBMwbi-cJjIK5PyL3oq_573s1FwK-cKOVnRa60RsPNuZDjmjn-PwpTsL5yNfTivUkHCf_P1Pi22-MmjsyHzmNTQutdq9PoMlK5w-Aa0xQYDmNxkw6Z7Nyw7QEwVVA-nqsXg8HVGTGZ1f-F3emoVFDNowNQmdscvgfG0iQ_Js_jmmR1CyL26qInTnsxgzS_w",
+    image: "/images/g6.jpg",
   },
   {
     id: 3,
     title: "Regional Science Fair Winners",
     category: "Science Fair",
     description: "Our robotics team took 1st place in the regional competition.",
-    image: "https://lh3.googleusercontent.com/aida/AP1WRLuj0jH-Eo42DVI0hnp8rL4wmW3Kth2U8Z4qwH8nYmKmOTyZgYkVp-WRkNfSD5Q6F3fMEzPW_jz0RBtbBF_NTUizCT37mTDIkyuBfa9_nDj-r84_t-t-2gwG1VWjCbaUQsIEJQzocST2R2Ov0qt9bLPyYDY01YT3rbb6JnC63WReDZZTDt8wy92MeZ_DUW_SYtTaBrol6Z_Qi-uPoTq8Y01HGSaZYy3KsM0sS-7xjCHP8G6psHLyA-kwMg",
+    image: "/images/g7.jpg",
   },
   {
     id: 4,
@@ -53,7 +53,7 @@ const yearbookEntries = [
     title: "Spring Art Exhibition",
     category: "Arts",
     description: "Showcasing the incredible talent of our senior artists.",
-    image: "https://lh3.googleusercontent.com/aida/AP1WRLsHQ4d-Yv2CqNgm6l7b4ysFXR2tj9vMPfbhpr6fAHgFDfqQL6AXsFRDlRw2ZzaoQI3Tl-bGqMV2_mg9OQjJHPAeKE-sd-EWylhk7vaPebUsiCpqsUPIl5RthiE8CmZTctl9Sp3T4CKHeOV5DyqcrCrLAIgYn3YZ7Fq4s1gkee1c5D0kpNTpW1Hiub1L79MKExKyksWqIeC6G7RttBdCQKESfHzuyneWkioWwpnkRDizVR_ghki4T63ebUQ",
+    image: "/images/g9.jpg",
   }
 ];
 
