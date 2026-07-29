@@ -74,14 +74,14 @@ export default function SpecialisationsSection() {
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
-          <div className="inline-flex items-center gap-3 bg-white px-4 py-2 rounded-full shadow-sm mb-6">
+          <div className="inline-flex items-center gap-3 bg-surface dark:bg-surface-variant px-4 py-2 rounded-full shadow-sm mb-6 border border-outline-variant/30">
             <span className="material-symbols-outlined text-academic-gold text-sm">stars</span>
-            <span className="text-sm font-bold text-oxford-blue uppercase tracking-widest">
+            <span className="text-sm font-bold text-oxford-blue dark:text-white uppercase tracking-widest">
               Our Expertise
             </span>
           </div>
-          <h2 className="text-3xl md:text-4xl lg:text-[42px] font-bold text-oxford-blue mb-6 tracking-tight">
-            Our <span className="text-primary">Specialisations</span>
+          <h2 className="text-3xl md:text-4xl lg:text-[42px] font-bold text-oxford-blue dark:text-white mb-6 tracking-tight">
+            Our <span className="text-primary dark:text-primary-fixed">Specialisations</span>
           </h2>
           <p className="text-base md:text-lg text-on-surface-variant font-light">
             Develop technical expertise and problem-solving abilities through
@@ -102,7 +102,7 @@ export default function SpecialisationsSection() {
               key={spec.id}
               variants={itemVariants}
               whileHover={{ y: -10 }}
-              className="bg-white/70 backdrop-blur-md rounded-2xl overflow-hidden border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all duration-300 group flex flex-col relative"
+              className="bg-surface/70 dark:bg-surface-variant/50 backdrop-blur-md rounded-2xl overflow-hidden border border-white dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all duration-300 group flex flex-col relative"
             >
               {/* Card image */}
               <div className="h-48 overflow-hidden relative">
@@ -116,8 +116,8 @@ export default function SpecialisationsSection() {
                 />
                 
                 {/* Floating Icon */}
-                <div className="absolute -bottom-6 right-6 w-12 h-12 bg-white rounded-xl shadow-lg flex items-center justify-center z-20 group-hover:-translate-y-2 transition-transform duration-300">
-                  <span className="material-symbols-outlined text-primary text-2xl">
+                <div className="absolute -bottom-6 right-6 w-12 h-12 bg-surface dark:bg-neutral-surface rounded-xl shadow-lg flex items-center justify-center z-20 group-hover:-translate-y-2 transition-transform duration-300 border border-outline-variant/30">
+                  <span className="material-symbols-outlined text-primary dark:text-primary-fixed text-2xl">
                     {spec.icon}
                   </span>
                 </div>
@@ -125,7 +125,7 @@ export default function SpecialisationsSection() {
 
               {/* Card body */}
               <div className="p-6 pt-8 flex-1 flex flex-col">
-                <h3 className="text-xl md:text-2xl font-bold text-oxford-blue mb-3 tracking-tight group-hover:text-primary transition-colors">
+                <h3 className="text-xl md:text-2xl font-bold text-oxford-blue dark:text-white mb-3 tracking-tight group-hover:text-primary dark:group-hover:text-primary-fixed transition-colors">
                   {spec.title}
                 </h3>
                 <p className="text-sm md:text-base text-on-surface-variant mb-6 flex-1 leading-relaxed font-light">
@@ -135,10 +135,10 @@ export default function SpecialisationsSection() {
                   <a
                     href="#"
                     aria-label={`Read more about ${spec.title}`}
-                    className="inline-flex items-center gap-2 text-primary text-sm font-bold tracking-wider uppercase group/link"
+                    className="inline-flex items-center gap-2 text-primary dark:text-primary-fixed text-sm font-bold tracking-wider uppercase group/link"
                   >
                     Read More 
-                    <span className="material-symbols-outlined text-sm bg-primary/10 w-6 h-6 rounded-full flex items-center justify-center group-hover/link:bg-primary group-hover/link:text-white transition-all">
+                    <span className="material-symbols-outlined text-sm bg-primary/10 dark:bg-primary/20 w-6 h-6 rounded-full flex items-center justify-center group-hover/link:bg-primary group-hover/link:text-white transition-all">
                       arrow_forward
                     </span>
                   </a>

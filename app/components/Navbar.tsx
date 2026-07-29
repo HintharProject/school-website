@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useTheme } from "./ThemeProvider";
 
 const navLinks = [
   { label: "Home", href: "#home" },
@@ -16,6 +17,7 @@ export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("home");
+  const { theme, toggleTheme } = useTheme();
 
   // Header shrink on scroll
   useEffect(() => {
@@ -71,7 +73,7 @@ export default function Navbar() {
         id="main-header"
         className={`fixed top-0 left-0 w-full z-[100] transition-all duration-500 ${
           isScrolled 
-            ? "py-2 bg-white/80 backdrop-blur-md shadow-sm border-b border-white/20" 
+            ? "py-2 bg-white/80 dark:bg-surface/80 backdrop-blur-md shadow-sm border-b border-white/20 dark:border-white/10" 
             : "py-4 md:py-6 bg-transparent"
         }`}
       >
@@ -88,7 +90,7 @@ export default function Navbar() {
                 className="object-contain"
               />
             </div>
-            <span className={`hidden sm:block font-extrabold text-lg md:text-xl tracking-tight transition-colors duration-300 ${isScrolled ? 'text-primary' : 'text-white text-shadow-md'}`}>
+            <span className={`hidden sm:block font-extrabold text-lg md:text-xl tracking-tight transition-colors duration-300 ${isScrolled ? 'text-primary dark:text-primary-fixed' : 'text-white text-shadow-md'}`}>
               Hinthar International School
             </span>
           </div>
@@ -104,8 +106,8 @@ export default function Navbar() {
                 onClick={(e) => scrollToSection(e, link.href)}
                 className={`px-4 py-2 rounded-full text-sm font-bold tracking-wider uppercase transition-all duration-300 flex items-center whitespace-nowrap ${
                   activeSection === link.href.slice(1) 
-                    ? (isScrolled ? "bg-primary/10 text-primary" : "bg-white/20 text-white") 
-                    : (isScrolled ? "text-on-surface-variant hover:text-primary hover:bg-black/5" : "text-white/80 hover:text-white hover:bg-white/10")
+                    ? (isScrolled ? "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary-fixed" : "bg-white/20 text-white") 
+                    : (isScrolled ? "text-on-surface-variant dark:text-on-surface hover:text-primary dark:hover:text-primary-fixed hover:bg-black/5 dark:hover:bg-white/5" : "text-white/80 hover:text-white hover:bg-white/10")
                 }`}
               >
                 {link.label}
@@ -113,13 +115,24 @@ export default function Navbar() {
             ))}
           </nav>
 
-          {/* CTA + Hamburger */}
-          <div className="flex items-center gap-4">
+          {/* CTA + Hamburger + Theme Toggle */}
+          <div className="flex items-center gap-3 md:gap-4">
+            <button
+              onClick={toggleTheme}
+              className={`p-2 rounded-full transition-colors flex items-center justify-center ${
+                isScrolled ? 'text-primary dark:text-primary-fixed hover:bg-black/5 dark:hover:bg-white/5' : 'text-white hover:bg-white/10'
+              }`}
+              aria-label="Toggle Dark Mode"
+            >
+              <span className="material-symbols-outlined">
+                {theme === "dark" ? "light_mode" : "dark_mode"}
+              </span>
+            </button>
             <Link
               href="/admission"
               className={`hidden sm:block px-6 py-2.5 rounded-full text-sm font-bold tracking-wider uppercase transition-all duration-300 shadow-md active:scale-95 whitespace-nowrap ${
                 isScrolled 
-                  ? "bg-academic-gold text-oxford-blue hover:bg-primary hover:text-white" 
+                  ? "bg-academic-gold text-oxford-blue hover:bg-primary hover:text-white dark:hover:bg-primary-fixed dark:hover:text-oxford-blue" 
                   : "bg-white text-primary hover:bg-academic-gold hover:text-oxford-blue"
               }`}
             >
@@ -129,7 +142,7 @@ export default function Navbar() {
               id="menu-toggle"
               onClick={() => setMobileOpen(true)}
               className={`p-2 focus:outline-none lg:hidden rounded-full transition-colors ${
-                isScrolled ? 'text-primary hover:bg-black/5' : 'text-white hover:bg-white/10'
+                isScrolled ? 'text-primary dark:text-primary-fixed hover:bg-black/5 dark:hover:bg-white/5' : 'text-white hover:bg-white/10'
               }`}
               aria-label="Open menu"
             >

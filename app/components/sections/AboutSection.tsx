@@ -54,7 +54,7 @@ export default function AboutSection() {
                   KMH
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-oxford-blue">Dr. Kaung Myat Htut</p>
+                  <p className="text-sm font-bold text-oxford-blue dark:text-white">Dr. Kaung Myat Htut</p>
                   <p className="text-xs text-on-surface-variant">Principal</p>
                 </div>
               </div>
@@ -76,7 +76,7 @@ export default function AboutSection() {
               </span>
             </div>
 
-            <h2 className="text-3xl md:text-4xl lg:text-[42px] font-bold leading-[1.2] text-oxford-blue tracking-tight">
+            <h2 className="text-3xl md:text-4xl lg:text-[42px] font-bold leading-[1.2] text-oxford-blue dark:text-white tracking-tight">
               Empowering Students for a <span className="text-gradient-gold">Brighter Tomorrow</span>
             </h2>
 
@@ -99,12 +99,12 @@ export default function AboutSection() {
             <div className="grid grid-cols-2 gap-4 pt-4">
               <motion.div
                 whileHover={{ y: -5 }}
-                className="bg-white p-6 rounded-2xl border border-outline-variant/30 shadow-sm hover:shadow-md transition-all group"
+                className="bg-surface dark:bg-neutral-surface p-6 rounded-2xl border border-outline-variant/30 shadow-sm hover:shadow-md transition-all group"
               >
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                   <span className="material-symbols-outlined text-primary">school</span>
                 </div>
-                <p className="text-3xl lg:text-4xl font-extrabold text-oxford-blue mb-1">100%</p>
+                <p className="text-3xl lg:text-4xl font-extrabold text-oxford-blue dark:text-white mb-1">100%</p>
                 <p className="text-xs lg:text-sm font-semibold text-on-surface-variant uppercase tracking-wider">Success Rate</p>
               </motion.div>
 
