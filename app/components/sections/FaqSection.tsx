@@ -58,7 +58,7 @@ export default function FaqSection() {
               Have Questions?
             </span>
           </div>
-          <h2 className="text-3xl md:text-4xl lg:text-[42px] font-bold text-oxford-blue mb-6 tracking-tight">
+          <h2 className="text-3xl md:text-4xl lg:text-[42px] font-bold text-oxford-blue dark:text-white mb-6 tracking-tight">
             Frequently Asked <span className="text-gradient-gold">Questions</span>
           </h2>
         </div>
@@ -71,7 +71,7 @@ export default function FaqSection() {
               <motion.div
                 key={faq.id}
                 layout
-                className={`rounded-2xl border ${isOpen ? "bg-white border-academic-gold/50 shadow-md" : "bg-white/50 border-outline-variant/30 hover:bg-white hover:border-academic-gold/30"} overflow-hidden transition-all duration-300`}
+                className={`rounded-2xl border ${isOpen ? "bg-surface dark:bg-surface-variant border-academic-gold/50 shadow-md" : "bg-surface/50 dark:bg-surface-variant/50 border-outline-variant/30 hover:bg-surface dark:hover:bg-surface-variant hover:border-academic-gold/30"} overflow-hidden transition-all duration-300`}
               >
                 <button
                   id={`faq-btn-${faq.id}`}
@@ -79,10 +79,10 @@ export default function FaqSection() {
                   onClick={() => toggle(faq.id)}
                   aria-expanded={isOpen}
                 >
-                  <h3 className={`text-lg md:text-xl font-bold pr-4 transition-colors ${isOpen ? "text-primary" : "text-oxford-blue"}`}>
+                  <h3 className={`text-lg md:text-xl font-bold pr-4 transition-colors ${isOpen ? "text-primary dark:text-primary-fixed" : "text-oxford-blue dark:text-white"}`}>
                     {faq.question}
                   </h3>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${isOpen ? "bg-primary/10 text-primary" : "bg-neutral-surface text-on-surface-variant"}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${isOpen ? "bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary-fixed" : "bg-neutral-surface dark:bg-surface-variant text-on-surface-variant"}`}>
                     <span
                       className={`material-symbols-outlined transition-transform duration-500 ${
                         isOpen ? "rotate-180" : ""

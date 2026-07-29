@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ─── Tailwind v4 Design Tokens (@theme) ──────────────────────── */
 @theme {
   /* Colors - Refined for a more premium look */
@@ -15,18 +17,34 @@
   --color-on-secondary-container: #4d4800;
 
   --color-oxford-blue: #0b132b; /* Deeper oxford blue */
-  --color-surface: #ffffff; /* Cleaner surface */
-  --color-background: #f8fafc; /* Subtle cool-gray background */
-  --color-neutral-surface: #f1f5f9;
+  --color-surface: var(--surface);
+  --color-background: var(--background);
+  --color-neutral-surface: var(--neutral-surface);
   
-  --color-on-surface: #0f172a;
-  --color-on-surface-variant: #475569;
+  --color-on-surface: var(--on-surface);
+  --color-on-surface-variant: var(--on-surface-variant);
   --color-outline: #94a3b8;
   --color-outline-variant: #cbd5e1;
 
   /* Font families */
   --font-family-body: var(--font-inter), "Inter", sans-serif;
   --font-family-display: var(--font-outfit), "Outfit", sans-serif;
+}
+
+:root {
+  --background: #f8fafc;
+  --surface: #ffffff;
+  --neutral-surface: #f1f5f9;
+  --on-surface: #0f172a;
+  --on-surface-variant: #475569;
+}
+
+.dark {
+  --background: #020617;
+  --surface: #0f172a;
+  --neutral-surface: #1e293b;
+  --on-surface: #f8fafc;
+  --on-surface-variant: #cbd5e1;
 }
 
 /* ─── Base Styles ─────────────────────────────────────────────── */
