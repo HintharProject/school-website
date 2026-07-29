@@ -32,7 +32,7 @@ const initialEntries: YearbookEntry[] = [
     category: "Class of 2023",
     role: "Valedictorian",
     quote: "The future belongs to those who prepare for it today.",
-    image: "https://lh3.googleusercontent.com/aida/placeholder",
+    image: "/images/graduation.png",
     type: "student",
   },
   {
@@ -49,7 +49,7 @@ const initialEntries: YearbookEntry[] = [
     title: "Regional Science Fair Winners",
     category: "Science Fair",
     description: "Our robotics team took 1st place in the regional competition.",
-    image: "https://lh3.googleusercontent.com/aida/placeholder",
+    image: "/images/graduation.png",
     type: "event",
   },
   {
@@ -83,7 +83,7 @@ const initialEntries: YearbookEntry[] = [
     category: "Class of 2024",
     role: "Head Prefect",
     quote: "Excellence is not a skill, it is an attitude.",
-    image: "https://lh3.googleusercontent.com/aida/placeholder",
+    image: "/images/graduation.png",
     type: "student",
   },
   {
@@ -91,7 +91,7 @@ const initialEntries: YearbookEntry[] = [
     title: "Science Fair Grand Prize",
     category: "Science Fair",
     description: "Innovative water purification project wins national recognition.",
-    image: "https://lh3.googleusercontent.com/aida/placeholder",
+    image: "/images/graduation.png",
     type: "event",
   },
 ];

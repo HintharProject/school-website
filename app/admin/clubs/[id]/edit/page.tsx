@@ -15,7 +15,7 @@ const clubsData = [
     meetingTime: "Wednesdays, 3:30 PM",
     leadership: "President: Alex J. | Advisor: Dr. Chen",
     description: "Explore the future by building autonomous robots and learning fundamental machine learning concepts.",
-    image: "",
+    image: "/images/g1.jpg",
   },
   {
     id: 2,
@@ -25,7 +25,7 @@ const clubsData = [
     meetingTime: "Tuesdays, 4:00 PM",
     leadership: "Captain: Michael C. | Advisor: Mrs. Smith",
     description: "Sharpen your public speaking and critical thinking skills by discussing global issues.",
-    image: "",
+    image: "/images/g2.jpg",
   },
   {
     id: 3,
@@ -35,7 +35,7 @@ const clubsData = [
     meetingTime: "Fridays, 3:00 PM",
     leadership: "President: Sarah L. | Advisor: Mr. Davis",
     description: "Lead sustainability initiatives on campus and organize community clean-up drives.",
-    image: "",
+    image: "/images/g3.jpg",
   },
   {
     id: 4,
@@ -45,7 +45,7 @@ const clubsData = [
     meetingTime: "Mon & Thu, 4:30 PM",
     leadership: "Director: Ms. Rahman",
     description: "Express yourself through drama, dance, and musical performances in our biannual showcases.",
-    image: "",
+    image: "/images/g4.jpg",
   },
   {
     id: 5,
@@ -55,7 +55,7 @@ const clubsData = [
     meetingTime: "Thursdays, 3:30 PM",
     leadership: "President: Emily T. | Advisor: Mr. Park",
     description: "Learn web development, competitive programming, and build real-world applications.",
-    image: "",
+    image: "/images/g5.jpg",
   },
   {
     id: 6,
@@ -65,7 +65,7 @@ const clubsData = [
     meetingTime: "Mondays, 4:00 PM",
     leadership: "Captain: David K. | Advisor: Mrs. Garcia",
     description: "Master the art of strategy and critical thinking through competitive chess.",
-    image: "",
+    image: "/images/g6.jpg",
   },
 ];
 

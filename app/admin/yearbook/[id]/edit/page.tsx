@@ -45,7 +45,7 @@ const mockEntries: YearbookEntry[] = [
     category: "Class of 2024",
     role: "Student Council President",
     quote: "Leadership is an action, not a position.",
-    image: "https://lh3.googleusercontent.com/aida/placeholder",
+    image: "/images/graduation.png",
     type: "student",
   },
   {
@@ -61,7 +61,7 @@ const mockEntries: YearbookEntry[] = [
     title: "Annual Sports Meet",
     category: "Sports",
     description: "Blue house emerged victorious after a highly competitive weekend.",
-    image: "https://lh3.googleusercontent.com/aida/placeholder",
+    image: "/images/graduation.png",
     type: "event",
   },
   {
@@ -95,7 +95,7 @@ const mockEntries: YearbookEntry[] = [
     title: "Science Fair Grand Prize",
     category: "Science Fair",
     description: "Innovative water purification project wins national recognition.",
-    image: "https://lh3.googleusercontent.com/aida/placeholder",
+    image: "/images/graduation.png",
     type: "event",
   },
 ];
