@@ -19,10 +19,11 @@ The official public-facing website for **[Hinthar Education](https://hinthar.edu
 
 ## Team
 
-| Role            | Member              |
-| --------------- | ------------------- |
-| Front End Dev   | Nyan Lin Htet       |
-| Front End Dev   | Khant Phone Zayar   |
+| Role          | Member            |
+| ---------------| -------------------|
+| Lead Dev      | Thaw Ye Zaw       |
+| Front End Dev | Nyan Lin Htet     |
+| Back End Dev  | Khant Phone Zayar |
 
 ---
 

@@ -2,179 +2,154 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
-const initialCourses = [
-  { id: "1", name: "Advanced Mathematics", grade: "A-Level", time: "Mon, Wed, Fri - 9:00 AM", instructor: "Mr. Davis", desc: "Complex numbers, calculus, and advanced algebra." },
-  { id: "2", name: "Physics", grade: "O-Level", time: "Tue, Thu - 10:30 AM", instructor: "Dr. Chen", desc: "Mechanics, waves, and introductory quantum physics." },
-  { id: "3", name: "Computer Science", grade: "BCS Prep", time: "Mon, Wed - 1:00 PM", instructor: "Ms. Rahman", desc: "Algorithms, data structures, and Python programming." },
-  { id: "4", name: "World Literature", grade: "A-Level", time: "Tue, Fri - 2:00 PM", instructor: "Mrs. Smith", desc: "Analysis of global literary masterpieces." },
-  { id: "5", name: "Chemistry", grade: "O-Level", time: "Mon, Thu - 8:00 AM", instructor: "Dr. Patel", desc: "Organic and inorganic chemistry fundamentals." },
-  { id: "6", name: "Economics", grade: "BCS Prep", time: "Wed, Fri - 11:00 AM", instructor: "Mr. Thompson", desc: "Micro and macroeconomics principles." },
+interface CourseItem {
+  id: string;
+  name: string;
+  code: string;
+  grade: "Lower Secondary (Year 7–9)" | "Pearson IGCSE" | "Pearson IAL";
+  category: "STEM" | "Business" | "Computing" | "Languages";
+  time: string;
+  instructor: string;
+}
+
+const initialCourses: CourseItem[] = [
+  { id: "1", name: "Pure Mathematics (P1–P4)", code: "WMA11 / WMA12", grade: "Pearson IAL", category: "STEM", time: "Mon, Wed, Fri - 8:30 AM", instructor: "Dr. Kaung Myat Htut & U Than Win" },
+  { id: "2", name: "Advanced Physics & Practical Lab", code: "WPH11 / WPH14", grade: "Pearson IAL", category: "STEM", time: "Tue, Thu - 10:30 AM", instructor: "Dr. Htet Aung Lin" },
+  { id: "3", name: "Pearson IGCSE Computer Science", code: "4CP0", grade: "Pearson IGCSE", category: "Computing", time: "Mon, Thu - 1:00 PM", instructor: "Daw May Zin Thet" },
+  { id: "4", name: "Pearson IGCSE Chemistry & Biology", code: "4CH1 / 4BI1", grade: "Pearson IGCSE", category: "STEM", time: "Mon, Wed, Fri - 10:30 AM", instructor: "Dr. Su Mon Kyaw" },
+  { id: "5", name: "Economics & Business Studies", code: "4EC1 / 4BS1", grade: "Pearson IGCSE", category: "Business", time: "Tue, Thu - 2:00 PM", instructor: "U Myo Min Tun (MBA)" },
+  { id: "6", name: "Lower Secondary STEM & Math Discovery", code: "SEC-MATH-08", grade: "Lower Secondary (Year 7–9)", category: "STEM", time: "Daily - 9:00 AM", instructor: "Tr. Rachel Evans" },
+  { id: "7", name: "Lower Secondary English & Perspectives", code: "SEC-ENG-09", grade: "Lower Secondary (Year 7–9)", category: "Languages", time: "Daily - 11:00 AM", instructor: "Tr. Sarah Jenkins" },
 ];
 
 const initialAnnouncements = [
-  { id: 1, title: "Mid-term Examinations Schedule", date: "Oct 15, 2026", type: "Important", content: "The mid-term examinations will commence on November 1st. Detailed schedules will be emailed to parents." },
-  { id: 2, title: "Science Fair Registration Open", date: "Oct 10, 2026", type: "Event", content: "Students interested in participating in the annual science fair must register by October 25th." },
-  { id: 3, title: "New Library Hours", date: "Oct 5, 2026", type: "Notice", content: "The school library will now remain open until 6:00 PM on weekdays to support study groups." },
+  { id: 1, title: "Pearson Edexcel Oct/Nov 2026 Registration", date: "Aug 20, 2026", type: "Important", content: "All candidate entries for upcoming Pearson Edexcel examination series must be confirmed through the exam officer." },
+  { id: 2, title: "Science & Engineering Practical Schedule", date: "Aug 15, 2026", type: "Academic", content: "Physics and Chemistry practical lab sessions for AS & A2 students commence in Newton Lab this week." },
+  { id: 3, title: "Parent-Teacher Consultations (Year 7–13)", date: "Aug 10, 2026", type: "Notice", content: "Individual consultations with faculty subject leads will take place on campus on Saturday, August 29th." },
 ];
 
 export default function AdminClassesPage() {
-  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"courses" | "announcements">("courses");
   const [courses, setCourses] = useState(initialCourses);
   const [announcements, setAnnouncements] = useState(initialAnnouncements);
+
+  const [showAddAnn, setShowAddAnn] = useState(false);
   const [newAnnTitle, setNewAnnTitle] = useState("");
   const [newAnnDate, setNewAnnDate] = useState("");
-  const [newAnnType, setNewAnnType] = useState<"Important" | "Event" | "Notice">("Notice");
+  const [newAnnType, setNewAnnType] = useState("Notice");
   const [newAnnContent, setNewAnnContent] = useState("");
-  const [editingAnnId, setEditingAnnId] = useState<number | null>(null);
-  const [editAnnTitle, setEditAnnTitle] = useState("");
-  const [editAnnDate, setEditAnnDate] = useState("");
-  const [editAnnType, setEditAnnType] = useState<"Important" | "Event" | "Notice">("Notice");
-  const [editAnnContent, setEditAnnContent] = useState("");
-  const [showAddForm, setShowAddForm] = useState(false);
 
   const handleDeleteCourse = (id: string, name: string) => {
-    if (window.confirm(`Are you sure you want to delete "${name}"?`)) {
+    if (window.confirm(`Are you sure you want to remove "${name}" from the active curriculum timetable?`)) {
       setCourses((prev) => prev.filter((c) => c.id !== id));
     }
   };
 
   const handleDeleteAnnouncement = (id: number) => {
-    if (window.confirm("Are you sure you want to delete this announcement?")) {
+    if (window.confirm("Are you sure you want to delete this bulletin notice?")) {
       setAnnouncements((prev) => prev.filter((a) => a.id !== id));
     }
   };
 
-  const handleAddAnnouncement = () => {
-    if (!newAnnTitle.trim() || !newAnnDate.trim() || !newAnnContent.trim()) {
-      alert("Please fill in all fields.");
-      return;
-    }
-    const newId = Math.max(...announcements.map((a) => a.id), 0) + 1;
+  const handleAddAnnouncement = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAnnTitle.trim() || !newAnnContent.trim()) return;
+    const newId = Date.now();
     setAnnouncements((prev) => [
+      {
+        id: newId,
+        title: newAnnTitle,
+        date: newAnnDate || "Today",
+        type: newAnnType,
+        content: newAnnContent,
+      },
       ...prev,
-      { id: newId, title: newAnnTitle, date: newAnnDate, type: newAnnType, content: newAnnContent },
     ]);
     setNewAnnTitle("");
     setNewAnnDate("");
-    setNewAnnType("Notice");
     setNewAnnContent("");
-    setShowAddForm(false);
-  };
-
-  const handleStartEdit = (ann: (typeof announcements)[0]) => {
-    setEditingAnnId(ann.id);
-    setEditAnnTitle(ann.title);
-    setEditAnnDate(ann.date);
-    setEditAnnType(ann.type as "Important" | "Event" | "Notice");
-    setEditAnnContent(ann.content);
-  };
-
-  const handleSaveEdit = () => {
-    if (!editAnnTitle.trim() || !editAnnDate.trim() || !editAnnContent.trim()) {
-      alert("Please fill in all fields.");
-      return;
-    }
-    setAnnouncements((prev) =>
-      prev.map((a) =>
-        a.id === editingAnnId
-          ? { ...a, title: editAnnTitle, date: editAnnDate, type: editAnnType, content: editAnnContent }
-          : a
-      )
-    );
-    setEditingAnnId(null);
-  };
-
-  const handleCancelEdit = () => {
-    setEditingAnnId(null);
+    setShowAddAnn(false);
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-oxford-blue dark:text-white">Classes Management</h1>
-          <p className="text-on-surface-variant">Manage courses and announcements.</p>
+          <div className="inline-flex items-center gap-2 bg-[#E8F0FE] px-3 py-1 rounded-full mb-1.5 border border-[#0E3B7D]/20">
+            <span className="material-symbols-outlined text-[#0E3B7D] text-xs font-bold">menu_book</span>
+            <span className="text-[10px] font-black text-[#0E3B7D] uppercase tracking-wider">
+              Academic Curriculums &amp; Notices
+            </span>
+          </div>
+          <h1 className="text-2xl font-black text-[#09234B] tracking-tight">Classes &amp; Timetables</h1>
+          <p className="text-xs text-slate-500 font-normal">
+            Manage course schedules, instructor assignments, and official Pearson Edexcel bulletins
+          </p>
         </div>
-        <Link
-          href="/admin/classes/new"
-          className="bg-primary text-white dark:bg-primary-fixed dark:text-oxford-blue py-3 px-6 rounded-xl font-bold uppercase tracking-wider shadow-md hover:scale-[1.02] active:scale-[0.98] transition-transform inline-flex items-center gap-2"
-        >
-          <span className="material-symbols-outlined text-lg">add</span>
-          Add New Course
-        </Link>
-      </div>
 
-      {/* Tabs */}
-      <div className="flex p-1 bg-surface-variant/30 dark:bg-surface-variant/50 rounded-full max-w-xs">
-        <button
-          onClick={() => setActiveTab("courses")}
-          className={`flex-1 py-3 rounded-full text-sm font-bold uppercase tracking-wider transition-all duration-300 ${
-            activeTab === "courses"
-              ? "bg-white dark:bg-surface shadow-sm text-primary dark:text-primary-fixed"
-              : "text-on-surface-variant hover:text-oxford-blue dark:hover:text-white"
-          }`}
-        >
-          Courses
-        </button>
-        <button
-          onClick={() => setActiveTab("announcements")}
-          className={`flex-1 py-3 rounded-full text-sm font-bold uppercase tracking-wider transition-all duration-300 ${
-            activeTab === "announcements"
-              ? "bg-white dark:bg-surface shadow-sm text-primary dark:text-primary-fixed"
-              : "text-on-surface-variant hover:text-oxford-blue dark:hover:text-white"
-          }`}
-        >
-          Announcements
-        </button>
+        {/* Tab switcher */}
+        <div className="flex p-1 bg-white border border-slate-200 rounded-full shadow-sm">
+          <button
+            onClick={() => setActiveTab("courses")}
+            className={`px-5 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all ${
+              activeTab === "courses"
+                ? "bg-[#0E3B7D] text-white shadow-sm font-black"
+                : "text-slate-600 hover:text-[#0E3B7D]"
+            }`}
+          >
+            Course Schedules ({courses.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("announcements")}
+            className={`px-5 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all ${
+              activeTab === "announcements"
+                ? "bg-[#0E3B7D] text-white shadow-sm font-black"
+                : "text-slate-600 hover:text-[#0E3B7D]"
+            }`}
+          >
+            Bulletins &amp; Notices ({announcements.length})
+          </button>
+        </div>
       </div>
 
       {/* Courses Tab */}
       {activeTab === "courses" && (
-        <div className="bg-surface dark:bg-surface-variant rounded-2xl shadow-sm border border-outline-variant/30 overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left">
+            <table className="w-full text-left text-xs">
               <thead>
-                <tr className="border-b border-outline-variant/30">
-                  <th className="p-4 text-sm font-bold text-on-surface-variant uppercase tracking-wider">Name</th>
-                  <th className="p-4 text-sm font-bold text-on-surface-variant uppercase tracking-wider">Grade</th>
-                  <th className="p-4 text-sm font-bold text-on-surface-variant uppercase tracking-wider">Schedule</th>
-                  <th className="p-4 text-sm font-bold text-on-surface-variant uppercase tracking-wider">Instructor</th>
-                  <th className="p-4 text-sm font-bold text-on-surface-variant uppercase tracking-wider">Actions</th>
+                <tr className="border-b border-slate-200 bg-slate-50 text-slate-600">
+                  <th className="px-5 py-3.5 font-bold uppercase tracking-wider">Course Name &amp; Code</th>
+                  <th className="px-5 py-3.5 font-bold uppercase tracking-wider">Academic Grade</th>
+                  <th className="px-5 py-3.5 font-bold uppercase tracking-wider">Weekly Schedule</th>
+                  <th className="px-5 py-3.5 font-bold uppercase tracking-wider">Faculty Instructor</th>
+                  <th className="px-5 py-3.5 font-bold uppercase tracking-wider text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-100">
                 {courses.map((course) => (
-                  <tr key={course.id} className="border-b border-outline-variant/10 hover:bg-neutral-surface dark:hover:bg-black/20 transition-colors">
-                    <td className="p-4">
-                      <p className="font-bold text-oxford-blue dark:text-white">{course.name}</p>
+                  <tr key={course.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="px-5 py-4">
+                      <p className="font-black text-sm text-[#09234B]">{course.name}</p>
+                      <span className="font-mono text-[10px] text-slate-400 font-bold">{course.code}</span>
                     </td>
-                    <td className="p-4">
-                      <span className="px-3 py-1 bg-academic-gold/10 text-academic-gold text-xs font-bold rounded-full">
+                    <td className="px-5 py-4">
+                      <span className="px-2.5 py-1 bg-[#E8F0FE] text-[#0E3B7D] text-[10px] font-black rounded-md uppercase tracking-wider">
                         {course.grade}
                       </span>
                     </td>
-                    <td className="p-4 text-on-surface-variant text-sm">{course.time}</td>
-                    <td className="p-4 text-on-surface-variant text-sm">{course.instructor}</td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-2">
-                        <Link
-                          href={`/admin/classes/${course.id}/edit`}
-                          className="flex items-center gap-1 text-primary dark:text-primary-fixed text-sm font-bold hover:underline"
-                        >
-                          <span className="material-symbols-outlined text-base">edit</span>
-                          Edit
-                        </Link>
-                        <button
-                          onClick={() => handleDeleteCourse(course.id, course.name)}
-                          className="flex items-center gap-1 text-red-500 text-sm font-bold hover:underline"
-                        >
-                          <span className="material-symbols-outlined text-base">delete</span>
-                          Delete
-                        </button>
-                      </div>
+                    <td className="px-5 py-4 text-slate-600 font-medium">{course.time}</td>
+                    <td className="px-5 py-4 text-slate-700 font-bold">{course.instructor}</td>
+                    <td className="px-5 py-4 text-right">
+                      <button
+                        onClick={() => handleDeleteCourse(course.id, course.name)}
+                        className="px-2.5 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50 rounded-lg transition-colors inline-flex items-center gap-1"
+                      >
+                        <span className="material-symbols-outlined text-sm">delete</span>
+                        <span>Remove</span>
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -187,196 +162,102 @@ export default function AdminClassesPage() {
       {/* Announcements Tab */}
       {activeTab === "announcements" && (
         <div className="space-y-4">
-          <div className="flex justify-end">
+          <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <span className="text-xs text-slate-500 font-medium">
+              Official school notifications displayed on the public classes page.
+            </span>
             <button
-              onClick={() => setShowAddForm((prev) => !prev)}
-              className="bg-primary text-white dark:bg-primary-fixed dark:text-oxford-blue py-2.5 px-5 rounded-xl font-bold uppercase tracking-wider shadow-md hover:scale-[1.02] active:scale-[0.98] transition-transform inline-flex items-center gap-2 text-sm"
+              onClick={() => setShowAddAnn(true)}
+              className="px-4 py-2 rounded-xl bg-[#0E3B7D] hover:bg-[#164E9A] text-white text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 shadow-sm transition-all"
             >
-              <span className="material-symbols-outlined text-lg">{showAddForm ? "close" : "add"}</span>
-              {showAddForm ? "Cancel" : "Add Announcement"}
+              <span className="material-symbols-outlined text-sm font-bold">add</span>
+              <span>Post New Bulletin</span>
             </button>
           </div>
 
-          {/* Add Announcement Inline Form */}
-          {showAddForm && (
-            <div className="bg-surface dark:bg-surface-variant p-6 rounded-2xl shadow-sm border border-outline-variant/30 space-y-4">
-              <h3 className="text-lg font-bold text-oxford-blue dark:text-white">New Announcement</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="text-sm font-bold text-on-surface-variant uppercase tracking-wider block mb-1">Title</label>
+          {/* Add Notice Modal / Inline Form */}
+          {showAddAnn && (
+            <form onSubmit={handleAddAnnouncement} className="bg-white p-6 rounded-2xl border border-[#0E3B7D]/30 shadow-md space-y-4">
+              <h3 className="text-sm font-black text-[#09234B] uppercase tracking-wider">
+                Create New Academic Bulletin
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="sm:col-span-2">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-1">Notice Title *</label>
                   <input
                     type="text"
+                    required
                     value={newAnnTitle}
                     onChange={(e) => setNewAnnTitle(e.target.value)}
-                    className="w-full px-4 py-3 bg-neutral-surface dark:bg-black/20 border border-outline-variant/30 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all dark:text-white"
-                    placeholder="Announcement title"
+                    placeholder="e.g. October Exam Registration"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-bold text-on-surface-variant uppercase tracking-wider block mb-1">Date</label>
-                  <input
-                    type="text"
-                    value={newAnnDate}
-                    onChange={(e) => setNewAnnDate(e.target.value)}
-                    className="w-full px-4 py-3 bg-neutral-surface dark:bg-black/20 border border-outline-variant/30 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all dark:text-white"
-                    placeholder="e.g. Oct 15, 2026"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-bold text-on-surface-variant uppercase tracking-wider block mb-1">Type</label>
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-1">Category Badge</label>
                   <select
                     value={newAnnType}
-                    onChange={(e) => setNewAnnType(e.target.value as "Important" | "Event" | "Notice")}
-                    className="w-full px-4 py-3 bg-neutral-surface dark:bg-black/20 border border-outline-variant/30 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all dark:text-white"
+                    onChange={(e) => setNewAnnType(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
                   >
-                    <option value="Notice">Notice</option>
-                    <option value="Event">Event</option>
-                    <option value="Important">Important</option>
+                    <option value="Important">Official Notice</option>
+                    <option value="Academic">Academic Schedule</option>
+                    <option value="Notice">General Bulletin</option>
                   </select>
                 </div>
               </div>
               <div>
-                <label className="text-sm font-bold text-on-surface-variant uppercase tracking-wider block mb-1">Content</label>
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-1">Content Details *</label>
                 <textarea
+                  required
+                  rows={3}
                   value={newAnnContent}
                   onChange={(e) => setNewAnnContent(e.target.value)}
-                  rows={3}
-                  className="w-full px-4 py-3 bg-neutral-surface dark:bg-black/20 border border-outline-variant/30 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all dark:text-white resize-none"
-                  placeholder="Announcement content"
+                  placeholder="Detailed announcement text for parents and students..."
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 outline-none focus:ring-2 focus:ring-[#0E3B7D] resize-none"
                 />
               </div>
-              <div className="flex justify-end gap-3">
+              <div className="flex justify-end gap-2">
                 <button
-                  onClick={() => setShowAddForm(false)}
-                  className="bg-neutral-surface dark:bg-black/20 hover:bg-black/5 dark:hover:bg-white/5 border border-outline-variant/30 px-6 py-2.5 rounded-xl text-sm font-bold uppercase tracking-wider transition-colors text-oxford-blue dark:text-white"
+                  type="button"
+                  onClick={() => setShowAddAnn(false)}
+                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={handleAddAnnouncement}
-                  className="bg-primary text-white dark:bg-primary-fixed dark:text-oxford-blue py-2.5 px-6 rounded-xl font-bold uppercase tracking-wider shadow-md hover:scale-[1.02] active:scale-[0.98] transition-transform text-sm"
+                  type="submit"
+                  className="px-5 py-2 text-xs font-bold bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] uppercase tracking-wider rounded-xl shadow-sm transition-all"
                 >
-                  Add
+                  Publish Notice
                 </button>
               </div>
-            </div>
+            </form>
           )}
 
-          {/* Announcements Table */}
-          <div className="bg-surface dark:bg-surface-variant rounded-2xl shadow-sm border border-outline-variant/30 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="border-b border-outline-variant/30">
-                    <th className="p-4 text-sm font-bold text-on-surface-variant uppercase tracking-wider">Title</th>
-                    <th className="p-4 text-sm font-bold text-on-surface-variant uppercase tracking-wider">Date</th>
-                    <th className="p-4 text-sm font-bold text-on-surface-variant uppercase tracking-wider">Type</th>
-                    <th className="p-4 text-sm font-bold text-on-surface-variant uppercase tracking-wider">Content</th>
-                    <th className="p-4 text-sm font-bold text-on-surface-variant uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {announcements.map((ann) => (
-                    <tr key={ann.id} className="border-b border-outline-variant/10 hover:bg-neutral-surface dark:hover:bg-black/20 transition-colors">
-                      {editingAnnId === ann.id ? (
-                        <>
-                          <td className="p-2">
-                            <input
-                              type="text"
-                              value={editAnnTitle}
-                              onChange={(e) => setEditAnnTitle(e.target.value)}
-                              className="w-full px-3 py-2 bg-neutral-surface dark:bg-black/20 border border-outline-variant/30 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all dark:text-white text-sm"
-                            />
-                          </td>
-                          <td className="p-2">
-                            <input
-                              type="text"
-                              value={editAnnDate}
-                              onChange={(e) => setEditAnnDate(e.target.value)}
-                              className="w-full px-3 py-2 bg-neutral-surface dark:bg-black/20 border border-outline-variant/30 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all dark:text-white text-sm"
-                            />
-                          </td>
-                          <td className="p-2">
-                            <select
-                              value={editAnnType}
-                              onChange={(e) => setEditAnnType(e.target.value as "Important" | "Event" | "Notice")}
-                              className="w-full px-3 py-2 bg-neutral-surface dark:bg-black/20 border border-outline-variant/30 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all dark:text-white text-sm"
-                            >
-                              <option value="Notice">Notice</option>
-                              <option value="Event">Event</option>
-                              <option value="Important">Important</option>
-                            </select>
-                          </td>
-                          <td className="p-2">
-                            <input
-                              type="text"
-                              value={editAnnContent}
-                              onChange={(e) => setEditAnnContent(e.target.value)}
-                              className="w-full px-3 py-2 bg-neutral-surface dark:bg-black/20 border border-outline-variant/30 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all dark:text-white text-sm"
-                            />
-                          </td>
-                          <td className="p-2">
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={handleSaveEdit}
-                                className="flex items-center gap-1 text-primary dark:text-primary-fixed text-sm font-bold hover:underline"
-                              >
-                                <span className="material-symbols-outlined text-base">check</span>
-                                Save
-                              </button>
-                              <button
-                                onClick={handleCancelEdit}
-                                className="flex items-center gap-1 text-on-surface-variant text-sm font-bold hover:underline"
-                              >
-                                <span className="material-symbols-outlined text-base">close</span>
-                                Cancel
-                              </button>
-                            </div>
-                          </td>
-                        </>
-                      ) : (
-                        <>
-                          <td className="p-4">
-                            <p className="font-bold text-oxford-blue dark:text-white">{ann.title}</p>
-                          </td>
-                          <td className="p-4 text-on-surface-variant text-sm">{ann.date}</td>
-                          <td className="p-4">
-                            <span
-                              className={`inline-block px-3 py-1 text-xs font-bold rounded-full uppercase tracking-wider ${
-                                ann.type === "Important"
-                                  ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                                  : "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary-fixed"
-                              }`}
-                            >
-                              {ann.type}
-                            </span>
-                          </td>
-                          <td className="p-4 text-on-surface-variant text-sm max-w-xs truncate">{ann.content}</td>
-                          <td className="p-4">
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => handleStartEdit(ann)}
-                                className="flex items-center gap-1 text-primary dark:text-primary-fixed text-sm font-bold hover:underline"
-                              >
-                                <span className="material-symbols-outlined text-base">edit</span>
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => handleDeleteAnnouncement(ann.id)}
-                                className="flex items-center gap-1 text-red-500 text-sm font-bold hover:underline"
-                              >
-                                <span className="material-symbols-outlined text-base">delete</span>
-                                Delete
-                              </button>
-                            </div>
-                          </td>
-                        </>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          {/* Announcements List */}
+          <div className="grid grid-cols-1 gap-4">
+            {announcements.map((ann) => (
+              <div key={ann.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-start justify-between gap-4">
+                <div className="space-y-1.5 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-[#E8F0FE] text-[#0E3B7D]">
+                      {ann.type}
+                    </span>
+                    <span className="text-[11px] text-slate-400 font-medium">{ann.date}</span>
+                  </div>
+                  <h4 className="text-sm font-black text-[#09234B]">{ann.title}</h4>
+                  <p className="text-xs text-slate-600 font-normal leading-relaxed">{ann.content}</p>
+                </div>
+                <button
+                  onClick={() => handleDeleteAnnouncement(ann.id)}
+                  className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors shrink-0"
+                  title="Delete Bulletin"
+                >
+                  <span className="material-symbols-outlined text-lg">delete</span>
+                </button>
+              </div>
+            ))}
           </div>
         </div>
       )}

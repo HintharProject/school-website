@@ -1,18 +1,13 @@
 import type { Metadata } from "next";
-import ComingSoon from "../components/ComingSoon";
+import ActivitiesView from "./ActivitiesView";
 
 export const metadata: Metadata = {
   title: "Activities & Announcements | Hinthar International School",
   description:
-    "Stay up to date with Hinthar International School's latest activities, events, and announcements.",
+    "Explore upcoming academic competitions, school workshops, athletic meets, and campus events at Hinthar International School.",
 };
 
 export default function ActivitiesPage() {
-  return (
-    <ComingSoon
-      title="Activities & Announcements"
-      description="Our Activities and Announcements hub is on its way. You'll soon be able to browse school events, extracurricular activities, and important announcements all in one place."
-      icon="campaign"
-    />
-  );
+  return <ActivitiesView />;
 }
+

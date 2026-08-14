@@ -5,34 +5,40 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const faqs = [
   {
-    id: "courses",
-    question: "What courses do you offer?",
+    id: "curriculum",
+    question: "What curriculums and examination boards are taught at Hinthar?",
     answer:
-      "We offer a variety of courses including Primary, Secondary, O Level, IAL, and BCS preparation.",
+      "We officially follow the Pearson Edexcel International Curriculum, guiding students through Lower Secondary Education (Year 7–9), Pearson Edexcel IGCSE (Year 10–11), and Pearson Edexcel International Advanced Level (IAL / Year 12–13). Our qualifications are recognized worldwide for direct admission to universities in the UK, USA, Australia, Canada, Singapore, and beyond.",
     defaultOpen: true,
   },
   {
-    id: "enroll",
-    question: "How can I enroll in a course?",
+    id: "subjects",
+    question: "What subject pathways are available for IGCSE and IAL?",
     answer:
-      "You can enroll by visiting our office, contacting us via phone or email, or completing the online registration form on our website.",
+      "Students can choose from specialized streams including STEM & Pure Sciences (Physics, Chemistry, Biology, Pure Mathematics), Engineering & Computer Science (Further Pure Mathematics, Mechanics, Computer Science, ICT), and Business & Commerce (Accounting, Economics, Business Studies).",
   },
   {
-    id: "payment",
-    question: "What payment methods do you accept?",
+    id: "admission_process",
+    question: "How does the admission and placement assessment work?",
     answer:
-      "We accept bank transfers, cash payments at our office, and mobile payments through popular platforms.",
+      "Parents can submit an online application via our Admission Portal. After initial review, applicants are scheduled for a friendly placement assessment (Mathematics & English) and a family consultation with our academic leads to ensure proper grade and pathway placement.",
   },
   {
-    id: "mode",
-    question: "Do you offer online and on-campus classes?",
+    id: "exam_center",
+    question: "Is Hinthar an approved Pearson Edexcel Examination Center?",
     answer:
-      "Yes, we offer both online and on-campus classes to provide flexible learning options for our students. You can choose the mode that best fits your needs.",
+      "Yes. Our students sit for their official Pearson Edexcel IGCSE and IAL examinations on campus with verified British Council and Pearson standards, accredited invigilators, and fully equipped science practical laboratories.",
+  },
+  {
+    id: "modes",
+    question: "Are classes full-time on campus in Yangon?",
+    answer:
+      "Yes. We offer full-time on-campus learning at our Hlaing Township campus in Yangon equipped with modern multimedia classrooms and STEM laboratories, accompanied by LMS revision resources for students.",
   },
 ];
 
 export default function FaqSection() {
-  const [openId, setOpenId] = useState<string | null>("courses");
+  const [openId, setOpenId] = useState<string | null>("curriculum");
 
   const toggle = (id: string) => {
     setOpenId((prev) => (prev === id ? null : id));
@@ -41,26 +47,29 @@ export default function FaqSection() {
   return (
     <section
       id="faq"
-      className="bg-background py-[80px] md:py-[120px] scroll-mt-20 relative overflow-hidden"
+      className="bg-white py-[80px] md:py-[120px] scroll-mt-20 relative overflow-hidden border-b border-slate-200"
     >
-      <motion.div 
-        className="max-w-[800px] mx-auto px-6 md:px-8 relative z-10"
-        initial={{ opacity: 0, y: 30 }}
+      <motion.div
+        className="max-w-[860px] mx-auto px-6 md:px-8 relative z-10"
+        initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
-        transition={{ duration: 0.6 }}
+        transition={{ duration: 0.5 }}
       >
         {/* Heading */}
         <div className="text-center mb-12 md:mb-16">
-          <div className="inline-flex items-center gap-3 bg-academic-gold/10 px-4 py-2 rounded-full mb-6">
-            <span className="material-symbols-outlined text-academic-gold text-sm">help</span>
-            <span className="text-sm font-bold text-academic-gold uppercase tracking-widest">
+          <div className="inline-flex items-center gap-2 bg-[#E8F0FE] px-4 py-1.5 rounded-full mb-4 border border-[#0E3B7D]/20">
+            <span className="material-symbols-outlined text-[#0E3B7D] text-sm font-bold">help</span>
+            <span className="text-xs font-extrabold text-[#0E3B7D] uppercase tracking-wider">
               Have Questions?
             </span>
           </div>
-          <h2 className="text-3xl md:text-4xl lg:text-[42px] font-bold text-oxford-blue dark:text-white mb-6 tracking-tight">
-            Frequently Asked <span className="text-gradient-gold">Questions</span>
+          <h2 className="text-3xl md:text-4xl lg:text-[42px] font-black text-[#09234B] mb-4 tracking-tight">
+            Frequently Asked <span className="text-[#0E3B7D]">Questions</span>
           </h2>
+          <p className="text-sm md:text-base text-slate-600 font-normal max-w-lg mx-auto">
+            Everything you need to know about our Pearson Edexcel programs, campus admissions, and student life.
+          </p>
         </div>
 
         {/* Accordion */}
@@ -71,20 +80,34 @@ export default function FaqSection() {
               <motion.div
                 key={faq.id}
                 layout
-                className={`rounded-2xl border ${isOpen ? "bg-surface dark:bg-surface-variant border-academic-gold/50 shadow-md" : "bg-surface/50 dark:bg-surface-variant/50 border-outline-variant/30 hover:bg-surface dark:hover:bg-surface-variant hover:border-academic-gold/30"} overflow-hidden transition-all duration-300`}
+                className={`rounded-2xl border ${
+                  isOpen
+                    ? "bg-slate-50 border-[#0E3B7D] shadow-md ring-1 ring-[#0E3B7D]/20"
+                    : "bg-white border-slate-200 hover:border-[#0E3B7D]/40"
+                } overflow-hidden transition-all duration-200`}
               >
                 <button
                   id={`faq-btn-${faq.id}`}
-                  className="flex justify-between items-center w-full p-5 md:p-6 cursor-pointer text-left focus:outline-none focus-visible:bg-academic-gold/5"
+                  className="flex justify-between items-center w-full p-5 md:p-6 cursor-pointer text-left focus:outline-none"
                   onClick={() => toggle(faq.id)}
                   aria-expanded={isOpen}
                 >
-                  <h3 className={`text-lg md:text-xl font-bold pr-4 transition-colors ${isOpen ? "text-primary dark:text-primary-fixed" : "text-oxford-blue dark:text-white"}`}>
+                  <h3
+                    className={`text-base md:text-lg font-bold pr-4 transition-colors ${
+                      isOpen ? "text-[#0E3B7D]" : "text-[#09234B]"
+                    }`}
+                  >
                     {faq.question}
                   </h3>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${isOpen ? "bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary-fixed" : "bg-neutral-surface dark:bg-surface-variant text-on-surface-variant"}`}>
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${
+                      isOpen
+                        ? "bg-[#0E3B7D] text-[#FFC700]"
+                        : "bg-slate-100 text-slate-600"
+                    }`}
+                  >
                     <span
-                      className={`material-symbols-outlined transition-transform duration-500 ${
+                      className={`material-symbols-outlined transition-transform duration-300 ${
                         isOpen ? "rotate-180" : ""
                       }`}
                     >
@@ -99,9 +122,9 @@ export default function FaqSection() {
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: "auto", opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.3, ease: "easeInOut" }}
+                      transition={{ duration: 0.2, ease: "easeInOut" }}
                     >
-                      <div className="px-5 md:px-6 pb-5 md:pb-6 text-on-surface-variant text-sm md:text-base leading-relaxed font-light border-t border-outline-variant/10 pt-4">
+                      <div className="px-5 md:px-6 pb-5 md:pb-6 text-slate-600 text-xs md:text-sm leading-relaxed font-normal border-t border-slate-200/60 pt-4">
                         {faq.answer}
                       </div>
                     </motion.div>

@@ -1,30 +1,28 @@
 @import "tailwindcss";
 
-@custom-variant dark (&:where(.dark, .dark *));
-
 /* ─── Tailwind v4 Design Tokens (@theme) ──────────────────────── */
 @theme {
-  /* Colors - Refined for a more premium look */
-  --color-primary: #00328b;
-  --color-primary-container: #18409b;
-  --color-primary-fixed: #dbe1ff;
-  --color-primary-fixed-dim: #b4c5ff;
+  /* Hinthar Brand Identity Colors matching mainLogo.png */
+  --color-primary: #0e3b7d;           /* Hinthar Royal Blue */
+  --color-primary-container: #164e9a; /* Bright Royal Blue */
+  --color-primary-dark: #09234b;      /* Deep Midnight Navy */
+  --color-primary-light: #e8f0fe;     /* Soft Royal Blue Tint */
   --color-on-primary: #ffffff;
-  --color-on-primary-container: #aec1ff;
-  
-  --color-academic-gold: #f5c400; /* More vibrant gold */
-  --color-secondary-container: #f3e300;
-  --color-on-secondary-container: #4d4800;
 
-  --color-oxford-blue: #0b132b; /* Deeper oxford blue */
-  --color-surface: var(--surface);
-  --color-background: var(--background);
-  --color-neutral-surface: var(--neutral-surface);
+  --color-academic-gold: #ffc700;     /* Hinthar Emblem Gold */
+  --color-academic-gold-hover: #e6b300;
+  --color-gold-light: #fff8e1;        /* Soft Gold Surface */
+  --color-on-gold: #09234b;           /* Contrast Navy Text on Gold */
+
+  --color-oxford-blue: #0a1c38;       /* Deep Header Navy */
+  --color-surface: #ffffff;
+  --color-background: #f8fafc;
+  --color-neutral-surface: #f1f5f9;
   
-  --color-on-surface: var(--on-surface);
-  --color-on-surface-variant: var(--on-surface-variant);
-  --color-outline: #94a3b8;
-  --color-outline-variant: #cbd5e1;
+  --color-on-surface: #0f172a;        /* Deep Slate for crisp typography */
+  --color-on-surface-variant: #475569;/* Medium Slate */
+  --color-outline: #cbd5e1;
+  --color-outline-variant: #e2e8f0;
 
   /* Font families */
   --font-family-body: var(--font-inter), "Inter", sans-serif;
@@ -37,14 +35,8 @@
   --neutral-surface: #f1f5f9;
   --on-surface: #0f172a;
   --on-surface-variant: #475569;
-}
-
-.dark {
-  --background: #020617;
-  --surface: #0f172a;
-  --neutral-surface: #1e293b;
-  --on-surface: #f8fafc;
-  --on-surface-variant: #cbd5e1;
+  --primary: #0e3b7d;
+  --gold: #ffc700;
 }
 
 /* ─── Base Styles ─────────────────────────────────────────────── */
@@ -53,8 +45,8 @@ html {
 }
 
 body {
-  background-color: var(--color-background);
-  color: var(--color-on-surface);
+  background-color: #f8fafc;
+  color: #0f172a;
   font-family: var(--font-family-body);
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
@@ -87,114 +79,70 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Glassmorphism */
 .glass {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-}
-
-.glass-dark {
-  background: rgba(11, 19, 43, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.glass-card {
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+}
+
+.glass-blue {
+  background: rgba(14, 59, 125, 0.9);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 199, 0, 0.25);
+}
+
+.glass-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 20px -2px rgba(14, 59, 125, 0.06);
 }
 
 /* Gradients */
-.bg-gradient-primary {
-  background: linear-gradient(135deg, var(--color-oxford-blue) 0%, var(--color-primary) 100%);
+.bg-gradient-royal {
+  background: linear-gradient(135deg, #09234b 0%, #0e3b7d 60%, #164e9a 100%);
+}
+
+.bg-gradient-gold {
+  background: linear-gradient(135deg, #ffc700 0%, #e6b300 100%);
 }
 
 .text-gradient-gold {
-  background: linear-gradient(to right, #f5c400, #ffea8c);
+  background: linear-gradient(to right, #ffc700, #ffe17d);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-royal {
+  background: linear-gradient(to right, #0e3b7d, #164e9a);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 /* Shadows */
-.text-shadow-md {
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+.shadow-hinthar {
+  box-shadow: 0 10px 30px -5px rgba(14, 59, 125, 0.15);
 }
 
-.text-shadow-lg {
-  text-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+.shadow-gold {
+  box-shadow: 0 10px 25px -3px rgba(255, 199, 0, 0.35);
+}
+
+.text-shadow-md {
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
 }
 
 .hover-glow:hover {
-  box-shadow: 0 0 20px rgba(245, 196, 0, 0.4);
-}
-
-/* Animations */
-.nav-link-active {
-  color: var(--color-primary) !important;
-  position: relative;
-}
-
-.nav-link-active::after {
-  content: '';
-  position: absolute;
-  bottom: -4px;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background-color: var(--color-academic-gold);
-  border-radius: 2px;
-}
-
-.mobile-nav-link.nav-link-active {
-  color: var(--color-primary) !important;
-  font-weight: 700;
-  border-left: 4px solid var(--color-academic-gold);
-  padding-left: 12px;
-  border-bottom: none;
-}
-.mobile-nav-link.nav-link-active::after {
-  display: none;
-}
-
-/* Chat & Drawer Utils */
-.hidden-chat {
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(16px) scale(0.97);
-  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.visible-chat {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateY(0) scale(1);
-  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.hidden-drawer {
-  transform: translateX(100%);
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.visible-drawer {
-  transform: translateX(0);
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-* {
-  box-sizing: border-box;
+  box-shadow: 0 0 24px rgba(255, 199, 0, 0.5);
 }
 
 /* Focus styles for accessibility */
 *:focus-visible {
-  outline: 3px solid var(--color-academic-gold);
+  outline: 3px solid #ffc700;
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
 /* Marquee Animation */
