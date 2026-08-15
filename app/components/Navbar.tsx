@@ -3,215 +3,254 @@
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useTheme } from "./ThemeProvider";
+import { usePathname } from "next/navigation";
 
-const navLinks = [
-  { label: "Home", href: "#home" },
-  { label: "About", href: "#about" },
-  { label: "Specialisations", href: "#specialisations" },
-  { label: "FAQ", href: "#faq" },
-  { label: "Contact", href: "#contact" },
+interface NavItem {
+  label: string;
+  href: string;
+}
+
+const navItems: NavItem[] = [
+  { label: "Home", href: "/" },
+  { label: "Classes", href: "/classes" },
+  { label: "Admissions", href: "/admission" },
+  { label: "Activities", href: "/activities" },
+  { label: "Clubs", href: "/clubs" },
+  { label: "Yearbook", href: "/yearbook" },
+  { label: "AI Consult", href: "/chatbot" },
 ];
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState("home");
-  const { theme, toggleTheme } = useTheme();
+  const pathname = usePathname();
+  const isHomePage = pathname === "/";
 
-  // Header shrink on scroll
+  // Scroll detection
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 50);
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
     window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Scroll spy
+  // Lock body scroll when mobile menu is open
   useEffect(() => {
-    const sections = document.querySelectorAll("section[id], footer[id]");
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting && entry.target.id) {
-            setActiveSection(entry.target.id);
-          }
-        });
-      },
-      { rootMargin: "-20% 0px -70% 0px", threshold: 0 }
-    );
-    sections.forEach((s) => observer.observe(s));
-    return () => observer.disconnect();
-  }, []);
-
-  // Prevent body scroll when mobile menu is open
-  useEffect(() => {
-    document.body.style.overflow = mobileOpen ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
+    if (mobileOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [mobileOpen]);
 
-  const scrollToSection = useCallback(
-    (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-      if (href.startsWith("#")) {
-        e.preventDefault();
-        const target = document.querySelector(href);
-        if (target) {
-          const offset = window.innerWidth < 768 ? 64 : 80;
-          const top =
-            target.getBoundingClientRect().top + window.scrollY - offset;
-          window.scrollTo({ top, behavior: "smooth" });
-        }
-        setMobileOpen(false);
-      }
-    },
-    []
-  );
+  const isTransparent = isHomePage && !isScrolled;
 
   return (
     <>
-      {/* ── Top Nav Bar ─────────────────────────────────────────── */}
+      {/* ── Top Header Bar ───────────────────────────────────────── */}
       <header
         id="main-header"
-        className={`fixed top-0 left-0 w-full z-[100] transition-all duration-500 ${
-          isScrolled 
-            ? "py-2 bg-white/80 dark:bg-surface/80 backdrop-blur-md shadow-sm border-b border-white/20 dark:border-white/10" 
-            : "py-4 md:py-6 bg-transparent"
+        className={`fixed top-0 left-0 w-full z-[100] transition-all duration-300 ${
+          isTransparent
+            ? "py-4 md:py-5 bg-gradient-to-b from-[#09234b]/90 via-[#09234b]/40 to-transparent"
+            : "py-3 bg-white/95 backdrop-blur-md shadow-md border-b border-slate-200"
         }`}
       >
-        <div className={`flex justify-between items-center w-full px-4 md:px-8 mx-auto transition-all duration-500 ${
-          isScrolled ? "max-w-[1200px]" : "max-w-[1280px]"
-        }`}>
-          {/* Logo */}
-          <div className="flex items-center gap-2 md:gap-4 group cursor-pointer">
-            <div className="relative h-10 md:h-12 w-10 md:w-12 transition-transform duration-300 group-hover:scale-105">
+        <div className="max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+          {/* Logo & School Name */}
+          <Link href="/" className="flex items-center gap-3 group cursor-pointer">
+            <div className="relative h-11 w-11 md:h-12 md:w-12 transition-transform duration-300 group-hover:scale-105 rounded-full overflow-hidden bg-white shadow-sm ring-2 ring-[#FFC700]/80">
               <Image
-                src="/images/logo.png"
-                alt="Hinthar Logo"
+                src="/images/mainLogo.png"
+                alt="Hinthar International School Logo"
                 fill
-                className="object-contain"
+                className="object-contain p-0.5"
+                priority
               />
             </div>
-            <span className={`hidden sm:block font-extrabold text-lg md:text-xl tracking-tight transition-colors duration-300 ${isScrolled ? 'text-primary dark:text-primary-fixed' : 'text-white text-shadow-md'}`}>
-              Hinthar International School
-            </span>
-          </div>
-
-          {/* Desktop Nav */}
-          <nav className={`hidden lg:flex items-center gap-1 p-1 rounded-full transition-all duration-300 ${
-            isScrolled ? 'bg-transparent' : 'bg-white/10 backdrop-blur-md border border-white/20'
-          }`}>
-            {navLinks.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                onClick={(e) => scrollToSection(e, link.href)}
-                className={`px-4 py-2 rounded-full text-sm font-bold tracking-wider uppercase transition-all duration-300 flex items-center whitespace-nowrap ${
-                  activeSection === link.href.slice(1) 
-                    ? (isScrolled ? "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary-fixed" : "bg-white/20 text-white") 
-                    : (isScrolled ? "text-on-surface-variant dark:text-on-surface hover:text-primary dark:hover:text-primary-fixed hover:bg-black/5 dark:hover:bg-white/5" : "text-white/80 hover:text-white hover:bg-white/10")
+            <div className="flex flex-col">
+              <span
+                className={`font-black text-base sm:text-lg md:text-xl tracking-tight leading-tight transition-colors duration-300 ${
+                  isTransparent ? "text-white text-shadow-md" : "text-[#0E3B7D]"
                 }`}
               >
-                {link.label}
-              </a>
-            ))}
+                Hinthar International School
+              </span>
+              <span
+                className={`hidden sm:flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider transition-colors duration-300 ${
+                  isTransparent ? "text-[#FFC700]" : "text-[#164E9A]"
+                }`}
+              >
+                <span>Pearson Edexcel</span>
+                <span className="text-[9px] opacity-60">•</span>
+                <span>Year 7–9 · IGCSE · IAL</span>
+              </span>
+            </div>
+          </Link>
+
+          {/* Desktop Navigation Links */}
+          <nav
+            className={`hidden xl:flex items-center gap-1 p-1 rounded-full transition-all duration-300 ${
+              isTransparent
+                ? "bg-white/10 backdrop-blur-md border border-white/20"
+                : "bg-slate-100/90 border border-slate-200"
+            }`}
+          >
+            {navItems.map((item) => {
+              const isActive =
+                item.href === "/"
+                  ? pathname === "/"
+                  : pathname.startsWith(item.href);
+
+              return (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold tracking-wider uppercase transition-all duration-200 whitespace-nowrap ${
+                    isActive
+                      ? isTransparent
+                        ? "bg-[#FFC700] text-[#09234B] shadow-md scale-105"
+                        : "bg-[#0E3B7D] text-white shadow-sm"
+                      : isTransparent
+                      ? "text-white/90 hover:text-white hover:bg-white/15"
+                      : "text-slate-700 hover:text-[#0E3B7D] hover:bg-white"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
           </nav>
 
-          {/* CTA + Hamburger + Theme Toggle */}
-          <div className="flex items-center gap-3 md:gap-4">
-            <button
-              onClick={toggleTheme}
-              className={`p-2 rounded-full transition-colors flex items-center justify-center ${
-                isScrolled ? 'text-primary dark:text-primary-fixed hover:bg-black/5 dark:hover:bg-white/5' : 'text-white hover:bg-white/10'
-              }`}
-              aria-label="Toggle Dark Mode"
-            >
-              <span className="material-symbols-outlined">
-                {theme === "dark" ? "light_mode" : "dark_mode"}
-              </span>
-            </button>
+          {/* Actions: Apply Now CTA & Mobile Hamburger */}
+          <div className="flex items-center gap-3">
+            {/* Primary Action Button */}
             <Link
               href="/admission"
-              className={`hidden sm:block px-6 py-2.5 rounded-full text-sm font-bold tracking-wider uppercase transition-all duration-300 shadow-md active:scale-95 whitespace-nowrap ${
-                isScrolled 
-                  ? "bg-academic-gold text-oxford-blue hover:bg-primary hover:text-white dark:hover:bg-primary-fixed dark:hover:text-oxford-blue" 
-                  : "bg-white text-primary hover:bg-academic-gold hover:text-oxford-blue"
-              }`}
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full text-xs font-extrabold tracking-wider uppercase transition-all duration-200 bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] shadow-md hover:shadow-lg active:scale-95 whitespace-nowrap border border-[#FFC700]"
             >
-              Apply Now
+              <span>Apply Now</span>
+              <span className="material-symbols-outlined text-sm font-bold">arrow_forward</span>
             </Link>
+
+            {/* Mobile Menu Toggle Button */}
             <button
               id="menu-toggle"
               onClick={() => setMobileOpen(true)}
-              className={`p-2 focus:outline-none lg:hidden rounded-full transition-colors ${
-                isScrolled ? 'text-primary dark:text-primary-fixed hover:bg-black/5 dark:hover:bg-white/5' : 'text-white hover:bg-white/10'
+              className={`p-2 focus:outline-none xl:hidden rounded-lg transition-colors ${
+                isTransparent
+                  ? "text-white hover:bg-white/15"
+                  : "text-[#0E3B7D] hover:bg-slate-100"
               }`}
-              aria-label="Open menu"
+              aria-label="Open navigation menu"
             >
-              <span className="material-symbols-outlined text-3xl">menu</span>
+              <span className="material-symbols-outlined text-28px">menu</span>
             </button>
           </div>
         </div>
       </header>
 
-      {/* ── Mobile Drawer ────────────────────────────────────────── */}
+      {/* ── Mobile Navigation Drawer ────────────────────────────── */}
       <div
         id="mobile-menu-overlay"
-        className={`fixed inset-0 z-[110] transition-all duration-500 ${
-          mobileOpen ? "visible" : "invisible"
+        className={`fixed inset-0 z-[110] transition-all duration-300 ${
+          mobileOpen ? "visible opacity-100" : "invisible opacity-0 pointer-events-none"
         }`}
         onClick={(e) => {
           if (e.target === e.currentTarget) setMobileOpen(false);
         }}
       >
-        {/* Backdrop */}
-        <div
-          className={`absolute inset-0 bg-oxford-blue/40 backdrop-blur-sm transition-opacity duration-500 ${
-            mobileOpen ? "opacity-100" : "opacity-0"
-          }`}
-        />
+        {/* Dark Backdrop */}
+        <div className="absolute inset-0 bg-[#09234B]/60 backdrop-blur-sm" />
 
-        {/* Drawer panel */}
+        {/* Drawer Content */}
         <div
           id="mobile-menu"
-          className={`absolute top-0 right-0 h-full w-4/5 max-w-sm bg-surface shadow-2xl flex flex-col transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          className={`absolute top-0 right-0 h-full w-4/5 max-w-sm bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out ${
             mobileOpen ? "translate-x-0" : "translate-x-full"
           }`}
         >
-          <div className="p-6 flex justify-between items-center border-b border-outline-variant/50">
-            <span className="font-bold text-xl text-primary tracking-tight">
-              Menu
-            </span>
+          {/* Drawer Header */}
+          <div className="p-5 flex justify-between items-center border-b border-slate-200 bg-slate-50">
+            <div className="flex items-center gap-3">
+              <div className="relative w-9 h-9 rounded-full overflow-hidden bg-white ring-2 ring-[#FFC700]">
+                <Image
+                  src="/images/mainLogo.png"
+                  alt="Hinthar Logo"
+                  fill
+                  className="object-contain p-0.5"
+                />
+              </div>
+              <div className="flex flex-col">
+                <span className="font-extrabold text-sm text-[#0E3B7D] tracking-tight">
+                  Hinthar School
+                </span>
+                <span className="text-[10px] font-bold text-[#FFC700] uppercase tracking-wider">
+                  Pearson Edexcel Center
+                </span>
+              </div>
+            </div>
             <button
-              id="menu-close"
               onClick={() => setMobileOpen(false)}
-              className="text-on-surface-variant hover:text-primary transition-colors p-2 rounded-full hover:bg-black/5"
+              className="text-slate-500 hover:text-[#0E3B7D] p-1.5 rounded-lg hover:bg-slate-200 transition-colors"
               aria-label="Close menu"
             >
               <span className="material-symbols-outlined text-2xl">close</span>
             </button>
           </div>
 
-          <nav className="flex-1 overflow-y-auto p-6 space-y-2">
-            {navLinks.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                onClick={(e) => scrollToSection(e, link.href)}
-                className={`block text-lg py-3 px-4 rounded-xl tracking-widest uppercase font-bold transition-all ${
-                  activeSection === link.href.slice(1) 
-                    ? "bg-primary/10 text-primary" 
-                    : "text-on-surface-variant hover:bg-black/5 hover:text-primary"
-                }`}
-              >
-                {link.label}
-              </a>
-            ))}
-            <div className="pt-8 mt-4 border-t border-outline-variant/50">
+          {/* Drawer Navigation List */}
+          <nav className="flex-1 overflow-y-auto p-5 space-y-1">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest px-3 mb-2">
+              Menu & Portals
+            </p>
+            {navItems.map((item) => {
+              const isActive =
+                item.href === "/"
+                  ? pathname === "/"
+                  : pathname.startsWith(item.href);
+
+              return (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  onClick={() => setMobileOpen(false)}
+                  className={`flex items-center justify-between py-3 px-4 rounded-xl text-xs font-bold tracking-wider uppercase transition-all ${
+                    isActive
+                      ? "bg-[#0E3B7D] text-white shadow-sm"
+                      : "text-slate-700 hover:bg-slate-100 hover:text-[#0E3B7D]"
+                  }`}
+                >
+                  <span>{item.label}</span>
+                  <span className="material-symbols-outlined text-xs opacity-60">
+                    arrow_forward
+                  </span>
+                </Link>
+              );
+            })}
+
+            {/* Quick Actions */}
+            <div className="pt-6 mt-6 border-t border-slate-200 space-y-2.5">
               <Link
                 href="/admission"
                 onClick={() => setMobileOpen(false)}
-                className="block w-full bg-primary text-white py-4 rounded-xl text-sm font-bold tracking-wider uppercase text-center hover:bg-primary-container transition-all shadow-md active:scale-95"
+                className="flex items-center justify-center gap-2 w-full bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] py-3 rounded-xl text-xs font-extrabold tracking-wider uppercase shadow-md active:scale-95 transition-all"
               >
-                Apply Now
+                <span>Apply for Admission</span>
+                <span className="material-symbols-outlined text-base font-bold">arrow_forward</span>
+              </Link>
+              <Link
+                href="/admin/login"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center justify-center gap-2 w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl text-xs font-bold tracking-wider uppercase border border-slate-200 hover:text-[#0E3B7D] transition-all"
+              >
+                <span className="material-symbols-outlined text-base">admin_panel_settings</span>
+                <span>Staff & Admin Portal</span>
               </Link>
             </div>
           </nav>

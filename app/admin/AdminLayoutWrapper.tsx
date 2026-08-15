@@ -13,11 +13,11 @@ export default function AdminLayoutWrapper({ children }: { children: React.React
   }
 
   return (
-    <div className="min-h-screen bg-neutral-surface dark:bg-background text-on-surface">
+    <div className="min-h-screen bg-slate-50 text-slate-900">
       <AdminSidebar />
       <div className="pl-64 flex flex-col min-h-screen">
         <AdminHeader />
-        <main className="flex-1 p-8">
+        <main className="flex-1 p-6 sm:p-8 max-w-[1400px] w-full">
           {children}
         </main>
       </div>

@@ -3,119 +3,171 @@
 import { useState } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import InnerNavbar from "../components/InnerNavbar";
+import Navbar from "../components/Navbar";
 import FooterSection from "../components/sections/FooterSection";
 
-// Mock Data
-const categories = ["All", "Class of 2023", "Class of 2024", "Science Fair", "Sports", "Arts"];
+interface YearbookEntry {
+  id: number;
+  name: string;
+  category: "Class of 2026" | "Class of 2025" | "Class of 2024" | "University Placements" | "Competitions";
+  categoryLabel: string;
+  role: string;
+  destination?: string;
+  subjects?: string;
+  quote: string;
+  image: string;
+  badge?: string;
+}
 
-const yearbookEntries = [
+const categories = [
+  "All",
+  "Class of 2026",
+  "Class of 2025",
+  "Class of 2024",
+  "University Placements",
+  "Competitions",
+];
+
+const yearbookEntries: YearbookEntry[] = [
   {
     id: 1,
-    name: "Alex Johnson",
-    category: "Class of 2023",
-    role: "Valedictorian",
-    quote: "The future belongs to those who prepare for it today.",
+    name: "Aung Kaung Myat",
+    category: "Class of 2026",
+    categoryLabel: "Pearson IAL Scholar",
+    role: "Valedictorian & Student Council President",
+    destination: "Target: Imperial College London (Mechanical Engineering)",
+    subjects: "IAL 4 A*s: Pure Math, Further Math, Physics, Chemistry",
+    quote: "Hinthar gave me the discipline, lab exposure, and mentorship to turn my passion for engineering into reality.",
     image: "/images/g5.jpg",
+    badge: "World Top Scorer",
   },
   {
     id: 2,
-    name: "Sarah Lin",
-    category: "Class of 2024",
-    role: "Student Council President",
-    quote: "Leadership is an action, not a position.",
+    name: "Su Myat Noe",
+    category: "Class of 2026",
+    categoryLabel: "Pearson IGCSE & IAL",
+    role: "Debate Society Captain & High Distinction",
+    destination: "Accepted: National University of Singapore (NUS) - Computer Science",
+    subjects: "IAL: Computer Science, Pure Math, Economics",
+    quote: "The faculty pushed us to think critically beyond standard textbooks. Grateful for every lesson.",
     image: "/images/g6.jpg",
+    badge: "Top Distinction",
   },
   {
     id: 3,
-    title: "Regional Science Fair Winners",
-    category: "Science Fair",
-    description: "Our robotics team took 1st place in the regional competition.",
-    image: "/images/g7.jpg",
+    name: "Min Khant Kyaw",
+    category: "Class of 2025",
+    categoryLabel: "Alumni Success",
+    role: "Science & Robotics Lead",
+    destination: "Currently at: University of Melbourne (Biomedical Science)",
+    subjects: "IAL: Biology, Chemistry, Mathematics",
+    quote: "Practical laboratory experiments at Hinthar made my university transition seamless and exciting.",
+    image: "/images/g4.jpg",
+    badge: "Alumni 2025",
   },
   {
     id: 4,
-    title: "Annual Sports Meet",
-    category: "Sports",
-    description: "Blue house emerged victorious after a highly competitive weekend.",
-    image: "https://lh3.googleusercontent.com/aida/AP1WRLubSOzy0hIVdU-OIXQJq9sleqvpygjkiLIi-0EtMI78CjSIavfUdFQ232oK_gDg10GOB8nKQG2NbaisHwYQQoT1ggV1es1srgGjtPrfZJWj5-dY_b3-Tv6CguByN649rwstTDWY4879DY4xHvdb9r5gpGvAj_yI4lPMZLVcaHX7WXHd0v0C0f0ipNesCgc6IjPko6YL-JaiRUs3XgFvBuVm4q4XsopEHObf9QUzH6X60_epq_u9NizbvlQ",
+    name: "Hnin Wutt Yee",
+    category: "Class of 2025",
+    categoryLabel: "Commerce Track",
+    role: "Business Club Leader & Model UN Delegate",
+    destination: "Currently at: University of Manchester (Economics & Finance)",
+    subjects: "IAL: Economics, Business Studies, Accounting",
+    quote: "Confidence is built step by step. Hinthar gave us the stage to lead and speak with conviction.",
+    image: "/images/g8.jpg",
+    badge: "Alumni 2025",
   },
   {
     id: 5,
-    name: "Michael Chang",
-    category: "Class of 2023",
-    role: "Captain, Debate Team",
-    quote: "Words have the power to change the world.",
-    image: "/images/graduation.png", // reusing local image for mock
+    name: "Zaw Lin Htet",
+    category: "Class of 2024",
+    categoryLabel: "IGCSE Distinction",
+    role: "Badminton Captain & Math Olympiad Silver",
+    destination: "Currently at: University of New South Wales (UNSW Sydney - IT)",
+    subjects: "IGCSE: 8 A*s (STEM Stream)",
+    quote: "Balancing athletic sports and intense Pearson IGCSE exams taught me resilience that stays with me today.",
+    image: "/images/g7.jpg",
+    badge: "Alumni 2024",
   },
   {
     id: 6,
-    title: "Spring Art Exhibition",
-    category: "Arts",
-    description: "Showcasing the incredible talent of our senior artists.",
+    name: "Thandar Win",
+    category: "Class of 2024",
+    categoryLabel: "Alumni Success",
+    role: "Peer Tutor & Head Prefect",
+    destination: "Currently at: King's College London (Law & Global Politics)",
+    subjects: "IAL: Global Perspectives, Literature, Economics",
+    quote: "A true international community in the heart of Yangon where every teacher genuinely cares about student growth.",
     image: "/images/g9.jpg",
-  }
+    badge: "Alumni 2024",
+  },
 ];
 
 export default function YearbookGallery() {
   const [activeCategory, setActiveCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredEntries = yearbookEntries.filter(entry => {
-    const matchesCategory = activeCategory === "All" || entry.category === activeCategory;
+  const filteredEntries = yearbookEntries.filter((entry) => {
+    const matchesCategory =
+      activeCategory === "All" ||
+      entry.category === activeCategory ||
+      (activeCategory === "University Placements" && Boolean(entry.destination));
+
     const searchLower = searchQuery.toLowerCase();
-    const matchesSearch = 
-      (entry.name && entry.name.toLowerCase().includes(searchLower)) ||
-      (entry.title && entry.title.toLowerCase().includes(searchLower)) ||
-      (entry.quote && entry.quote.toLowerCase().includes(searchLower)) ||
-      (entry.description && entry.description.toLowerCase().includes(searchLower));
-    
+    const matchesSearch =
+      entry.name.toLowerCase().includes(searchLower) ||
+      entry.role.toLowerCase().includes(searchLower) ||
+      (entry.destination && entry.destination.toLowerCase().includes(searchLower)) ||
+      entry.quote.toLowerCase().includes(searchLower);
+
     return matchesCategory && matchesSearch;
   });
 
   return (
-    <div className="min-h-screen flex flex-col pt-24 bg-background">
-      <InnerNavbar />
-      
-      <main className="flex-1 max-w-[1200px] mx-auto w-full px-6 md:px-8 py-12">
+    <div className="min-h-screen flex flex-col pt-20 bg-slate-50">
+      <Navbar />
+
+      <main className="flex-1 max-w-[1280px] mx-auto w-full px-4 sm:px-6 md:px-8 py-10">
         {/* Header */}
-        <div className="text-center max-w-2xl mx-auto mb-12">
-          <div className="inline-flex items-center gap-2 bg-academic-gold/10 px-4 py-2 rounded-full mb-6">
-            <span className="material-symbols-outlined text-academic-gold text-sm">auto_stories</span>
-            <span className="text-sm font-bold text-academic-gold uppercase tracking-widest">Our Legacy</span>
+        <div className="text-center max-w-2xl mx-auto mb-10">
+          <div className="inline-flex items-center gap-2 bg-[#E8F0FE] px-4 py-1.5 rounded-full mb-4 border border-[#0E3B7D]/20">
+            <span className="material-symbols-outlined text-[#0E3B7D] text-sm font-bold">auto_stories</span>
+            <span className="text-xs font-extrabold text-[#0E3B7D] uppercase tracking-wider">
+              Student Legacy &amp; Destinations
+            </span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-extrabold text-oxford-blue dark:text-white mb-6 tracking-tight">
-            Yearbook <span className="text-primary dark:text-primary-fixed">Gallery</span>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-[#09234B] mb-3 tracking-tight">
+            Yearbook &amp; <span className="text-[#0E3B7D]">Alumni Gallery</span>
           </h1>
-          <p className="text-base md:text-lg text-on-surface-variant font-light">
-            Explore the memories, achievements, and stories of our incredible students and alumni.
+          <p className="text-sm md:text-base text-slate-600 font-normal">
+            Celebrating the achievements, distinctions, and international university pathways of our graduating cohorts.
           </p>
         </div>
 
-        {/* Search & Filter */}
-        <div className="mb-12 space-y-6">
+        {/* Search & Filter Bar */}
+        <div className="mb-10 space-y-4">
           <div className="relative max-w-md mx-auto">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <span className="material-symbols-outlined text-on-surface-variant">search</span>
+              <span className="material-symbols-outlined text-slate-400 text-base">search</span>
             </div>
             <input
               type="text"
-              placeholder="Search names, events, or quotes..."
+              placeholder="Search by student name, university, or distinction..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-surface dark:bg-surface-variant border border-outline-variant/30 rounded-xl shadow-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-on-surface dark:text-white"
+              className="w-full pl-11 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm focus:ring-2 focus:ring-[#0E3B7D] outline-none transition-all text-xs sm:text-sm text-slate-900 placeholder:text-slate-400"
             />
           </div>
 
           <div className="flex flex-wrap justify-center gap-2">
-            {categories.map(category => (
+            {categories.map((category) => (
               <button
                 key={category}
                 onClick={() => setActiveCategory(category)}
-                className={`px-4 py-2 rounded-full text-sm font-bold tracking-wider transition-all shadow-sm ${
+                className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all shadow-sm ${
                   activeCategory === category
-                    ? "bg-primary text-white dark:bg-primary-fixed dark:text-oxford-blue"
-                    : "bg-surface dark:bg-surface-variant text-on-surface-variant hover:bg-black/5 dark:hover:bg-white/5 border border-outline-variant/30"
+                    ? "bg-[#0E3B7D] text-white shadow-md scale-105"
+                    : "bg-white text-slate-600 hover:text-[#0E3B7D] border border-slate-200"
                 }`}
               >
                 {category}
@@ -125,53 +177,81 @@ export default function YearbookGallery() {
         </div>
 
         {/* Gallery Grid */}
-        <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+        <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           <AnimatePresence>
             {filteredEntries.map((entry) => (
               <motion.div
                 key={entry.id}
                 layout
-                initial={{ opacity: 0, scale: 0.9 }}
+                initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.3 }}
-                className="bg-surface dark:bg-surface-variant rounded-2xl overflow-hidden shadow-sm border border-outline-variant/30 hover:shadow-xl transition-all group flex flex-col"
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.25 }}
+                className="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-200 hover:shadow-xl transition-all group flex flex-col justify-between"
               >
-                <div className="h-56 relative overflow-hidden">
-                  <Image
-                    src={entry.image}
-                    alt={entry.name || entry.title || "Yearbook photo"}
-                    fill
-                    className="object-cover transition-transform duration-700 group-hover:scale-105"
-                  />
-                  <div className="absolute top-4 left-4 bg-white/90 dark:bg-black/70 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-primary dark:text-primary-fixed shadow-sm">
-                    {entry.category}
+                <div>
+                  {/* Photo with Badge */}
+                  <div className="h-56 relative overflow-hidden">
+                    <Image
+                      src={entry.image}
+                      alt={entry.name}
+                      fill
+                      className="object-cover transition-transform duration-700 group-hover:scale-105"
+                      sizes="(max-width: 768px) 100vw, 33vw"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#09234B]/80 via-transparent to-black/10" />
+
+                    <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-md px-3 py-1 rounded-md text-[10px] font-black text-[#0E3B7D] shadow-sm border border-slate-200">
+                      {entry.category}
+                    </div>
+
+                    {entry.badge && (
+                      <div className="absolute top-3 right-3 bg-[#FFC700] text-[#09234B] px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider shadow-sm border border-[#FFC700]">
+                        {entry.badge}
+                      </div>
+                    )}
+
+                    <div className="absolute bottom-3 left-4 right-4 text-white">
+                      <h3 className="text-lg font-black leading-tight drop-shadow-sm">{entry.name}</h3>
+                      <p className="text-xs text-[#FFC700] font-bold">{entry.role}</p>
+                    </div>
+                  </div>
+
+                  {/* Body Content */}
+                  <div className="p-5 space-y-3">
+                    {entry.destination && (
+                      <div className="flex items-start gap-2 text-xs font-bold text-[#0E3B7D] bg-[#E8F0FE] p-2.5 rounded-xl border border-[#0E3B7D]/15">
+                        <span className="material-symbols-outlined text-[#0E3B7D] text-base shrink-0 mt-0.5">school</span>
+                        <span>{entry.destination}</span>
+                      </div>
+                    )}
+
+                    {entry.subjects && (
+                      <p className="text-[11px] text-slate-600 font-medium">
+                        <strong className="text-slate-800">Curriculum Track:</strong> {entry.subjects}
+                      </p>
+                    )}
+
+                    <p className="text-xs text-slate-600 font-normal italic leading-relaxed border-l-2 border-[#FFC700] pl-3 py-0.5">
+                      &quot;{entry.quote}&quot;
+                    </p>
                   </div>
                 </div>
-                <div className="p-6 flex-1 flex flex-col">
-                  {entry.name ? (
-                    <>
-                      <h3 className="text-xl font-bold text-oxford-blue dark:text-white mb-1 group-hover:text-primary transition-colors">{entry.name}</h3>
-                      <p className="text-sm font-bold text-academic-gold mb-4 uppercase tracking-wider">{entry.role}</p>
-                      <p className="text-on-surface-variant text-sm italic flex-1 border-l-4 border-primary/20 pl-3">&quot;{entry.quote}&quot;</p>
-                    </>
-                  ) : (
-                    <>
-                      <h3 className="text-xl font-bold text-oxford-blue dark:text-white mb-3 group-hover:text-primary transition-colors">{entry.title}</h3>
-                      <p className="text-on-surface-variant text-sm flex-1">{entry.description}</p>
-                    </>
-                  )}
+
+                <div className="p-5 pt-0 border-t border-slate-100 mt-2 text-[11px] text-slate-500 flex items-center justify-between">
+                  <span>Hinthar International School</span>
+                  <span className="material-symbols-outlined text-[#FFC700] text-sm font-bold">verified</span>
                 </div>
               </motion.div>
             ))}
           </AnimatePresence>
         </motion.div>
-        
+
         {filteredEntries.length === 0 && (
-          <div className="text-center py-20">
-            <span className="material-symbols-outlined text-6xl text-outline-variant mb-4">search_off</span>
-            <h3 className="text-xl font-bold text-oxford-blue dark:text-white mb-2">No results found</h3>
-            <p className="text-on-surface-variant">We couldn't find any entries matching your current filters.</p>
+          <div className="text-center py-16">
+            <span className="material-symbols-outlined text-5xl text-slate-300 mb-3">search_off</span>
+            <h3 className="text-lg font-bold text-[#09234B] mb-1">No alumni records found</h3>
+            <p className="text-xs text-slate-500">Try adjusting your search criteria or filter tags.</p>
           </div>
         )}
       </main>
