@@ -1,19 +1,31 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
+import { ADMIN_ROLES, getActiveAdminRole, AdminRoleUser } from "../../admin/adminStore";
 
 const navItems = [
   { label: "Dashboard", href: "/admin", icon: "dashboard" },
-  { label: "Admissions", href: "/admin/admissions", icon: "school" },
-  { label: "Yearbook & Alumni", href: "/admin/yearbook", icon: "auto_stories" },
+  { label: "Admissions Review", href: "/admin/admissions", icon: "school" },
+  { label: "Yearbook & Honors", href: "/admin/yearbook", icon: "auto_stories" },
   { label: "Classes & Syllabi", href: "/admin/classes", icon: "menu_book" },
   { label: "Student Clubs", href: "/admin/clubs", icon: "groups" },
 ];
 
 export default function AdminSidebar() {
   const pathname = usePathname();
+  const [activeRole, setActiveRole] = useState<AdminRoleUser>(ADMIN_ROLES[0]);
+
+  useEffect(() => {
+    setActiveRole(getActiveAdminRole());
+    const handleRoleUpdate = () => {
+      setActiveRole(getActiveAdminRole());
+    };
+    window.addEventListener("his_role_updated", handleRoleUpdate);
+    return () => window.removeEventListener("his_role_updated", handleRoleUpdate);
+  }, []);
 
   return (
     <aside className="w-64 bg-[#09234B] text-white h-screen fixed left-0 top-0 flex flex-col z-40 shadow-xl border-r border-[#FFC700]/20">
@@ -24,10 +36,10 @@ export default function AdminSidebar() {
         </div>
         <div className="flex flex-col min-w-0">
           <span className="font-black text-sm text-white tracking-tight leading-tight truncate">
-            Hinthar Admin
+            Hinthar Portal
           </span>
           <span className="text-[10px] font-bold text-[#FFC700] uppercase tracking-wider">
-            Staff Portal
+            Faculty &amp; Admin
           </span>
         </div>
       </div>
@@ -39,7 +51,11 @@ export default function AdminSidebar() {
         </p>
 
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive =
+            item.href === "/admin"
+              ? pathname === "/admin"
+              : pathname.startsWith(item.href);
+
           return (
             <Link
               key={item.href}
@@ -61,7 +77,7 @@ export default function AdminSidebar() {
         {/* Live Site Shortcut */}
         <div className="pt-6">
           <p className="px-3 text-[11px] font-black text-slate-400 uppercase tracking-[0.16em] mb-2">
-            Public Site
+            Public Gateway
           </p>
           <Link
             href="/"
@@ -69,16 +85,26 @@ export default function AdminSidebar() {
             className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-all text-xs font-semibold"
           >
             <span className="material-symbols-outlined text-base text-[#FFC700]">open_in_new</span>
-            <span>View Live Website</span>
+            <span>View Public Site</span>
           </Link>
         </div>
       </div>
 
-      {/* Footer Sign Out */}
-      <div className="p-4 border-t border-white/10 bg-[#061833]">
+      {/* Active User Footer Info & Sign Out */}
+      <div className="p-4 border-t border-white/10 bg-[#061833] space-y-3">
+        <div className="flex items-center gap-2.5 px-1">
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs shrink-0 ${activeRole.badgeColor}`}>
+            {activeRole.initials}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold text-white truncate">{activeRole.name}</p>
+            <p className="text-[10px] text-[#FFC700] font-semibold truncate">{activeRole.role}</p>
+          </div>
+        </div>
+
         <Link
           href="/admin/login"
-          className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-red-500/10 hover:bg-red-500 text-red-300 hover:text-white border border-red-500/30 rounded-xl transition-all text-xs font-bold uppercase tracking-wider"
+          className="flex items-center justify-center gap-2 w-full py-2 px-3 bg-red-500/10 hover:bg-red-500 text-red-300 hover:text-white border border-red-500/30 rounded-xl transition-all text-xs font-bold uppercase tracking-wider"
         >
           <span className="material-symbols-outlined text-base">logout</span>
           <span>Sign Out</span>

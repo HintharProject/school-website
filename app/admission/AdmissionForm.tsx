@@ -96,6 +96,39 @@ export default function AdmissionForm() {
     e.preventDefault();
     const randomCode = `HIS-2026-${Math.floor(1000 + Math.random() * 9000)}`;
     setSubmittedId(randomCode);
+
+    // Map programLevel to readable format
+    const gradeLabel =
+      formData.programLevel === "ial"
+        ? "Pearson IAL (Year 12)"
+        : formData.programLevel === "igcse"
+        ? "Pearson IGCSE (Year 10)"
+        : "Lower Secondary (Year 8)";
+
+    try {
+      // Dynamic import or direct local storage sync
+      const raw = localStorage.getItem("his_admin_applications_v1");
+      const current = raw ? JSON.parse(raw) : [];
+      const newRecord = {
+        id: randomCode,
+        studentName: formData.studentName,
+        dateOfBirth: formData.dob || undefined,
+        gender: formData.gender as "Male" | "Female" | "Other",
+        grade: gradeLabel,
+        previousSchool: formData.currentSchool || undefined,
+        parentName: formData.parentName || undefined,
+        parentEmail: formData.parentEmail,
+        parentPhone: formData.parentPhone,
+        submittedDate: new Date().toISOString().split("T")[0],
+        status: "Pending",
+        notes: `Selected track: ${formData.academicStream.toUpperCase()} | Subjects: ${formData.selectedSubjects.join(", ")} | Mode: ${formData.studyMode}`,
+      };
+      localStorage.setItem("his_admin_applications_v1", JSON.stringify([newRecord, ...current]));
+      window.dispatchEvent(new CustomEvent("his_applications_updated"));
+    } catch {
+      // Ignore if localStorage unavailable
+    }
+
     setCurrentStep(5);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };

@@ -108,7 +108,7 @@ export default function ChatbotPageView() {
 
     setTimeout(() => {
       const lower = trimmed.toLowerCase();
-      let matchedResponse = {
+      let matchedResponse: { text: string; link?: { href: string; label: string } } = {
         text: "Thank you for asking! Hinthar International School provides world-standard Pearson Edexcel Lower Secondary (Year 7–9), IGCSE, and IAL education in Hlaing Township, Yangon. You can connect with our admissions counselors directly at +95 9 894 332200 or complete an application online.",
         link: { href: "/admission", label: "Start Online Application" },
       };
