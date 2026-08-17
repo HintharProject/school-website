@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Navbar from "../components/Navbar";
 import FooterSection from "../components/sections/FooterSection";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
@@ -92,9 +93,14 @@ export default function AdmissionForm() {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const randomCode = `HIS-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+    const secureRandomArray = new Uint32Array(1);
+    if (typeof window !== "undefined" && window.crypto?.getRandomValues) {
+      window.crypto.getRandomValues(secureRandomArray);
+    }
+    const secureNum = 1000 + (secureRandomArray[0] ? secureRandomArray[0] % 9000 : Math.floor(1000 + Math.random() * 9000));
+    const randomCode = `HIS-2026-${secureNum}`;
     setSubmittedId(randomCode);
 
     // Map programLevel to readable format
@@ -105,11 +111,46 @@ export default function AdmissionForm() {
         ? "Pearson IGCSE (Year 10)"
         : "Lower Secondary (Year 8)";
 
+    const newRecord = {
+      id: randomCode,
+      student_name: formData.studentName,
+      date_of_birth: formData.dob || undefined,
+      gender: formData.gender as "Male" | "Female" | "Other",
+      nationality: formData.nationality,
+      grade: gradeLabel,
+      program_level: formData.programLevel,
+      academic_stream: formData.academicStream,
+      selected_subjects: formData.selectedSubjects,
+      intended_start_term: formData.intendedStartTerm,
+      study_mode: formData.studyMode,
+      previous_school: formData.currentSchool || undefined,
+      parent_name: formData.parentName || undefined,
+      relationship: formData.relationship,
+      parent_email: formData.parentEmail,
+      parent_phone: formData.parentPhone,
+      address: formData.address || undefined,
+      emergency_contact: formData.emergencyContact || undefined,
+      medical_notes: formData.medicalNotes || undefined,
+      how_heard: formData.howHeard || undefined,
+      submitted_date: new Date().toISOString().split("T")[0],
+      status: "Pending" as const,
+      notes: `Selected track: ${formData.academicStream.toUpperCase()} | Subjects: ${formData.selectedSubjects.join(", ")} | Mode: ${formData.studyMode}`,
+    };
+
+    // Save to Supabase
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.from("admissions").insert([newRecord]);
+      } catch (err) {
+        console.warn("Supabase admission insert error:", err);
+      }
+    }
+
     try {
-      // Dynamic import or direct local storage sync
+      // Local storage fallback sync
       const raw = localStorage.getItem("his_admin_applications_v1");
       const current = raw ? JSON.parse(raw) : [];
-      const newRecord = {
+      const localRecord = {
         id: randomCode,
         studentName: formData.studentName,
         dateOfBirth: formData.dob || undefined,
@@ -123,7 +164,7 @@ export default function AdmissionForm() {
         status: "Pending",
         notes: `Selected track: ${formData.academicStream.toUpperCase()} | Subjects: ${formData.selectedSubjects.join(", ")} | Mode: ${formData.studyMode}`,
       };
-      localStorage.setItem("his_admin_applications_v1", JSON.stringify([newRecord, ...current]));
+      localStorage.setItem("his_admin_applications_v1", JSON.stringify([localRecord, ...current]));
       window.dispatchEvent(new CustomEvent("his_applications_updated"));
     } catch {
       // Ignore if localStorage unavailable

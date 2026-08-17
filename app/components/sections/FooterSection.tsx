@@ -3,6 +3,7 @@ import Link from "next/link";
 
 const quickLinks = [
   { label: "Home", href: "/" },
+  { label: "Our Campuses (4)", href: "/campuses" },
   { label: "About Us", href: "/#about" },
   { label: "Classes & Syllabi", href: "/classes" },
   { label: "Admissions", href: "/admission" },
@@ -21,10 +22,11 @@ const programs = [
 const contactInfo = [
   {
     icon: "location_on",
-    text: "No. 23B, Ywar Ma Kyaung Lane, Hlaing Township, Yangon, Myanmar, 11051",
+    text: "4 Campuses in Yangon (Ywarma, Shwe Padauk, Shwe Pone Nyet) & Mawlamyine",
+    href: "/campuses",
   },
-  { icon: "mail", text: "info@hinthar.education", href: "mailto:info@hinthar.education" },
-  { icon: "call", text: "+95 9 894 332200", href: "tel:+959894332200" },
+  { icon: "mail", text: "admissions@hinthar.education", href: "mailto:admissions@hinthar.education" },
+  { icon: "call", text: "+95 9 894 332200 / +95 9 894 332211", href: "tel:+959894332200" },
 ];
 
 export default function FooterSection() {

@@ -58,10 +58,11 @@ const initialMessages: Message[] = [
 ];
 
 const quickChips = [
+  "Our 4 Campuses",
   "Pearson Edexcel Tracks",
   "How to Apply for 2026",
-  "Campus Location & Hours",
   "Extracurricular Clubs",
+  "Alumni University Placements",
 ];
 
 export default function ChatbotWidget() {
@@ -75,20 +76,7 @@ export default function ChatbotWidget() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
-  const generateReply = (query: string) => {
-    const q = query.toLowerCase();
-    for (const kb of KNOWLEDGE_BASE) {
-      if (kb.keywords.some((k) => q.includes(k))) {
-        return { text: kb.reply, link: kb.link };
-      }
-    }
-    return {
-      text: "Thank you for inquiring! Hinthar International School provides world-standard Pearson Edexcel Lower Secondary (Year 7–9), IGCSE, and IAL education in Hlaing Township, Yangon. You can speak with our admissions officer at +95 9 894 332200 or submit an application online.",
-      link: { href: "/admission", label: "Go to Admissions Portal" },
-    };
-  };
-
-  const handleSendMessage = (textToSend: string) => {
+  const handleSendMessage = async (textToSend: string) => {
     const msg = textToSend.trim();
     if (!msg) return;
 
@@ -103,18 +91,52 @@ export default function ChatbotWidget() {
     setInput("");
     setIsTyping(true);
 
-    setTimeout(() => {
-      const response = generateReply(msg);
-      const aiMsg: Message = {
-        id: Date.now() + 1,
-        role: "ai",
-        text: response.text,
-        time: getTime(),
-        link: response.link,
-      };
-      setMessages((prev) => [...prev, aiMsg]);
-      setIsTyping(false);
-    }, 600);
+    try {
+      const res = await fetch("/api/chatbot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: msg }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const aiMsg: Message = {
+          id: Date.now() + 1,
+          role: "ai",
+          text: data.reply,
+          time: getTime(),
+          link: data.link,
+        };
+        setMessages((prev) => [...prev, aiMsg]);
+        setIsTyping(false);
+        return;
+      }
+    } catch {
+      // Fallback below
+    }
+
+    // Fallback static reply
+    const q = msg.toLowerCase();
+    let reply = "Thank you for inquiring! Hinthar International School operates across 4 campuses in Yangon (Ywarma, Shwe Padauk, Shwe Pone Nyet) and Mawlamyine. For direct counseling, call +95 9 894 332200.";
+    let link: { href: string; label: string } | undefined = { href: "/admission", label: "Go to Admissions" };
+
+    for (const kb of KNOWLEDGE_BASE) {
+      if (kb.keywords.some((k) => q.includes(k))) {
+        reply = kb.reply;
+        link = kb.link;
+        break;
+      }
+    }
+
+    const aiMsg: Message = {
+      id: Date.now() + 1,
+      role: "ai",
+      text: reply,
+      time: getTime(),
+      link,
+    };
+    setMessages((prev) => [...prev, aiMsg]);
+    setIsTyping(false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {

@@ -19,6 +19,14 @@ function getTime() {
 
 const FAQ_PROMPTS = [
   {
+    category: "4 School Campuses",
+    items: [
+      "Tell me about your 4 campuses across Yangon & Mawlamyine.",
+      "Where is the flagship Ywarma campus located?",
+      "What facilities are available at Mawlamyine campus?",
+    ],
+  },
+  {
     category: "Academic Continuum",
     items: [
       "What subjects are offered in Pearson Edexcel IGCSE?",
@@ -27,16 +35,9 @@ const FAQ_PROMPTS = [
     ],
   },
   {
-    category: "Admissions & Campus",
+    category: "Admissions & Life",
     items: [
       "How can I apply for the 2026–2027 intake?",
-      "Where is the campus located in Yangon?",
-      "What are the office visiting hours?",
-    ],
-  },
-  {
-    category: "Student Life & Extra-Curriculars",
-    items: [
       "What student clubs and robotics societies exist?",
       "Where do your alumni go for university studies?",
     ],
@@ -91,7 +92,7 @@ export default function ChatbotPageView() {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
-  const handleSend = (userText: string) => {
+  const handleSend = async (userText: string) => {
     const trimmed = userText.trim();
     if (!trimmed) return;
 
@@ -106,40 +107,67 @@ export default function ChatbotPageView() {
     setInput("");
     setIsTyping(true);
 
-    setTimeout(() => {
-      const lower = trimmed.toLowerCase();
-      let matchedResponse: { text: string; link?: { href: string; label: string } } = {
-        text: "Thank you for asking! Hinthar International School provides world-standard Pearson Edexcel Lower Secondary (Year 7–9), IGCSE, and IAL education in Hlaing Township, Yangon. You can connect with our admissions counselors directly at +95 9 894 332200 or complete an application online.",
-        link: { href: "/admission", label: "Start Online Application" },
-      };
+    try {
+      const res = await fetch("/api/chatbot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: trimmed }),
+      });
 
-      if (lower.includes("igcse") || lower.includes("subject") || lower.includes("o level")) {
-        matchedResponse = KNOWLEDGE_RESPONSES.igcse;
-      } else if (lower.includes("ial") || lower.includes("a level") || lower.includes("a-level")) {
-        matchedResponse = KNOWLEDGE_RESPONSES.ial;
-      } else if (lower.includes("lower secondary") || lower.includes("secondary") || lower.includes("year 7") || lower.includes("year 8") || lower.includes("year 9") || lower.includes("middle")) {
-        matchedResponse = KNOWLEDGE_RESPONSES.lower_secondary;
-      } else if (lower.includes("apply") || lower.includes("admission") || lower.includes("fee") || lower.includes("cost") || lower.includes("intake")) {
-        matchedResponse = KNOWLEDGE_RESPONSES.apply;
-      } else if (lower.includes("location") || lower.includes("where") || lower.includes("address") || lower.includes("phone") || lower.includes("contact") || lower.includes("hour")) {
-        matchedResponse = KNOWLEDGE_RESPONSES.location;
-      } else if (lower.includes("club") || lower.includes("robotics") || lower.includes("debate") || lower.includes("sport") || lower.includes("activity")) {
-        matchedResponse = KNOWLEDGE_RESPONSES.clubs;
-      } else if (lower.includes("alumni") || lower.includes("university") || lower.includes("graduate") || lower.includes("yearbook")) {
-        matchedResponse = KNOWLEDGE_RESPONSES.alumni;
+      if (res.ok) {
+        const data = await res.json();
+        const aiMessage: Message = {
+          id: Date.now() + 1,
+          role: "ai",
+          text: data.reply,
+          time: getTime(),
+          link: data.link,
+        };
+        setMessages((prev) => [...prev, aiMessage]);
+        setIsTyping(false);
+        return;
       }
+    } catch {
+      // Fallback
+    }
 
-      const aiMessage: Message = {
-        id: Date.now() + 1,
-        role: "ai",
-        text: matchedResponse.text,
-        time: getTime(),
-        link: matchedResponse.link,
+    const lower = trimmed.toLowerCase();
+    let matchedResponse: { text: string; link?: { href: string; label: string } } = {
+      text: "Thank you for asking! Hinthar International School operates across 4 campuses in Yangon (Ywarma, Shwe Padauk, Shwe Pone Nyet) and Mawlamyine. You can connect with our admissions counselors directly at +95 9 894 332200 or complete an application online.",
+      link: { href: "/admission", label: "Start Online Application" },
+    };
+
+    if (lower.includes("campus") || lower.includes("mawlamyine") || lower.includes("ywarma") || lower.includes("shwe padauk") || lower.includes("shwe pone nyet")) {
+      matchedResponse = {
+        text: "Hinthar International School operates 4 modern campuses:\n• Ywarma Campus (Hlaing Township, Yangon)\n• Shwe Padauk Campus (STEM & Robotics Innovation Hub, Yangon)\n• Shwe Pone Nyet Campus (Lower Secondary & Arts Hub, Yangon)\n• Mawlamyine Campus (Strand Road, Mawlamyine)",
+        link: { href: "/campuses", label: "View All 4 Campuses" },
       };
+    } else if (lower.includes("igcse") || lower.includes("subject") || lower.includes("o level")) {
+      matchedResponse = KNOWLEDGE_RESPONSES.igcse;
+    } else if (lower.includes("ial") || lower.includes("a level") || lower.includes("a-level")) {
+      matchedResponse = KNOWLEDGE_RESPONSES.ial;
+    } else if (lower.includes("lower secondary") || lower.includes("secondary") || lower.includes("year 7") || lower.includes("year 8") || lower.includes("year 9") || lower.includes("middle")) {
+      matchedResponse = KNOWLEDGE_RESPONSES.lower_secondary;
+    } else if (lower.includes("apply") || lower.includes("admission") || lower.includes("fee") || lower.includes("cost") || lower.includes("intake")) {
+      matchedResponse = KNOWLEDGE_RESPONSES.apply;
+    } else if (lower.includes("location") || lower.includes("where") || lower.includes("address") || lower.includes("phone") || lower.includes("contact") || lower.includes("hour")) {
+      matchedResponse = KNOWLEDGE_RESPONSES.location;
+    } else if (lower.includes("club") || lower.includes("robotics") || lower.includes("debate") || lower.includes("sport") || lower.includes("activity")) {
+      matchedResponse = KNOWLEDGE_RESPONSES.clubs;
+    } else if (lower.includes("alumni") || lower.includes("university") || lower.includes("graduate") || lower.includes("yearbook")) {
+      matchedResponse = KNOWLEDGE_RESPONSES.alumni;
+    }
 
-      setMessages((prev) => [...prev, aiMessage]);
-      setIsTyping(false);
-    }, 600);
+    const aiMessage: Message = {
+      id: Date.now() + 1,
+      role: "ai",
+      text: matchedResponse.text,
+      time: getTime(),
+      link: matchedResponse.link,
+    };
+
+    setMessages((prev) => [...prev, aiMessage]);
+    setIsTyping(false);
   };
 
   return (

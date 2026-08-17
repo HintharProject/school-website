@@ -1,9 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import FooterSection from "../components/sections/FooterSection";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
+import { getStoredClubs, formatCampusBadge } from "../admin/adminStore";
 
 interface ClubItem {
   id: number;
@@ -17,100 +19,114 @@ interface ClubItem {
   leadership: string;
   description: string;
   image: string;
+  campus?: string;
 }
 
-const clubsData: ClubItem[] = [
-  {
-    id: 1,
-    name: "Robotics, IoT & AI Club",
-    category: "stem",
-    categoryLabel: "STEM & Tech",
-    icon: "smart_toy",
-    members: "38 Active Members",
-    meetingTime: "Wednesdays &bull; 03:45 PM – 05:15 PM",
-    room: "Innovation & Robotics Lab",
-    leadership: "Student Lead: Aung Kaung | Advisor: Dr. Kaung Myat Htut",
-    description: "Design autonomous Arduino & Raspberry Pi robots, code computer vision scripts, and prepare for international robotics olympiads.",
-    image: "/images/engineering.avif",
-  },
-  {
-    id: 2,
-    name: "Model United Nations & Debate Society",
-    category: "debate",
-    categoryLabel: "Academic & Debate",
-    icon: "forum",
-    members: "45 Active Members",
-    meetingTime: "Tuesdays &bull; 04:00 PM – 05:30 PM",
-    room: "Conference Hall 1",
-    leadership: "President: Su Myat Noe | Advisor: Tr. Rachel Evans",
-    description: "Master diplomatic public speaking, persuasive negotiation, international policy analysis, and competitive debate sparring.",
-    image: "/images/business.jpg",
-  },
-  {
-    id: 3,
-    name: "Science Discovery & Astronomy Society",
-    category: "stem",
-    categoryLabel: "STEM & Science",
-    icon: "biotech",
-    members: "32 Active Members",
-    meetingTime: "Thursdays &bull; 03:30 PM – 05:00 PM",
-    room: "Newton Science Lab & Observatory Deck",
-    leadership: "President: Lin Htet | Advisor: Dr. Su Mon Kyaw",
-    description: "Conduct chemical reaction experiments, study celestial bodies with telescopes, and organize the annual Science Fair.",
-    image: "/images/g2.jpg",
-  },
-  {
-    id: 4,
-    name: "Digital Media, Photography & Film",
-    category: "arts",
-    categoryLabel: "Creative Arts",
-    icon: "photo_camera",
-    members: "28 Active Members",
-    meetingTime: "Fridays &bull; 03:30 PM – 05:00 PM",
-    room: "Media & Design Studio",
-    leadership: "Editor: Min Khant | Advisor: Daw May Zin Thet",
-    description: "Learn cinematography, digital graphic design, school magazine journalism, and yearbook photography coverage.",
-    image: "/images/g8.jpg",
-  },
-  {
-    id: 5,
-    name: "Badminton & Table Tennis Club",
-    category: "sports",
-    categoryLabel: "Sports & Fitness",
-    icon: "sports_tennis",
-    members: "50+ Active Members",
-    meetingTime: "Mon & Thu &bull; 04:15 PM – 05:45 PM",
-    room: "Hinthar Indoor Sports Arena",
-    leadership: "Captains: Thura & May | Coach: U Zaw Lin",
-    description: "Training agility, competitive drills, inter-school friendly fixtures, and intra-house championship tournaments.",
-    image: "/images/g7.jpg",
-  },
-  {
-    id: 6,
-    name: "Music, Choir & Performing Arts",
-    category: "arts",
-    categoryLabel: "Creative Arts",
-    icon: "theater_comedy",
-    members: "34 Active Members",
-    meetingTime: "Wednesdays &bull; 04:00 PM – 05:30 PM",
-    room: "Auditorium & Music Room",
-    leadership: "Director: Kay Zin | Advisor: Tr. Sarah Jenkins",
-    description: "Acoustic ensemble, classical choral singing, and stage theatre productions for school galas and cultural festivals.",
-    image: "/images/g6.jpg",
-  },
+const campusFilters = [
+  { id: "All", label: "All Campuses" },
+  { id: "Yangon", label: "Yangon Campuses" },
+  { id: "Mawlamyine", label: "Mawlamyine Regional" },
+  { id: "Both", label: "Both (All-School)" },
 ];
 
 export default function ClubsView() {
+  const [clubs, setClubs] = useState<ClubItem[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>("all");
+  const [activeCampus, setActiveCampus] = useState<string>("All");
   const [selectedClub, setSelectedClub] = useState<ClubItem | null>(null);
   const [studentName, setStudentName] = useState("");
   const [studentGrade, setStudentGrade] = useState("IGCSE Year 1");
   const [joinSuccess, setJoinSuccess] = useState(false);
 
-  const filteredClubs =
-    activeCategory === "all"
-      ? clubsData
-      : clubsData.filter((c) => c.category === activeCategory);
+  useEffect(() => {
+    async function loadClubs() {
+      if (isSupabaseConfigured) {
+        try {
+          const { data, error } = await supabase
+            .from("clubs")
+            .select("*")
+            .eq("is_active", true)
+            .order("id", { ascending: true });
+
+          if (!error && data && data.length > 0) {
+            const mapped: ClubItem[] = data.map((c: any) => {
+              let cat: "stem" | "debate" | "sports" | "arts" = "stem";
+              if (c.category.includes("Debate")) cat = "debate";
+              else if (c.category.includes("Sports")) cat = "sports";
+              else if (c.category.includes("Creative")) cat = "arts";
+
+              return {
+                id: Number(c.id),
+                name: c.name,
+                category: cat,
+                categoryLabel: c.category,
+                icon: c.icon || "groups",
+                members: c.members || "30+ Members",
+                meetingTime: c.meeting_time || "Weekly",
+                room: "Campus Dedicated Studio",
+                leadership: c.leadership || "Student Council Lead",
+                description: c.description,
+                image: c.image || "/images/g2.jpg",
+                campus: c.campus || "both-campuses",
+              };
+            });
+            setClubs(mapped);
+            return;
+          }
+        } catch (err) {
+          console.warn("Supabase clubs fetch error:", err);
+        }
+      }
+
+      // Local store fallback
+      try {
+        const stored = getStoredClubs();
+        if (stored && stored.length > 0) {
+          const mapped: ClubItem[] = stored
+            .filter((c) => !c.status || c.status === "published")
+            .map((c) => {
+              let cat: "stem" | "debate" | "sports" | "arts" = "stem";
+              if (c.category.includes("Debate")) cat = "debate";
+              else if (c.category.includes("Sports")) cat = "sports";
+              else if (c.category.includes("Creative")) cat = "arts";
+
+              return {
+                id: c.id,
+                name: c.name,
+                category: cat,
+                categoryLabel: c.category,
+                icon: c.icon,
+                members: c.members,
+                meetingTime: c.meetingTime,
+                room: "Dedicated Studio",
+                leadership: c.leadership,
+                description: c.description,
+                image: c.image,
+                campus: c.campus || "both-campuses",
+              };
+            });
+          setClubs(mapped);
+        }
+      } catch {
+        // Keep initial
+      }
+    }
+
+    loadClubs();
+  }, []);
+
+  const filteredClubs = clubs.filter((c) => {
+    const matchesCategory = activeCategory === "all" || c.category === activeCategory;
+    const campusInfo = formatCampusBadge(c.campus);
+    const matchesCampus =
+      activeCampus === "All" ||
+      campusInfo.city === activeCampus ||
+      (activeCampus === "Both" && campusInfo.city === "Both") ||
+      (activeCampus === "Yangon" && (campusInfo.city === "Yangon" || campusInfo.city === "Both")) ||
+      (activeCampus === "Mawlamyine" && (campusInfo.city === "Mawlamyine" || campusInfo.city === "Both"));
+
+    return matchesCategory && matchesCampus;
+  });
 
   const handleJoinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,98 +155,144 @@ export default function ClubsView() {
             Student <span className="text-[#0E3B7D]">Clubs &amp; Societies</span>
           </h1>
           <p className="text-sm md:text-base text-slate-600 font-normal">
-            Develop leadership, build lifelong friendships, and explore your passions through our diverse student-led extracurricular clubs.
+            Develop leadership, build lifelong friendships, and explore your passions through our diverse student-led extracurricular clubs across Yangon &amp; Mawlamyine.
           </p>
         </div>
 
         {/* Filter Pills */}
-        <div className="flex flex-wrap items-center justify-center gap-2.5 mb-10">
-          {[
-            { id: "all", label: "All Clubs" },
-            { id: "stem", label: "STEM & Tech" },
-            { id: "debate", label: "Debate & MUN" },
-            { id: "sports", label: "Sports & Athletics" },
-            { id: "arts", label: "Arts & Media" },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveCategory(tab.id)}
-              className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
-                activeCategory === tab.id
-                  ? "bg-[#0E3B7D] text-white shadow-md scale-105"
-                  : "bg-white text-slate-600 hover:text-[#0E3B7D] border border-slate-200 shadow-sm"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        <div className="space-y-3 mb-10">
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {[
+              { id: "all", label: "All Clubs" },
+              { id: "stem", label: "STEM & Tech" },
+              { id: "debate", label: "Debate & MUN" },
+              { id: "sports", label: "Sports & Athletics" },
+              { id: "arts", label: "Arts & Media" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveCategory(tab.id)}
+                className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
+                  activeCategory === tab.id
+                    ? "bg-[#0E3B7D] text-white shadow-md scale-105"
+                    : "bg-white text-slate-600 hover:text-[#0E3B7D] border border-slate-200 shadow-sm"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Campus Location Scope */}
+          <div className="flex flex-wrap justify-center items-center gap-2 pt-1">
+            <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
+              <span className="material-symbols-outlined text-xs text-[#0E3B7D]">pin_drop</span>
+              <span>Campus Scope:</span>
+            </span>
+            {campusFilters.map((loc) => (
+              <button
+                key={loc.id}
+                onClick={() => setActiveCampus(loc.id)}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                  activeCampus === loc.id
+                    ? "bg-[#FFC700] text-[#09234B] font-black shadow-sm"
+                    : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                }`}
+              >
+                {loc.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Clubs Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredClubs.map((club) => (
-            <div
-              key={club.id}
-              className="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-200 hover:shadow-xl transition-all duration-300 flex flex-col group"
-            >
-              {/* Image & Header */}
-              <div className="h-48 relative overflow-hidden">
-                <Image
-                  src={club.image}
-                  alt={club.name}
-                  fill
-                  className="object-cover transition-transform duration-700 group-hover:scale-105"
-                  sizes="(max-width: 768px) 100vw, 33vw"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#09234B]/90 via-[#09234B]/30 to-transparent" />
+          {filteredClubs.map((club) => {
+            const campusBadge = formatCampusBadge(club.campus);
 
-                <div className="absolute bottom-4 left-4 right-4 text-white">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="px-2.5 py-0.5 bg-white/20 backdrop-blur-md rounded-md text-[10px] font-black uppercase tracking-wider">
+            return (
+              <div
+                key={club.id}
+                className="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-200 hover:shadow-xl transition-all duration-300 flex flex-col group"
+              >
+                {/* Image & Header */}
+                <div className="h-48 relative overflow-hidden bg-slate-900">
+                  <Image
+                    src={club.image || "/images/engineering.avif"}
+                    alt={club.name}
+                    fill
+                    className="object-cover transition-transform duration-700 group-hover:scale-105 opacity-90"
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#09234B]/95 via-[#09234B]/40 to-transparent" />
+
+                  <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap">
+                    <span className="px-2.5 py-0.5 bg-white/20 backdrop-blur-md rounded-md text-[10px] font-black uppercase tracking-wider text-white">
                       {club.categoryLabel}
                     </span>
-                    <span className="text-[11px] text-[#FFC700] font-bold">
-                      {club.members}
+                    <span
+                      className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${campusBadge.badgeClass}`}
+                    >
+                      {campusBadge.label}
                     </span>
                   </div>
-                  <h3 className="text-lg font-black leading-snug">{club.name}</h3>
-                </div>
-              </div>
 
-              {/* Body */}
-              <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                <p className="text-xs sm:text-sm text-slate-600 font-normal leading-relaxed">
-                  {club.description}
-                </p>
-
-                {/* Details */}
-                <div className="space-y-1.5 text-xs text-slate-500 border-t border-slate-100 pt-3">
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[#FFC700] text-sm font-bold">schedule</span>
-                    <span dangerouslySetInnerHTML={{ __html: club.meetingTime }} />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[#0E3B7D] text-sm">room</span>
-                    <span>{club.room}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-[11px] text-slate-600 font-medium">
-                    <span className="material-symbols-outlined text-[#0E3B7D] text-sm">badge</span>
-                    <span className="truncate">{club.leadership}</span>
+                  <div className="absolute bottom-4 left-4 right-4 text-white">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[11px] text-[#FFC700] font-bold">
+                        {club.members}
+                      </span>
+                    </div>
+                    <h3 className="text-lg font-black leading-snug">{club.name}</h3>
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setSelectedClub(club)}
-                  className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[#E8F0FE] hover:bg-[#0E3B7D] hover:text-white text-[#0E3B7D] text-xs font-black tracking-wider uppercase transition-all"
-                >
-                  <span>Sign Up for Club</span>
-                  <span className="material-symbols-outlined text-sm font-bold">how_to_reg</span>
-                </button>
+                {/* Body */}
+                <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                  <p className="text-xs sm:text-sm text-slate-600 font-normal leading-relaxed">
+                    {club.description}
+                  </p>
+
+                  {/* Details */}
+                  <div className="space-y-1.5 text-xs text-slate-500 border-t border-slate-100 pt-3">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-[#FFC700] text-sm font-bold">schedule</span>
+                      <span>{club.meetingTime}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-[#0E3B7D] text-sm">room</span>
+                      <span>{club.room}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px] text-slate-600 font-medium">
+                      <span className="material-symbols-outlined text-[#0E3B7D] text-sm">badge</span>
+                      <span className="truncate">{club.leadership}</span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedClub(club)}
+                    className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[#E8F0FE] hover:bg-[#0E3B7D] hover:text-white text-[#0E3B7D] text-xs font-black tracking-wider uppercase transition-all"
+                  >
+                    <span>Sign Up for Club</span>
+                    <span className="material-symbols-outlined text-sm font-bold">how_to_reg</span>
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
+
+        {/* Empty State Notice */}
+        {filteredClubs.length === 0 && (
+          <div className="text-center py-16 bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
+            <span className="material-symbols-outlined text-5xl text-slate-300 mb-3">groups</span>
+            <h3 className="text-base font-bold text-[#09234B] mb-1">No entries published yet</h3>
+            <p className="text-xs text-slate-500 max-w-sm mx-auto">
+              Student societies and extracurricular activity schedules will appear here once published.
+            </p>
+          </div>
+        )}
       </main>
 
       {/* Join Modal */}
