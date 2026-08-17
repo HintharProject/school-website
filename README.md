@@ -1,106 +1,45 @@
-# Hinthar Education — School Website
+# Hinthar International School — Web Platform & Supabase Backend
 
-The official public-facing website for **[Hinthar Education](https://hinthar.education/)**. This repository contains the main landing page, the admissions & enrollment portal, and the Consultation AI interface that helps prospective students and parents engage with the school.
+Official web platform and administration system for **[Hinthar International School](https://hinthar.education/)** (Yangon & Mawlamyine, Myanmar).
 
----
-
-## Tech Stack
-
-| Category          | Technology                                                                 |
-| ----------------- | -------------------------------------------------------------------------- |
-| Framework         | [Next.js](https://nextjs.org/)                                             |
-| Styling           | [Tailwind CSS](https://tailwindcss.com/)                                   |
-| UI Components     | [Shadcn/ui](https://ui.shadcn.com/) + [Radix UI](https://www.radix-ui.com/) |
-| Icons             | [Lucide React](https://lucide.dev/)                                        |
-| Animations        | [Framer Motion](https://www.framer.com/motion/)                            |
-| Hosting           | [Vercel](https://vercel.com/)                                              |
+Built with **Next.js (App Router)**, **TypeScript**, **Tailwind CSS**, **Framer Motion**, and a **Supabase PostgreSQL Backend**.
 
 ---
 
-## Team
+## 🌟 Core Features
 
-| Role          | Member            |
-| ---------------| -------------------|
-| Lead Dev      | Thaw Ye Zaw       |
-| Front End Dev | Nyan Lin Htet     |
-| Back End Dev  | Khant Phone Zayar |
-
----
-
-## Prerequisites
-
-Before you begin, ensure your machine has the following installed:
-
-- **Node.js** `>= 18.x` (LTS recommended)
-- **npm** `>= 9.x` (ships with Node.js)
-- **Git**
-
-Verify your environment:
-
-```bash
-node -v   # ≥ 18
-npm -v    # ≥ 9
-git --version
-```
+- 🏛️ **4 School Campuses Showcase (`/campuses`)**:
+  - **Ywarma Campus (Yangon)**: Flagship Academic Center & Pearson Examination Hall.
+  - **Shwe Padauk Campus (Yangon)**: Senior STEM, AI & Robotics Innovation Center.
+  - **Shwe Pone Nyet Campus (Yangon)**: Lower Secondary (Year 7–9) & Creative Arts Hub.
+  - **Mawlamyine Campus (Mon State)**: Regional Center of Academic Excellence.
+- 🎓 **Alumni Yearbook Gallery (`/yearbook`)**:
+  - Cohort filtering (Class of 2026, 2025, 2024, Placements).
+  - Search by student, distinction, subjects, and top global university destinations.
+- 👥 **Student Clubs & Societies (`/clubs`)**:
+  - STEM & Robotics, Model UN & Debate, Newton Science, Digital Arts & Media, Sports.
+- 📝 **4-Step Admissions Wizard (`/admission`)**:
+  - Online student enrollment and automated Reference ID generation (`HIS-2026-XXXX`).
+  - Asynchronous pipeline storage into Supabase `admissions` table.
+- 🤖 **AI Consultation Chatbot (`/chatbot` & Floating Widget)**:
+  - Smart prompt-based answers to parents & students regarding curriculums, campuses, and admissions via `/api/chatbot`.
+- 🔐 **3-Tier Role-Based Admin Portal (`/admin` & `/admin/login`)**:
+  - **No Public Self-Registration**: All accounts are directly provisioned by authorized leadership.
+  - **School Principal (`principal`)**: Full superadmin authority (Dr. Kaung Myat Htut: `kaungmyat.htut@gmail.com`).
+  - **Faculty & Staff (`staff_admin`)**: Admissions processing, timetable scheduling, review queue moderation, and student account creation.
+  - **Student Contributors (`student`)**: Scoped data entry for Yearbook and Clubs (submissions route to a **Staff Review Queue** before publishing).
 
 ---
 
-## Local Development
+## 🔐 User Roles & Permissions Matrix
 
-### 1. Clone the Repository
-
-```bash
-git clone <repo-url> school-website
-cd school-website
-```
-
-### 2. Install Dependencies
-
-```bash
-npm install
-```
-
-### 3. Run the Development Server
-
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) in your browser. Hot reload is enabled by default — changes to `app/` pages are reflected instantly.
-
-### 4. Build for Production
-
-```bash
-npm run build
-npm start
-```
+| Module / Action | Principal (`Dr. Kaung Myat Htut`) | Faculty & Staff Admin | Student Contributor |
+|---|---|---|---|
+| **User Account Creation** | ✅ Staff Admin & Students | ✅ Students only | ❌ Disabled |
+| **Campuses Master Config** | ✅ Full CRUD (4 Campuses) | ✅ Full CRUD | ❌ Restricted |
+| **Admissions Pipeline** | ✅ Decisions & Approvals | ✅ Processing & Scheduling | ❌ Restricted (Confidential) |
+| **Yearbook Publishing** | ✅ Direct Publish & Review | ✅ Direct Publish & Review | 📝 Submit for Review |
+| **Student Clubs** | ✅ Full Management | ✅ Full Management | 📝 Submit Proposals & Updates |
+| **Classes & Timetables** | ✅ Master Schedule | ✅ Master Schedule | 👁️ View Only |
 
 ---
-
-## Project Structure (Overview)
-
-```
-school-website/
-├── app/                # Next.js App Router pages & layouts
-├── components/         # Reusable UI components (Shadcn/ui, custom)
-├── lib/                # Utility functions & shared logic
-├── public/             # Static assets (images, fonts, etc.)
-├── next.config.ts      # Next.js configuration
-├── tailwind.config.ts  # Tailwind CSS configuration
-└── tsconfig.json       # TypeScript configuration
-```
-
----
-
-## Deployment
-
-This project is deployed on **Vercel**. Pushes to the `main` branch trigger automatic deployments. Preview deployments are created for every pull request.
-
----
-
-## Related Links
-
-- [Hinthar Education Website](https://hinthar.education/)
-- [Next.js Documentation](https://nextjs.org/docs)
-- [Tailwind CSS Documentation](https://tailwindcss.com/docs)
-- [Shadcn/ui Documentation](https://ui.shadcn.com/docs)

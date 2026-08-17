@@ -260,7 +260,7 @@ export default function ClassesView() {
                     <div className="border-t border-slate-100 pt-3 space-y-1.5 text-xs text-slate-600">
                       <div className="flex items-center gap-2">
                         <span className="material-symbols-outlined text-[#FFC700] text-sm font-bold">schedule</span>
-                        <span dangerouslySetInnerHTML={{ __html: course.schedule }} />
+                        <span>{course.schedule}</span>
                       </div>
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">

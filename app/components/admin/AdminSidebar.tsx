@@ -4,19 +4,11 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
-import { ADMIN_ROLES, getActiveAdminRole, AdminRoleUser } from "../../admin/adminStore";
-
-const navItems = [
-  { label: "Dashboard", href: "/admin", icon: "dashboard" },
-  { label: "Admissions Review", href: "/admin/admissions", icon: "school" },
-  { label: "Yearbook & Honors", href: "/admin/yearbook", icon: "auto_stories" },
-  { label: "Classes & Syllabi", href: "/admin/classes", icon: "menu_book" },
-  { label: "Student Clubs", href: "/admin/clubs", icon: "groups" },
-];
+import { getActiveAdminRole, UserProfile, INITIAL_USER_ACCOUNTS } from "../../admin/adminStore";
 
 export default function AdminSidebar() {
   const pathname = usePathname();
-  const [activeRole, setActiveRole] = useState<AdminRoleUser>(ADMIN_ROLES[0]);
+  const [activeRole, setActiveRole] = useState<UserProfile>(INITIAL_USER_ACCOUNTS[0]);
 
   useEffect(() => {
     setActiveRole(getActiveAdminRole());
@@ -26,6 +18,45 @@ export default function AdminSidebar() {
     window.addEventListener("his_role_updated", handleRoleUpdate);
     return () => window.removeEventListener("his_role_updated", handleRoleUpdate);
   }, []);
+
+  const isPrincipal = activeRole.role === "principal";
+  const isStaff = activeRole.role === "staff_admin";
+  const isStudent = activeRole.role === "student";
+
+  // Dynamic Navigation Items based on Access Level
+  const getNavItems = () => {
+    if (isPrincipal) {
+      return [
+        { label: "Principal Dashboard", href: "/admin", icon: "dashboard" },
+        { label: "User Accounts", href: "/admin/users", icon: "manage_accounts" },
+        { label: "Campuses (4)", href: "/admin/campuses", icon: "location_city" },
+        { label: "Admissions Review", href: "/admin/admissions", icon: "school" },
+        { label: "Yearbook & Honors", href: "/admin/yearbook", icon: "auto_stories" },
+        { label: "Classes & Syllabi", href: "/admin/classes", icon: "menu_book" },
+        { label: "Student Clubs", href: "/admin/clubs", icon: "groups" },
+      ];
+    }
+
+    if (isStaff) {
+      return [
+        { label: "Staff Dashboard", href: "/admin", icon: "dashboard" },
+        { label: "Student Accounts", href: "/admin/users", icon: "badge" },
+        { label: "Admissions Review", href: "/admin/admissions", icon: "school" },
+        { label: "Yearbook & Honors", href: "/admin/yearbook", icon: "auto_stories" },
+        { label: "Classes & Syllabi", href: "/admin/classes", icon: "menu_book" },
+        { label: "Student Clubs", href: "/admin/clubs", icon: "groups" },
+      ];
+    }
+
+    // Student Contributor View
+    return [
+      { label: "Contributor Hub", href: "/admin", icon: "dashboard" },
+      { label: "Yearbook Entry", href: "/admin/yearbook", icon: "auto_stories" },
+      { label: "Clubs & Activities", href: "/admin/clubs", icon: "groups" },
+    ];
+  };
+
+  const navItems = getNavItems();
 
   return (
     <aside className="w-64 bg-[#09234B] text-white h-screen fixed left-0 top-0 flex flex-col z-40 shadow-xl border-r border-[#FFC700]/20">
@@ -39,7 +70,7 @@ export default function AdminSidebar() {
             Hinthar Portal
           </span>
           <span className="text-[10px] font-bold text-[#FFC700] uppercase tracking-wider">
-            Faculty &amp; Admin
+            {isPrincipal ? "Principal Authority" : isStaff ? "Faculty & Staff" : "Student Contributor"}
           </span>
         </div>
       </div>
@@ -47,7 +78,7 @@ export default function AdminSidebar() {
       {/* Navigation Links */}
       <div className="flex-1 overflow-y-auto py-6 px-4 space-y-1.5">
         <p className="px-3 text-[11px] font-black text-[#FFC700] uppercase tracking-[0.16em] mb-3">
-          Management Hub
+          {isStudent ? "Student Workspace" : "Management Hub"}
         </p>
 
         {navItems.map((item) => {
@@ -66,7 +97,11 @@ export default function AdminSidebar() {
                   : "text-slate-200 hover:bg-white/10 hover:text-white"
               }`}
             >
-              <span className={`material-symbols-outlined text-lg ${isActive ? "text-[#09234B] font-bold" : "text-[#FFC700]"}`}>
+              <span
+                className={`material-symbols-outlined text-lg ${
+                  isActive ? "text-[#09234B] font-bold" : "text-[#FFC700]"
+                }`}
+              >
                 {item.icon}
               </span>
               <span>{item.label}</span>
@@ -82,6 +117,7 @@ export default function AdminSidebar() {
           <Link
             href="/"
             target="_blank"
+            rel="noopener noreferrer"
             className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-all text-xs font-semibold"
           >
             <span className="material-symbols-outlined text-base text-[#FFC700]">open_in_new</span>
@@ -93,22 +129,35 @@ export default function AdminSidebar() {
       {/* Active User Footer Info & Sign Out */}
       <div className="p-4 border-t border-white/10 bg-[#061833] space-y-3">
         <div className="flex items-center gap-2.5 px-1">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs shrink-0 ${activeRole.badgeColor}`}>
+          <div
+            className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs shrink-0 ${activeRole.badgeColor}`}
+          >
             {activeRole.initials}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-white truncate">{activeRole.name}</p>
-            <p className="text-[10px] text-[#FFC700] font-semibold truncate">{activeRole.role}</p>
+            <p className="text-xs font-bold text-white truncate">{activeRole.fullName}</p>
+            <p className="text-[10px] text-[#FFC700] font-semibold truncate">
+              {activeRole.roleLabel}
+            </p>
           </div>
         </div>
 
-        <Link
-          href="/admin/login"
+        <button
+          type="button"
+          onClick={async () => {
+            try {
+              const { supabase } = await import("@/lib/supabase/client");
+              if (supabase) await supabase.auth.signOut();
+            } catch (err) {
+              console.warn("Sidebar sign out error:", err);
+            }
+            window.location.href = "/admin/login";
+          }}
           className="flex items-center justify-center gap-2 w-full py-2 px-3 bg-red-500/10 hover:bg-red-500 text-red-300 hover:text-white border border-red-500/30 rounded-xl transition-all text-xs font-bold uppercase tracking-wider"
         >
           <span className="material-symbols-outlined text-base">logout</span>
           <span>Sign Out</span>
-        </Link>
+        </button>
       </div>
     </aside>
   );

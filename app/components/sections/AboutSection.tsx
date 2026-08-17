@@ -81,14 +81,20 @@ export default function AboutSection() {
 
             <div className="text-sm md:text-base text-slate-600 space-y-4 leading-relaxed font-normal">
               <p>
-                Located in <strong>Hlaing Township, Yangon</strong>, Hinthar International School provides world-class education tailored to prepare Myanmar students for prestigious global universities and lifelong leadership.
+                Operating across <strong>4 dedicated campuses</strong> — including <strong>Ywarma, Shwe Padauk, and Shwe Pone Nyet in Yangon</strong> and our <strong>Mawlamyine Regional Campus</strong> — Hinthar International School provides world-class British education tailored to prepare Myanmar students for prestigious global universities.
               </p>
               <p>
-                Our rigorous academic programs encompass <strong>Lower Secondary Education (Year 7–9)</strong> progressing through to globally recognized <strong>Pearson Edexcel IGCSE (Year 10–11)</strong> and <strong>International Advanced Level (IAL / Year 12–13)</strong> qualifications.
+                Our rigorous academic continuum encompasses <strong>Lower Secondary Education (Year 7–9)</strong> progressing through to globally recognized <strong>Pearson Edexcel IGCSE (Year 10–11)</strong> and <strong>International Advanced Level (IAL / Year 12–13)</strong> qualifications.
               </p>
-              <p>
-                Through small class sizes, state-of-the-art STEM and computing laboratories, and dedicated British Council certified faculty, we provide individualized mentoring and holistic character building for every learner.
-              </p>
+              <div className="pt-1">
+                <a
+                  href="/campuses"
+                  className="inline-flex items-center gap-1.5 text-xs font-black text-[#0E3B7D] hover:text-[#FFC700] uppercase tracking-wider transition-colors"
+                >
+                  <span>Explore All 4 Campus Locations &amp; Facilities</span>
+                  <span className="material-symbols-outlined text-sm font-black">arrow_forward</span>
+                </a>
+              </div>
             </div>
 
             {/* Bento Grid Stats */}

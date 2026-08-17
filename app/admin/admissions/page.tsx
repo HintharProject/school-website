@@ -6,7 +6,11 @@ import {
   ApplicationStatus,
   getStoredApplications,
   saveStoredApplications,
+  getActiveAdminRole,
+  UserProfile,
+  INITIAL_USER_ACCOUNTS,
 } from "../adminStore";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
 
 const statusBadgeClasses: Record<ApplicationStatus, string> = {
   Pending: "bg-amber-100 text-amber-800 border border-amber-200",
@@ -17,7 +21,9 @@ const statusBadgeClasses: Record<ApplicationStatus, string> = {
 
 export default function AdminAdmissionsPage() {
   const [applications, setApplications] = useState<AdmissionApplication[]>([]);
+  const [currentUser, setCurrentUser] = useState<UserProfile>(INITIAL_USER_ACCOUNTS[0]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState("");
@@ -43,18 +49,83 @@ export default function AdminAdmissionsPage() {
     notes: "",
   });
 
-  // Load applications from localStorage on mount & listen for updates
-  useEffect(() => {
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const loadData = async () => {
+    setCurrentUser(getActiveAdminRole());
+
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabase
+          .from("admissions")
+          .select("*")
+          .order("id", { ascending: false });
+
+        if (!error && data) {
+          const mapped: AdmissionApplication[] = data.map((d: any) => ({
+            id: d.id,
+            studentName: d.student_name,
+            dateOfBirth: d.date_of_birth,
+            gender: d.gender,
+            grade: d.grade,
+            previousSchool: d.previous_school,
+            parentName: d.parent_name,
+            parentEmail: d.parent_email,
+            parentPhone: d.parent_phone,
+            submittedDate: d.submitted_date || d.created_at?.split("T")[0] || new Date().toISOString().split("T")[0],
+            status: d.status as ApplicationStatus,
+            assessmentDate: d.assessment_date,
+            notes: d.notes,
+          }));
+          setApplications(mapped);
+          saveStoredApplications(mapped);
+          setIsLoaded(true);
+          return;
+        }
+      } catch (err) {
+        console.warn("Supabase admissions fetch error, using local fallback:", err);
+      }
+    }
+
     setApplications(getStoredApplications());
     setIsLoaded(true);
+  };
+
+  // Load applications from live database on mount & listen for updates
+  useEffect(() => {
+    loadData();
 
     const handleStorageUpdate = () => {
       setApplications(getStoredApplications());
     };
+    const handleRoleUpdate = () => {
+      setCurrentUser(getActiveAdminRole());
+    };
 
     window.addEventListener("his_applications_updated", handleStorageUpdate);
-    return () => window.removeEventListener("his_applications_updated", handleStorageUpdate);
+    window.addEventListener("his_role_updated", handleRoleUpdate);
+    return () => {
+      window.removeEventListener("his_applications_updated", handleStorageUpdate);
+      window.removeEventListener("his_role_updated", handleRoleUpdate);
+    };
   }, []);
+
+  if (currentUser.role === "student") {
+    return (
+      <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-sm max-w-xl mx-auto my-12">
+        <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto mb-4">
+          <span className="material-symbols-outlined text-3xl">lock</span>
+        </div>
+        <h2 className="text-xl font-black text-slate-800">Confidential Admissions Data</h2>
+        <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+          Student applications and personal contact records are strictly confidential and restricted to School Principal &amp; Staff Administrators.
+        </p>
+      </div>
+    );
+  }
 
   // Summary Metrics
   const totalCount = applications.length;
@@ -79,7 +150,7 @@ export default function AdminAdmissionsPage() {
   });
 
   // Action Handlers
-  const handleUpdateStatus = (id: string, newStatus: ApplicationStatus) => {
+  const handleUpdateStatus = async (id: string, newStatus: ApplicationStatus) => {
     const updated = applications.map((a) =>
       a.id === id ? { ...a, status: newStatus } : a
     );
@@ -89,9 +160,22 @@ export default function AdminAdmissionsPage() {
     if (selectedApp && selectedApp.id === id) {
       setSelectedApp({ ...selectedApp, status: newStatus });
     }
+
+    if (isSupabaseConfigured) {
+      try {
+        await supabase
+          .from("admissions")
+          .update({ status: newStatus })
+          .eq("id", id);
+      } catch (err) {
+        console.warn("Supabase status update error:", err);
+      }
+    }
+
+    showToast(`Application ${id} marked as ${newStatus}`);
   };
 
-  const handleSaveNotes = (id: string, notes: string, assessmentDate?: string) => {
+  const handleSaveNotes = async (id: string, notes: string, assessmentDate?: string) => {
     const updated = applications.map((a) =>
       a.id === id ? { ...a, notes, assessmentDate: assessmentDate || a.assessmentDate } : a
     );
@@ -101,9 +185,25 @@ export default function AdminAdmissionsPage() {
     if (selectedApp && selectedApp.id === id) {
       setSelectedApp({ ...selectedApp, notes, assessmentDate: assessmentDate || selectedApp.assessmentDate });
     }
+
+    if (isSupabaseConfigured) {
+      try {
+        await supabase
+          .from("admissions")
+          .update({
+            notes,
+            assessment_date: assessmentDate || undefined,
+          })
+          .eq("id", id);
+      } catch (err) {
+        console.warn("Supabase notes update error:", err);
+      }
+    }
+
+    showToast("Applicant remarks saved.");
   };
 
-  const handleCreateApplication = (e: React.FormEvent) => {
+  const handleCreateApplication = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newForm.studentName || !newForm.parentEmail || !newForm.parentPhone) return;
 
@@ -126,6 +226,30 @@ export default function AdminAdmissionsPage() {
     const updated = [newRecord, ...applications];
     setApplications(updated);
     saveStoredApplications(updated);
+
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.from("admissions").insert([
+          {
+            id: newRecord.id,
+            student_name: newRecord.studentName,
+            date_of_birth: newRecord.dateOfBirth || null,
+            gender: newRecord.gender,
+            grade: newRecord.grade,
+            previous_school: newRecord.previousSchool || null,
+            parent_name: newRecord.parentName || null,
+            parent_email: newRecord.parentEmail,
+            parent_phone: newRecord.parentPhone,
+            submitted_date: newRecord.submittedDate,
+            status: newRecord.status,
+            notes: newRecord.notes || null,
+          },
+        ]);
+      } catch (err) {
+        console.warn("Supabase admission insert error:", err);
+      }
+    }
+
     setIsAddModalOpen(false);
     setNewForm({
       studentName: "",
@@ -138,9 +262,11 @@ export default function AdminAdmissionsPage() {
       parentPhone: "",
       notes: "",
     });
+
+    showToast(`Candidate ${newRecord.studentName} registered.`);
   };
 
-  const handleSaveEdit = (e: React.FormEvent) => {
+  const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingApp) return;
 
@@ -149,20 +275,57 @@ export default function AdminAdmissionsPage() {
     );
     setApplications(updated);
     saveStoredApplications(updated);
+
+    if (isSupabaseConfigured) {
+      try {
+        await supabase
+          .from("admissions")
+          .update({
+            student_name: editingApp.studentName,
+            grade: editingApp.grade,
+            status: editingApp.status,
+            parent_email: editingApp.parentEmail,
+            parent_phone: editingApp.parentPhone,
+          })
+          .eq("id", editingApp.id);
+      } catch (err) {
+        console.warn("Supabase candidate update error:", err);
+      }
+    }
+
     setEditingApp(null);
+    showToast("Candidate record updated.");
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!deletingApp) return;
     const updated = applications.filter((a) => a.id !== deletingApp.id);
     setApplications(updated);
     saveStoredApplications(updated);
+
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.from("admissions").delete().eq("id", deletingApp.id);
+      } catch (err) {
+        console.warn("Supabase admission delete error:", err);
+      }
+    }
+
     if (selectedApp?.id === deletingApp.id) setSelectedApp(null);
     setDeletingApp(null);
+    showToast("Candidate record removed.");
   };
 
   return (
     <div className="space-y-6">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 bg-[#0E3B7D] text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-[#FFC700] animate-bounce">
+          <span className="material-symbols-outlined text-[#FFC700]">check_circle</span>
+          <span className="text-sm font-bold">{toastMessage}</span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -367,9 +530,12 @@ export default function AdminAdmissionsPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center">
-                    <span className="material-symbols-outlined text-4xl text-slate-300 block mb-2">search_off</span>
-                    <p className="text-slate-500 font-medium">No admission records match your filter criteria.</p>
+                  <td colSpan={6} className="px-6 py-16 text-center">
+                    <span className="material-symbols-outlined text-5xl text-slate-300 block mb-2">how_to_reg</span>
+                    <p className="text-sm font-bold text-[#09234B]">No admission applications submitted yet</p>
+                    <p className="text-xs text-slate-400 max-w-sm mx-auto mt-1">
+                      Candidate records submitted online via the 4-step admission wizard will appear here in real-time.
+                    </p>
                   </td>
                 </tr>
               )}
@@ -423,35 +589,33 @@ export default function AdminAdmissionsPage() {
                 <p className="font-bold text-slate-700 mt-0.5">{selectedApp.previousSchool || "Not Specified"}</p>
               </div>
               <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Date of Birth</span>
+                <p className="font-bold text-slate-700 mt-0.5">{selectedApp.dateOfBirth || "Not Specified"}</p>
+              </div>
+              <div>
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Parent / Guardian</span>
-                <p className="font-bold text-slate-700 mt-0.5">{selectedApp.parentName || "Guardian"}</p>
+                <p className="font-bold text-slate-700 mt-0.5">{selectedApp.parentName || "Not Specified"}</p>
               </div>
               <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Parent Contact</span>
-                <p className="font-semibold text-slate-800 mt-0.5">{selectedApp.parentEmail}</p>
-                <p className="font-mono text-[11px] text-slate-500">{selectedApp.parentPhone}</p>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Contact Email</span>
+                <p className="font-bold text-slate-700 mt-0.5">{selectedApp.parentEmail}</p>
               </div>
               <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Submission Date</span>
-                <p className="font-medium text-slate-700 mt-0.5">{selectedApp.submittedDate}</p>
-              </div>
-              <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Assessment Date</span>
-                <p className="font-bold text-blue-700 mt-0.5">{selectedApp.assessmentDate || "Not Scheduled Yet"}</p>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Contact Phone</span>
+                <p className="font-bold text-slate-700 mt-0.5">{selectedApp.parentPhone}</p>
               </div>
             </div>
 
-            {/* Assessment Scheduling & Faculty Remarks */}
+            {/* Assessment Scheduling & Faculty Notes */}
             <div className="space-y-4 mb-6">
               <div>
                 <label className="text-xs font-black text-[#09234B] uppercase tracking-wider block mb-1">
-                  Schedule Diagnostic Assessment / Entrance Interview
+                  Scheduled Entrance Assessment Date &amp; Time
                 </label>
                 <div className="flex gap-2">
                   <input
-                    type="text"
+                    type="datetime-local"
                     defaultValue={selectedApp.assessmentDate || ""}
-                    placeholder="e.g. 2026-08-22 (10:00 AM) - Lab B"
                     id="assessment-date-input"
                     className="flex-1 px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
                   />
@@ -460,12 +624,11 @@ export default function AdminAdmissionsPage() {
                       const input = document.getElementById("assessment-date-input") as HTMLInputElement;
                       if (input) {
                         handleSaveNotes(selectedApp.id, selectedApp.notes || "", input.value);
-                        handleUpdateStatus(selectedApp.id, "Assessment Scheduled");
                       }
                     }}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow-xs transition-colors"
+                    className="px-4 py-2 bg-[#0E3B7D] hover:bg-[#164E9A] text-white rounded-xl text-xs font-bold transition-colors"
                   >
-                    Set Schedule
+                    Save Slot
                   </button>
                 </div>
               </div>

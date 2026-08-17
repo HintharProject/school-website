@@ -47,9 +47,9 @@ const pathways = [
 ];
 
 const keyHighlights = [
+  { value: "4 Campuses", label: "Yangon & Mawlamyine", sub: "3 in YGN · 1 in MLM" },
   { value: "100%", label: "University Placement", sub: "Global Admissions" },
   { value: "Yr 7–13", label: "Academic Continuum", sub: "Pearson Edexcel" },
-  { value: "15+", label: "Years Excellence", sub: "Accredited Faculty" },
   { value: "100%", label: "Exam Board Center", sub: "British Council Partner" },
 ];
 
@@ -64,14 +64,14 @@ export default function HeroSection() {
       {/* ─── High-Resolution Photographic Background ───────────── */}
       <div className="absolute inset-0 z-0">
         <Image
-          src="/images/graduation.jpg"
+          src="/images/graduation.png"
           alt="Hinthar International School Campus and Scholars"
           fill
           className="object-cover object-center scale-105"
           priority
           quality={95}
         />
-        {/* Balanced cinematic overlays to showcase graduation.jpg vividly */}
+        {/* Balanced cinematic overlays to showcase graduation.png vividly */}
         <div className="absolute inset-0 bg-[#06152B]/40" />
         <div className="absolute inset-0 bg-gradient-to-r from-[#06152B]/85 via-[#06152B]/45 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#06152B]/95 via-transparent to-[#06152B]/40" />
@@ -210,18 +210,16 @@ export default function HeroSection() {
                     <div
                       key={item.title}
                       onClick={() => setSelectedPathway(idx)}
-                      className={`p-4 rounded-2xl cursor-pointer transition-all duration-200 border text-left ${
-                        isSelected
-                          ? "bg-[#0E3B7D]/40 border-[#FFC700] shadow-md ring-1 ring-[#FFC700]/30"
-                          : "bg-black/15 border-white/10 hover:bg-black/25 hover:border-white/25"
-                      }`}
+                      className={`p-4 rounded-2xl cursor-pointer transition-all duration-200 border text-left ${isSelected
+                        ? "bg-[#0E3B7D]/40 border-[#FFC700] shadow-md ring-1 ring-[#FFC700]/30"
+                        : "bg-black/15 border-white/10 hover:bg-black/25 hover:border-white/25"
+                        }`}
                     >
                       <div className="flex items-center justify-between mb-1.5">
                         <div className="flex items-center gap-2">
                           <span
-                            className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md ${
-                              isSelected ? "bg-[#FFC700] text-[#09234B]" : "bg-white/15 text-slate-200"
-                            }`}
+                            className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md ${isSelected ? "bg-[#FFC700] text-[#09234B]" : "bg-white/15 text-slate-200"
+                              }`}
                           >
                             {item.badge}
                           </span>
@@ -230,9 +228,8 @@ export default function HeroSection() {
                           </span>
                         </div>
                         <span
-                          className={`material-symbols-outlined text-base ${
-                            isSelected ? "text-[#FFC700]" : "text-slate-400"
-                          }`}
+                          className={`material-symbols-outlined text-base ${isSelected ? "text-[#FFC700]" : "text-slate-400"
+                            }`}
                         >
                           {isSelected ? "check_circle" : "chevron_right"}
                         </span>
