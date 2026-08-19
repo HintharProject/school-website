@@ -41,9 +41,12 @@ A complete front-end UI for Hinthar International School, built with **Next.js 1
 - **Components**: Cards use `bg-surface dark:bg-surface-variant`, `rounded-2xl`, `border border-outline-variant/30`
 - **Forms**: Consistent input/button/label styles across all pages
 
-## Build
+## Build & Deployment Commands
 
 ```bash
-npm run build   # Compiles with zero TypeScript errors
-npm run dev     # Start development server
+npm run build              # Standard Next.js production build (fast & clean)
+npm run build:cloudflare   # OpenNext Cloudflare worker compilation
+npm run preview            # Local Cloudflare preview
+npm run deploy             # Deploy directly to Cloudflare
+npm run dev                # Start local development server
 ```
