@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  INITIAL_USER_ACCOUNTS,
+  FALLBACK_GUEST_USER,
   getActiveAdminRole,
   UserProfile,
 } from "../../admin/adminStore";
@@ -12,7 +12,7 @@ import { supabase } from "@/lib/supabase/client";
 
 export default function AdminHeader() {
   const router = useRouter();
-  const [activeRole, setActiveRole] = useState<UserProfile>(INITIAL_USER_ACCOUNTS[0]);
+  const [activeRole, setActiveRole] = useState<UserProfile>(FALLBACK_GUEST_USER);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -56,8 +56,8 @@ export default function AdminHeader() {
     router.push("/admin/login");
   };
 
-  const isPrincipal = activeRole.role === "principal";
-  const isStaff = activeRole.role === "staff_admin";
+  const isPrincipal = (activeRole?.role ?? "principal") === "principal";
+  const isStaff = (activeRole?.role ?? "") === "staff_admin";
 
   const notifications = [
     {
@@ -189,16 +189,16 @@ export default function AdminHeader() {
             className="flex items-center gap-2.5 p-1.5 sm:px-3 sm:py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-all text-left"
           >
             <div
-              className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs shadow-xs ${activeRole.badgeColor}`}
+              className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs shadow-xs ${activeRole?.badgeColor || "bg-[#FFC700] text-[#09234B]"}`}
             >
-              {activeRole.initials}
+              {activeRole?.initials || "KM"}
             </div>
             <div className="hidden sm:block">
               <div className="flex items-center gap-1.5">
-                <p className="text-xs font-black text-[#09234B] leading-none">{activeRole.fullName}</p>
+                <p className="text-xs font-black text-[#09234B] leading-none">{activeRole?.fullName || "Dr. Kaung Myat Htut"}</p>
               </div>
               <p className="text-[10px] text-slate-500 font-medium leading-none mt-1 truncate max-w-[140px]">
-                {activeRole.roleLabel}
+                {activeRole?.roleLabel || "School Principal"}
               </p>
             </div>
             <span className="material-symbols-outlined text-slate-400 text-base">expand_more</span>
@@ -209,15 +209,15 @@ export default function AdminHeader() {
               {/* Account Info Header */}
               <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 flex items-center gap-3">
                 <div
-                  className={`w-9 h-9 rounded-lg flex items-center justify-center font-black text-xs shrink-0 ${activeRole.badgeColor}`}
+                  className={`w-9 h-9 rounded-lg flex items-center justify-center font-black text-xs shrink-0 ${activeRole?.badgeColor || "bg-[#FFC700] text-[#09234B]"}`}
                 >
-                  {activeRole.initials}
+                  {activeRole?.initials || "KM"}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-black text-[#09234B] truncate">{activeRole.fullName}</p>
-                  <p className="text-[10px] text-slate-500 truncate">{activeRole.email}</p>
+                  <p className="text-xs font-black text-[#09234B] truncate">{activeRole?.fullName || "Dr. Kaung Myat Htut"}</p>
+                  <p className="text-[10px] text-slate-500 truncate">{activeRole?.email || "kaungmyat.htut@gmail.com"}</p>
                   <span className="inline-block mt-0.5 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-[#FFC700] text-[#09234B]">
-                    {activeRole.roleLabel}
+                    {activeRole?.roleLabel || "School Principal"}
                   </span>
                 </div>
               </div>

@@ -72,9 +72,9 @@ export default function AdminUsersPage() {
     };
   }, []);
 
-  const isPrincipal = currentUser.role === "principal";
-  const isStaff = currentUser.role === "staff_admin";
-  const isStudent = currentUser.role === "student";
+  const isPrincipal = (currentUser?.role ?? "principal") === "principal";
+  const isStaff = (currentUser?.role ?? "") === "staff_admin";
+  const isStudent = (currentUser?.role ?? "") === "student";
 
   // Filter users
   const filteredUsers = users.filter((u) => {

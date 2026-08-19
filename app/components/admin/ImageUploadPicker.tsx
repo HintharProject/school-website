@@ -236,17 +236,28 @@ export default function ImageUploadPicker({
               <p className="font-bold text-[#0E3B7D]">Uploading to Supabase Storage...</p>
             </div>
           ) : (
-            <div className="py-3 flex flex-col items-center justify-center gap-1.5">
+            <div className="py-3 flex flex-col items-center justify-center gap-2">
               <div className="w-10 h-10 rounded-full bg-blue-100/70 text-[#0E3B7D] flex items-center justify-center">
                 <span className="material-symbols-outlined text-xl">file_upload</span>
               </div>
-              <div>
-                <p className="font-bold text-slate-800 text-xs">
-                  <span className="text-[#0E3B7D] hover:underline">Click to browse</span> or drag and drop image
+              <div className="text-center">
+                <p className="font-bold text-slate-800 text-xs mb-0.5">
+                  Select Banner Image or Drag &amp; Drop Here
                 </p>
-                <p className="text-[10px] text-slate-400 mt-0.5">
-                  Supports PNG, JPG, JPEG, WebP, AVIF, GIF (Max 8MB)
+                <p className="text-[10px] text-slate-400 mb-2.5">
+                  Supports PNG, JPG, JPEG, WebP, AVIF (Max 8MB)
                 </p>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    fileInputRef.current?.click();
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-[#0E3B7D] hover:bg-[#164E9A] text-white font-bold text-xs shadow-sm transition-all active:scale-95 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">folder_open</span>
+                  <span>Browse Image File</span>
+                </button>
               </div>
             </div>
           )}

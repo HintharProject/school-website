@@ -8,18 +8,20 @@ import Navbar from "../components/Navbar";
 import FooterSection from "../components/sections/FooterSection";
 import ChatbotWidget from "../components/ChatbotWidget";
 import { CampusRecord } from "@/lib/supabase/types";
-import { DEFAULT_CAMPUSES } from "@/lib/data/campuses";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
 
 export default function CampusesView() {
-  const [campuses, setCampuses] = useState<CampusRecord[]>(DEFAULT_CAMPUSES);
+  const [campuses, setCampuses] = useState<CampusRecord[]>([]);
   const [selectedCity, setSelectedCity] = useState<"All" | "Yangon" | "Mawlamyine">("All");
   const [activeCampusModal, setActiveCampusModal] = useState<CampusRecord | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function loadCampuses() {
-      if (!isSupabaseConfigured) return;
+      if (!isSupabaseConfigured) {
+        setIsLoading(false);
+        return;
+      }
       try {
         setIsLoading(true);
         const { data, error } = await supabase
@@ -28,11 +30,11 @@ export default function CampusesView() {
           .eq("is_active", true)
           .order("city", { ascending: false });
 
-        if (!error && data && data.length > 0) {
+        if (!error && data) {
           setCampuses(data as CampusRecord[]);
         }
       } catch (err) {
-        console.warn("Using default campus data:", err);
+        console.warn("Supabase campuses query error:", err);
       } finally {
         setIsLoading(false);
       }
@@ -92,6 +94,16 @@ export default function CampusesView() {
           </div>
 
           {/* Grid of Campuses */}
+          {filteredCampuses.length === 0 && !isLoading && (
+            <div className="text-center py-20 bg-white rounded-3xl border border-slate-200 p-8 shadow-xs max-w-xl mx-auto">
+              <span className="material-symbols-outlined text-5xl text-slate-300 mb-2">location_city</span>
+              <h3 className="text-base font-bold text-[#09234B]">No campuses listed</h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Active campus centers configured in the school database will appear here.
+              </p>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <AnimatePresence mode="popLayout">
               {filteredCampuses.map((campus) => (

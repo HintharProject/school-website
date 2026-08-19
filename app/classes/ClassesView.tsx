@@ -6,7 +6,6 @@ import Link from "next/link";
 import Navbar from "../components/Navbar";
 import FooterSection from "../components/sections/FooterSection";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
-import { getStoredCourses, getStoredBulletins } from "../admin/adminStore";
 
 interface CourseItem {
   id: string | number;
@@ -30,198 +29,38 @@ interface AnnouncementItem {
   content: string;
 }
 
-const DEFAULT_COURSES: CourseItem[] = [
-  {
-    id: 1,
-    name: "Pure Mathematics (P1 – P4)",
-    code: "WMA11 / WMA12",
-    level: "Pearson IAL",
-    category: "STEM",
-    schedule: "Mon, Wed, Fri • 08:30 AM – 10:00 AM",
-    room: "Mathematics Lab 2",
-    instructor: "Dr. Kaung Myat Htut & U Than Win",
-    description: "Advanced calculus, differential equations, vectors, coordinate geometry, and sequence & series.",
-    credits: "4 Modules",
-  },
-  {
-    id: 2,
-    name: "Advanced Physics & Practical Lab (Units 1–6)",
-    code: "WPH11 / WPH14",
-    level: "Pearson IAL",
-    category: "STEM",
-    schedule: "Tue, Thu • 10:30 AM – 12:30 PM",
-    room: "Newton Science Lab",
-    instructor: "Dr. Htet Aung Lin",
-    description: "Mechanics, electrical circuits, thermodynamics, fields, waves, nuclear physics and empirical experiments.",
-    credits: "Units 1–6",
-  },
-  {
-    id: 3,
-    name: "Pearson IGCSE Computer Science",
-    code: "4CP0",
-    level: "Pearson IGCSE",
-    category: "Computing",
-    schedule: "Mon, Thu • 01:00 PM – 02:30 PM",
-    room: "Turing Digital Lab",
-    instructor: "Daw May Zin Thet",
-    description: "Algorithms, Python software architecture, data structures, network security, and computer systems.",
-    credits: "2 Papers",
-  },
-  {
-    id: 4,
-    name: "Pearson IGCSE Chemistry & Biology",
-    code: "4CH1 / 4BI1",
-    level: "Pearson IGCSE",
-    category: "STEM",
-    schedule: "Mon, Wed, Fri • 10:30 AM – 12:00 PM",
-    room: "Chemistry & Bio Lab",
-    instructor: "Dr. Su Mon Kyaw",
-    description: "Chemical bonding, stoichiometry, human physiology, genetics, organic synthesis, and laboratory investigation.",
-    credits: "Core & Extended",
-  },
-  {
-    id: 5,
-    name: "Economics & Business Studies",
-    code: "4EC1 / 4BS1",
-    level: "Pearson IGCSE",
-    category: "Business",
-    schedule: "Tue, Thu • 02:00 PM – 03:30 PM",
-    room: "Economics Seminar Room",
-    instructor: "U Myo Min Tun (MBA)",
-    description: "Micro & macroeconomics, market dynamics, international trade, financial statements, and business strategy.",
-    credits: "2 Papers",
-  },
-  {
-    id: 6,
-    name: "Lower Secondary STEM Discovery & Math (Year 7–9)",
-    code: "SEC-MATH-08",
-    level: "Lower Secondary",
-    category: "STEM",
-    schedule: "Daily • 09:00 AM – 10:30 AM",
-    room: "Room 104 (Secondary Wing)",
-    instructor: "Tr. Rachel Evans",
-    description: "Pre-algebra, introductory physics concepts, scientific inquiry, and global perspective workshops for Year 7 to Year 9.",
-    credits: "Full Year",
-  },
-  {
-    id: 7,
-    name: "Lower Secondary English & Global Perspectives (Year 7–9)",
-    code: "SEC-ENG-09",
-    level: "Lower Secondary",
-    category: "Languages",
-    schedule: "Daily • 11:00 AM – 12:30 PM",
-    room: "Language Arts Studio",
-    instructor: "Tr. Sarah Jenkins",
-    description: "Critical reading, structured academic essays, speech debate, and international contemporary issues for middle schoolers.",
-    credits: "Core Secondary",
-  },
-];
-
-const DEFAULT_ANNOUNCEMENTS: AnnouncementItem[] = [
-  {
-    id: 1,
-    title: "Pearson Edexcel October/November 2026 Examination Registration",
-    date: "August 20, 2026",
-    badge: "Official Notice",
-    badgeColor: "bg-red-100 text-red-700",
-    content:
-      "All candidate entries for the upcoming Pearson Edexcel IGCSE and International A-Level examination series must be confirmed through the exam officer by September 10th. Statement of Entries will be issued subsequently.",
-  },
-  {
-    id: 2,
-    title: "Science & Engineering Lab Practical Timetable Released",
-    date: "August 15, 2026",
-    badge: "Academic Schedule",
-    badgeColor: "bg-[#E8F0FE] text-[#0E3B7D]",
-    content:
-      "Physics and Chemistry Unit 3 / Unit 6 experimental lab sessions for AS & A2 students will commence this week. Please check your assigned workstation and safety gear requirements.",
-  },
-  {
-    id: 3,
-    title: "Parent-Teacher Academic Progress Review Meetings (Year 7–13)",
-    date: "August 10, 2026",
-    badge: "Parent Portal",
-    badgeColor: "bg-[#FFF8E1] text-[#09234B]",
-    content:
-      "Individual 1-on-1 consultations with faculty subject leads for Lower Secondary, IGCSE, and IAL will take place on campus on Saturday, August 29th. Appointment booking slots are now available via the school office.",
-  },
-];
-
 export default function ClassesView() {
   const [activeTab, setActiveTab] = useState<"courses" | "announcements">("courses");
   const [levelFilter, setLevelFilter] = useState<string>("all");
-  const [courses, setCourses] = useState<CourseItem[]>(DEFAULT_COURSES);
-  const [announcements, setAnnouncements] = useState<AnnouncementItem[]>(DEFAULT_ANNOUNCEMENTS);
+  const [courses, setCourses] = useState<CourseItem[]>([]);
+  const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
-      if (isSupabaseConfigured) {
-        try {
-          const [
-            { data: dbCourses, error: cErr },
-            { data: dbBulletins, error: bErr },
-          ] = await Promise.all([
-            supabase
-              .from("classes_courses")
-              .select("id, name, code, grade, category, time, instructor, room, description, credits, is_active")
-              .eq("is_active", true)
-              .order("grade", { ascending: false }),
-            supabase
-              .from("bulletin_notices")
-              .select("id, title, date, type, content")
-              .order("id", { ascending: false }),
-          ]);
-
-          if (!cErr && dbCourses && dbCourses.length > 0) {
-            const mapped: CourseItem[] = dbCourses.map((c: any) => {
-              let level: "Lower Secondary" | "Pearson IGCSE" | "Pearson IAL" = "Pearson IAL";
-              if (c.grade.includes("Lower Secondary")) level = "Lower Secondary";
-              else if (c.grade.includes("IGCSE")) level = "Pearson IGCSE";
-
-              return {
-                id: c.id,
-                name: c.name,
-                code: c.code,
-                level,
-                category: c.category,
-                schedule: c.time,
-                room: c.room || "Campus Academic Wing",
-                instructor: c.instructor,
-                description: c.description || `${c.grade} curriculum specialized instruction with practical tutorials.`,
-                credits: c.credits || "Core Course",
-              };
-            });
-            setCourses(mapped);
-          }
-
-          if (!bErr && dbBulletins && dbBulletins.length > 0) {
-            const mappedBulletins: AnnouncementItem[] = dbBulletins.map((b: any) => {
-              let badgeColor = "bg-[#E8F0FE] text-[#0E3B7D]";
-              if (b.type === "Official Notice") badgeColor = "bg-red-100 text-red-700";
-              else if (b.type === "General") badgeColor = "bg-slate-100 text-slate-700";
-
-              return {
-                id: Number(b.id),
-                title: b.title,
-                date: b.date,
-                badge: b.type,
-                badgeColor,
-                content: b.content,
-              };
-            });
-            setAnnouncements(mappedBulletins);
-          }
-          return;
-        } catch (err) {
-          console.warn("Supabase fetch note in ClassesView:", err);
-        }
+      if (!isSupabaseConfigured) {
+        setIsLoading(false);
+        return;
       }
-
-      // Local store fallback
       try {
-        const stored = getStoredCourses();
-        if (stored && stored.length > 0) {
-          const mapped: CourseItem[] = stored.map((c) => {
+        setIsLoading(true);
+        const [
+          { data: dbCourses, error: cErr },
+          { data: dbBulletins, error: bErr },
+        ] = await Promise.all([
+          supabase
+            .from("classes_courses")
+            .select("id, name, code, grade, category, time, instructor, room, description, credits, is_active")
+            .eq("is_active", true)
+            .order("grade", { ascending: false }),
+          supabase
+            .from("bulletin_notices")
+            .select("id, title, date, type, content")
+            .order("id", { ascending: false }),
+        ]);
+
+        if (!cErr && dbCourses) {
+          const mapped: CourseItem[] = dbCourses.map((c: any) => {
             let level: "Lower Secondary" | "Pearson IGCSE" | "Pearson IAL" = "Pearson IAL";
             if (c.grade.includes("Lower Secondary")) level = "Lower Secondary";
             else if (c.grade.includes("IGCSE")) level = "Pearson IGCSE";
@@ -235,27 +74,34 @@ export default function ClassesView() {
               schedule: c.time,
               room: c.room || "Campus Academic Wing",
               instructor: c.instructor,
-              description: `${c.grade} curriculum specialized instruction with practical tutorials.`,
-              credits: "Core",
+              description: c.description || `${c.grade} curriculum specialized instruction.`,
+              credits: c.credits || "Core Course",
             };
           });
           setCourses(mapped);
         }
 
-        const storedBulletins = getStoredBulletins();
-        if (storedBulletins && storedBulletins.length > 0) {
-          const mappedB: AnnouncementItem[] = storedBulletins.map((b) => ({
-            id: b.id,
-            title: b.title,
-            date: b.date,
-            badge: b.type,
-            badgeColor: b.type === "Official Notice" ? "bg-red-100 text-red-700" : "bg-[#E8F0FE] text-[#0E3B7D]",
-            content: b.content,
-          }));
-          setAnnouncements(mappedB);
+        if (!bErr && dbBulletins) {
+          const mappedBulletins: AnnouncementItem[] = dbBulletins.map((b: any) => {
+            let badgeColor = "bg-[#E8F0FE] text-[#0E3B7D]";
+            if (b.type === "Official Notice") badgeColor = "bg-red-100 text-red-700";
+            else if (b.type === "General") badgeColor = "bg-slate-100 text-slate-700";
+
+            return {
+              id: Number(b.id),
+              title: b.title,
+              date: b.date,
+              badge: b.type,
+              badgeColor,
+              content: b.content,
+            };
+          });
+          setAnnouncements(mappedBulletins);
         }
-      } catch {
-        // Ignored fallback
+      } catch (err) {
+        console.warn("Supabase classes query error:", err);
+      } finally {
+        setIsLoading(false);
       }
     }
 
@@ -298,7 +144,7 @@ export default function ClassesView() {
                 : "text-slate-600 hover:text-[#0E3B7D]"
             }`}
           >
-            Course Schedules
+            Course Schedules ({courses.length})
           </button>
           <button
             onClick={() => setActiveTab("announcements")}
@@ -308,7 +154,7 @@ export default function ClassesView() {
                 : "text-slate-600 hover:text-[#0E3B7D]"
             }`}
           >
-            Notices &amp; News
+            Notices ({announcements.length})
           </button>
         </div>
 
@@ -344,6 +190,16 @@ export default function ClassesView() {
                   </button>
                 ))}
               </div>
+
+              {filteredCourses.length === 0 && !isLoading && (
+                <div className="text-center py-16 bg-white rounded-3xl border border-slate-200 p-8 shadow-xs max-w-xl mx-auto">
+                  <span className="material-symbols-outlined text-5xl text-slate-300 mb-2">menu_book</span>
+                  <h3 className="text-base font-bold text-[#09234B]">No course timetables found</h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Published class schedules from the database will appear here.
+                  </p>
+                </div>
+              )}
 
               {/* Course Cards Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -399,6 +255,16 @@ export default function ClassesView() {
               transition={{ duration: 0.25 }}
               className="space-y-4 max-w-3xl mx-auto"
             >
+              {announcements.length === 0 && !isLoading && (
+                <div className="text-center py-16 bg-white rounded-3xl border border-slate-200 p-8 shadow-xs">
+                  <span className="material-symbols-outlined text-5xl text-slate-300 mb-2">campaign</span>
+                  <h3 className="text-base font-bold text-[#09234B]">No official notices published</h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Official bulletins and announcements from school administration will appear here.
+                  </p>
+                </div>
+              )}
+
               {announcements.map((ann) => (
                 <div
                   key={ann.id}

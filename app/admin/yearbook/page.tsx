@@ -8,7 +8,7 @@ import {
   saveStoredYearbook,
   getActiveAdminRole,
   UserProfile,
-  INITIAL_USER_ACCOUNTS,
+  FALLBACK_GUEST_USER,
   HIERARCHICAL_CAMPUS_OPTIONS,
   formatCampusBadge,
 } from "../adminStore";
@@ -31,7 +31,7 @@ const badgePresets = [
 
 export default function YearbookManagementPage() {
   const [entries, setEntries] = useState<YearbookScholar[]>([]);
-  const [currentUser, setCurrentUser] = useState<UserProfile>(INITIAL_USER_ACCOUNTS[0]);
+  const [currentUser, setCurrentUser] = useState<UserProfile>(FALLBACK_GUEST_USER);
   const [isLoaded, setIsLoaded] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -137,8 +137,8 @@ export default function YearbookManagementPage() {
     };
   }, []);
 
-  const isStudent = currentUser.role === "student";
-  const isStaffOrPrincipal = currentUser.role === "principal" || currentUser.role === "staff_admin";
+  const isStudent = (currentUser?.role ?? "") === "student";
+  const isStaffOrPrincipal = (currentUser?.role ?? "principal") === "principal" || currentUser?.role === "staff_admin";
 
   // Pending Count for Staff/Principal
   const pendingReviewCount = entries.filter((e) => e.status === "pending_review").length;

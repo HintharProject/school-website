@@ -12,7 +12,7 @@ import {
   getStoredYearbook,
   getActiveAdminRole,
   UserProfile,
-  INITIAL_USER_ACCOUNTS,
+  FALLBACK_GUEST_USER,
 } from "./adminStore";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
 
@@ -20,10 +20,10 @@ export default function AdminDashboardPage() {
   const [applications, setApplications] = useState<AdmissionApplication[]>([]);
   const [clubCount, setClubCount] = useState(0);
   const [courseCount, setCourseCount] = useState(0);
-  const [campusCount, setCampusCount] = useState(4);
-  const [userCount, setUserCount] = useState(1);
+  const [campusCount, setCampusCount] = useState(0);
+  const [userCount, setUserCount] = useState(0);
   const [yearbookCount, setYearbookCount] = useState(0);
-  const [activeRole, setActiveRole] = useState<UserProfile>(INITIAL_USER_ACCOUNTS[0]);
+  const [activeRole, setActiveRole] = useState<UserProfile>(FALLBACK_GUEST_USER);
   const [isLoaded, setIsLoaded] = useState(false);
 
   const loadLiveStats = async () => {
@@ -37,12 +37,14 @@ export default function AdminDashboardPage() {
           { count: yearbookCnt },
           { count: usersCnt },
           { count: campusCnt },
+          { count: coursesCnt },
         ] = await Promise.all([
           supabase.from("admissions").select("*").order("id", { ascending: false }).limit(5),
           supabase.from("clubs").select("*", { count: "exact", head: true }),
           supabase.from("yearbook_alumni").select("*", { count: "exact", head: true }),
           supabase.from("user_profiles").select("*", { count: "exact", head: true }),
           supabase.from("campuses").select("*", { count: "exact", head: true }),
+          supabase.from("classes_courses").select("*", { count: "exact", head: true }),
         ]);
 
         if (appsData !== null) {
@@ -62,22 +64,14 @@ export default function AdminDashboardPage() {
           }));
           setApplications(mapped);
         } else {
-          setApplications(getStoredApplications());
+          setApplications([]);
         }
 
-        if (clubsCnt !== null) setClubCount(clubsCnt);
-        else setClubCount(getStoredClubs().length);
-
-        if (yearbookCnt !== null) setYearbookCount(yearbookCnt);
-        else setYearbookCount(getStoredYearbook().length);
-
-        if (usersCnt !== null) setUserCount(usersCnt);
-        else setUserCount(getStoredUsers().length);
-
-        if (campusCnt !== null && campusCnt > 0) setCampusCount(campusCnt);
-        else setCampusCount(getStoredCampuses().length);
-
-        setCourseCount(getStoredCourses().length);
+        setClubCount(clubsCnt || 0);
+        setYearbookCount(yearbookCnt || 0);
+        setUserCount(usersCnt || 0);
+        setCampusCount(campusCnt || 0);
+        setCourseCount(coursesCnt || 0);
         setIsLoaded(true);
         return;
       } catch (err) {
@@ -120,13 +114,13 @@ export default function AdminDashboardPage() {
     };
   }, []);
 
-  const isPrincipal = activeRole.role === "principal";
-  const isStaff = activeRole.role === "staff_admin";
-  const isStudent = activeRole.role === "student";
+  const isPrincipal = (activeRole?.role ?? "principal") === "principal";
+  const isStaff = (activeRole?.role ?? "") === "staff_admin";
+  const isStudent = (activeRole?.role ?? "") === "student";
 
   const pendingCount = applications.filter((a) => a.status === "Pending").length;
   const myYearbookSubmissions = getStoredYearbook().filter(
-    (y) => y.submittedBy === activeRole.id
+    (y) => y.submittedBy === activeRole?.id
   );
 
   const statusBadgeClasses: Record<string, string> = {
@@ -148,7 +142,7 @@ export default function AdminDashboardPage() {
               } animate-pulse`}
             />
             <span className="text-[11px] font-black text-[#0E3B7D] uppercase tracking-wider">
-              {activeRole.roleLabel} · {activeRole.fullName}
+              {activeRole?.roleLabel || "Principal Authority"} · {activeRole?.fullName || "Dr. Kaung Myat Htut"}
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-[#09234B] tracking-tight">

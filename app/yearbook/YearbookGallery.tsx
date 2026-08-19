@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "../components/Navbar";
 import FooterSection from "../components/sections/FooterSection";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
-import { getStoredYearbook, formatCampusBadge } from "../admin/adminStore";
+import { formatCampusBadge } from "../admin/adminStore";
 
 interface YearbookEntry {
   id: number;
@@ -40,65 +40,45 @@ const campusFilters = [
 
 export default function YearbookGallery() {
   const [entries, setEntries] = useState<YearbookEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("All");
   const [activeCampus, setActiveCampus] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     async function loadYearbook() {
-      if (isSupabaseConfigured) {
-        try {
-          const { data, error } = await supabase
-            .from("yearbook_alumni")
-            .select("*")
-            .eq("status", "published")
-            .order("category", { ascending: false });
-
-          if (!error && data && data.length > 0) {
-            const mapped: YearbookEntry[] = data.map((d: any) => ({
-              id: Number(d.id),
-              name: d.name,
-              category: d.category,
-              categoryLabel: d.category === "Class of 2026" ? "Pearson IAL Scholar" : "Alumni Success",
-              role: d.role,
-              destination: d.destination,
-              subjects: d.subjects,
-              quote: d.quote,
-              image: d.image || "/images/g5.jpg",
-              badge: d.badge || "Alumni",
-              campus: d.campus || "both-campuses",
-            }));
-            setEntries(mapped);
-            return;
-          }
-        } catch (err) {
-          console.warn("Supabase yearbook fetch failed, using local store:", err);
-        }
+      if (!isSupabaseConfigured) {
+        setIsLoading(false);
+        return;
       }
-
-      // Fallback to local admin store if available
       try {
-        const stored = getStoredYearbook();
-        if (stored && stored.length > 0) {
-          const mapped: YearbookEntry[] = stored
-            .filter((d) => !d.status || d.status === "published")
-            .map((d) => ({
-              id: d.id,
-              name: d.name,
-              category: d.category,
-              categoryLabel: d.category === "Class of 2026" ? "Pearson IAL Scholar" : "Alumni Success",
-              role: d.role,
-              destination: d.destination,
-              subjects: d.subjects,
-              quote: d.quote,
-              image: d.image || "/images/g5.jpg",
-              badge: d.badge || "Alumni",
-              campus: d.campus || "both-campuses",
-            }));
+        setIsLoading(true);
+        const { data, error } = await supabase
+          .from("yearbook_alumni")
+          .select("*")
+          .eq("status", "published")
+          .order("category", { ascending: false });
+
+        if (!error && data) {
+          const mapped: YearbookEntry[] = data.map((d: any) => ({
+            id: Number(d.id),
+            name: d.name,
+            category: d.category,
+            categoryLabel: d.category === "Class of 2026" ? "Pearson IAL Scholar" : "Alumni Success",
+            role: d.role,
+            destination: d.destination,
+            subjects: d.subjects,
+            quote: d.quote,
+            image: d.image || "/images/g5.jpg",
+            badge: d.badge || "Alumni",
+            campus: d.campus || "both-campuses",
+          }));
           setEntries(mapped);
         }
-      } catch {
-        // Keep initial entries
+      } catch (err) {
+        console.warn("Supabase yearbook fetch error:", err);
+      } finally {
+        setIsLoading(false);
       }
     }
 
@@ -205,6 +185,16 @@ export default function YearbookGallery() {
         </div>
 
         {/* Gallery Grid */}
+        {filteredEntries.length === 0 && !isLoading && (
+          <div className="text-center py-20 bg-white rounded-3xl border border-slate-200 p-8 shadow-xs max-w-xl mx-auto">
+            <span className="material-symbols-outlined text-5xl text-slate-300 mb-2">auto_stories</span>
+            <h3 className="text-base font-bold text-[#09234B]">No yearbook entries found</h3>
+            <p className="text-xs text-slate-500 mt-1">
+              Published alumni scholar profiles and distinctions from the database will appear here.
+            </p>
+          </div>
+        )}
+
         <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           <AnimatePresence>
             {filteredEntries.map((entry) => {

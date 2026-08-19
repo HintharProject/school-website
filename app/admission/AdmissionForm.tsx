@@ -138,10 +138,25 @@ export default function AdmissionForm() {
       notes: `Selected track: ${formData.academicStream.toUpperCase()} | Subjects: ${formData.selectedSubjects.join(", ")} | Mode: ${formData.studyMode}`,
     };
 
-    // Save to Supabase
+    // Save to Supabase & Dispatch Email Notification
     if (isSupabaseConfigured) {
       try {
         await supabase.from("admissions").insert([newRecord]);
+
+        // Send confirmation email
+        fetch("/api/email/notify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "admission_submitted",
+            recipientEmail: formData.parentEmail,
+            recipientName: formData.parentName || "Parent / Guardian",
+            studentName: formData.studentName,
+            applicationId: randomCode,
+            grade: gradeLabel,
+            status: "Pending",
+          }),
+        }).catch((e) => console.warn("Email confirmation notification error:", e));
       } catch (err) {
         console.warn("Supabase admission insert error:", err);
       }

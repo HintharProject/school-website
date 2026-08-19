@@ -60,11 +60,11 @@ export async function middleware(request: NextRequest) {
     );
   }
 
-  // Protect /admin/* routes (except /admin/login)
+  // Protect /admin/* routes (except /admin/login and /admin/update-password)
   const isAdminRoute = pathname.startsWith("/admin");
-  const isLoginRoute = pathname === "/admin/login";
+  const isAuthRoute = pathname === "/admin/login" || pathname === "/admin/update-password";
 
-  if (isAdminRoute && !isLoginRoute && !user) {
+  if (isAdminRoute && !isAuthRoute && !user) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/admin/login";
     // Sanitize redirect target to relative path only
@@ -74,7 +74,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // If already authenticated and hitting login, redirect to admin dashboard
-  if (isLoginRoute && user) {
+  if (pathname === "/admin/login" && user) {
     const adminUrl = request.nextUrl.clone();
     adminUrl.pathname = "/admin";
     adminUrl.search = "";

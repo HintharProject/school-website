@@ -3,20 +3,19 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { CampusRecord } from "@/lib/supabase/types";
-import { DEFAULT_CAMPUSES } from "@/lib/data/campuses";
 import {
   getStoredCampuses,
   saveStoredCampuses,
   getActiveAdminRole,
   UserProfile,
-  INITIAL_USER_ACCOUNTS,
+  FALLBACK_GUEST_USER,
 } from "../adminStore";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import ImageUploadPicker from "@/app/components/admin/ImageUploadPicker";
 
 export default function AdminCampusesPage() {
   const [campuses, setCampuses] = useState<CampusRecord[]>([]);
-  const [currentUser, setCurrentUser] = useState<UserProfile>(INITIAL_USER_ACCOUNTS[0]);
+  const [currentUser, setCurrentUser] = useState<UserProfile>(FALLBACK_GUEST_USER);
   const [isLoaded, setIsLoaded] = useState(false);
   const [selectedCity, setSelectedCity] = useState<"All" | "Yangon" | "Mawlamyine">("All");
   const [searchQuery, setSearchQuery] = useState("");
@@ -186,7 +185,7 @@ export default function AdminCampusesPage() {
     showToast(`Campus deleted.`);
   };
 
-  if (currentUser.role === "student") {
+  if (currentUser?.role === "student") {
     return (
       <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-sm max-w-xl mx-auto my-12">
         <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto mb-4">
@@ -472,9 +471,9 @@ export default function AdminCampusesPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Phone Contact</label>
+                  <label className="font-bold text-slate-700 block mb-1">Phone Contact (Tel)</label>
                   <input
-                    type="text"
+                    type="tel"
                     value={editingCampus.phone}
                     onChange={(e) => setEditingCampus({ ...editingCampus, phone: e.target.value })}
                     className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#0E3B7D] outline-none"
@@ -642,9 +641,9 @@ export default function AdminCampusesPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Phone</label>
+                  <label className="font-bold text-slate-700 block mb-1">Phone (Tel)</label>
                   <input
-                    type="text"
+                    type="tel"
                     value={formState.phone}
                     onChange={(e) => setFormState({ ...formState, phone: e.target.value })}
                     className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#0E3B7D] outline-none"
