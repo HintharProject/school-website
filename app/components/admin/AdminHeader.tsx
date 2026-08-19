@@ -245,6 +245,17 @@ export default function AdminHeader() {
                   </span>
                   <span>{isPrincipal || isStaff ? "Admissions Pipeline" : "Yearbook Submissions"}</span>
                 </Link>
+
+                <Link
+                  href="/admin/update-password"
+                  onClick={() => setUserDropdownOpen(false)}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-slate-50 text-slate-700 hover:text-[#0E3B7D] transition-colors"
+                >
+                  <span className="material-symbols-outlined text-base text-[#0E3B7D]">
+                    lock_reset
+                  </span>
+                  <span>Change Password</span>
+                </Link>
               </div>
 
               {/* Sign Out Action */}

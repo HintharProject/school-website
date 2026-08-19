@@ -64,14 +64,14 @@ export default function HeroSection() {
       {/* ─── High-Resolution Photographic Background ───────────── */}
       <div className="absolute inset-0 z-0">
         <Image
-          src="/images/graduation.png"
+          src="/images/graduation.webp"
           alt="Hinthar International School Campus and Scholars"
           fill
           className="object-cover object-center scale-105"
           priority
           quality={95}
         />
-        {/* Balanced cinematic overlays to showcase graduation.png vividly */}
+        {/* Balanced cinematic overlays to showcase graduation.webp vividly */}
         <div className="absolute inset-0 bg-[#06152B]/40" />
         <div className="absolute inset-0 bg-gradient-to-r from-[#06152B]/85 via-[#06152B]/45 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#06152B]/95 via-transparent to-[#06152B]/40" />

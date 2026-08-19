@@ -4,6 +4,7 @@ import { useState } from "react";
 import Navbar from "../components/Navbar";
 import FooterSection from "../components/sections/FooterSection";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
+import { getStoredApplications, saveStoredApplications, AdmissionApplication } from "../admin/adminStore";
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
@@ -148,9 +149,8 @@ export default function AdmissionForm() {
 
     try {
       // Local storage fallback sync
-      const raw = localStorage.getItem("his_admin_applications_v1");
-      const current = raw ? JSON.parse(raw) : [];
-      const localRecord = {
+      const current = getStoredApplications();
+      const localRecord: AdmissionApplication = {
         id: randomCode,
         studentName: formData.studentName,
         dateOfBirth: formData.dob || undefined,
@@ -164,8 +164,7 @@ export default function AdmissionForm() {
         status: "Pending",
         notes: `Selected track: ${formData.academicStream.toUpperCase()} | Subjects: ${formData.selectedSubjects.join(", ")} | Mode: ${formData.studyMode}`,
       };
-      localStorage.setItem("his_admin_applications_v1", JSON.stringify([localRecord, ...current]));
-      window.dispatchEvent(new CustomEvent("his_applications_updated"));
+      saveStoredApplications([localRecord, ...current]);
     } catch {
       // Ignore if localStorage unavailable
     }

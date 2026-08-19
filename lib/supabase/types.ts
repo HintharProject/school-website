@@ -37,10 +37,10 @@ export interface CampusRecord {
 export interface YearbookAlumniRecord {
   id: number;
   name: string;
-  category: "Class of 2026" | "Class of 2025" | "Class of 2024";
+  category: "Class of 2026" | "Class of 2025" | "Class of 2024" | "University Placements" | "Competitions";
   role: string;
-  destination: string;
-  subjects: string;
+  destination?: string;
+  subjects?: string;
   quote: string;
   image: string;
   badge?: string;
@@ -108,6 +108,9 @@ export interface CourseRecord {
   time: string;
   instructor: string;
   room?: string;
+  credits?: string;
+  description?: string;
+  is_active?: boolean;
   created_at?: string;
   updated_at?: string;
 }
@@ -118,6 +121,7 @@ export interface BulletinNoticeRecord {
   date: string;
   type: "Official Notice" | "Academic" | "General";
   content: string;
+  is_pinned?: boolean;
   created_at?: string;
   updated_at?: string;
 }

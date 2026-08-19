@@ -19,7 +19,7 @@ const SEED_USERS: UserProfileRecord[] = [
 
 async function getCallerAuth() {
   if (!isSupabaseConfigured) {
-    return { isAuth: true, role: "principal" as UserRole, userId: "dev-local-principal" };
+    return { isAuth: true, role: "principal" as UserRole, userId: "dev-local-principal", suspended: false };
   }
 
   const serverSupabase = await createSupabaseServerClient();
@@ -29,7 +29,7 @@ async function getCallerAuth() {
   } = await serverSupabase.auth.getUser();
 
   if (!user || error) {
-    return { isAuth: false, role: null, userId: null };
+    return { isAuth: false, role: null, userId: null, suspended: false };
   }
 
   const { data: profile } = await supabaseAdmin
@@ -151,15 +151,24 @@ export async function POST(req: Request) {
 
     if (existing) {
       authUserId = existing.id;
+      // Update app_metadata role if needed
+      await supabaseAdmin.auth.admin.updateUserById(authUserId, {
+        app_metadata: { role },
+        user_metadata: { full_name: full_name.trim(), title },
+      });
     } else {
       // Create user in Supabase Auth
       if (send_magic_link) {
+        const host = req.headers.get("origin") || req.headers.get("referer") || "http://localhost:3000";
+        const redirectUrl = `${new URL(host).origin}/auth/callback?type=invite&next=/admin/update-password`;
+
         const { data: inviteData, error: inviteErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(cleanEmail, {
           data: {
             full_name: full_name.trim(),
             title: title || role,
             role,
           },
+          redirectTo: redirectUrl,
         });
 
         if (inviteErr) {
@@ -331,4 +340,3 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: err.message || "Failed to delete user" }, { status: 500 });
   }
 }
-
