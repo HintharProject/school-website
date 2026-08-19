@@ -14,7 +14,6 @@ const navItems: NavItem[] = [
   { label: "Home", href: "/" },
   { label: "Campuses", href: "/campuses" },
   { label: "Classes", href: "/classes" },
-  { label: "Admissions", href: "/admission" },
   { label: "Activities", href: "/activities" },
   { label: "Clubs", href: "/clubs" },
   { label: "Yearbook", href: "/yearbook" },

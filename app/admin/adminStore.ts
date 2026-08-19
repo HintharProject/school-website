@@ -1,5 +1,7 @@
 "use client";
 
+import { CampusRecord } from "@/lib/supabase/types";
+
 export type ApplicationStatus = "Pending" | "Assessment Scheduled" | "Approved" | "Declined";
 
 export interface AdmissionApplication {
@@ -151,25 +153,23 @@ export interface UserProfile {
   createdAt: string;
 }
 
-export const INITIAL_USER_ACCOUNTS: UserProfile[] = [
-  {
-    id: "user-principal-dr-kmh",
-    email: "kaungmyat.htut@gmail.com",
-    fullName: "Dr. Kaung Myat Htut",
-    role: "principal",
-    roleLabel: "School Principal & Founder",
-    title: "Principal & Chief Academic Officer",
-    campusId: "ywarma-campus",
-    initials: "KM",
-    badgeColor: "bg-[#FFC700] text-[#09234B]",
-    status: "active",
-    createdAt: "2026-08-01",
-  },
-];
+export const FALLBACK_GUEST_USER: UserProfile = {
+  id: "principal-master",
+  email: "kaungmyat.htut@gmail.com",
+  fullName: "Dr. Kaung Myat Htut",
+  role: "principal",
+  roleLabel: "School Principal & Founder",
+  title: "Principal & Chief Academic Officer",
+  campusId: "ywarma-campus",
+  initials: "KM",
+  badgeColor: "bg-[#FFC700] text-[#09234B]",
+  status: "active",
+  createdAt: "2026-08-01",
+};
 
-// Backward compatibility alias for existing components
+export const INITIAL_USER_ACCOUNTS: UserProfile[] = [FALLBACK_GUEST_USER];
 export type AdminRoleUser = UserProfile;
-export const ADMIN_ROLES = INITIAL_USER_ACCOUNTS;
+export const ADMIN_ROLES: UserProfile[] = [FALLBACK_GUEST_USER];
 
 export const initialApplications: AdmissionApplication[] = [];
 export const initialYearbook: YearbookScholar[] = [];
@@ -209,22 +209,18 @@ export function purgeLegacyStorageCaches() {
   }
 }
 
-// Auto-run purge on client module load
 if (typeof window !== "undefined") {
   purgeLegacyStorageCaches();
 }
 
 export function getStoredUsers(): UserProfile[] {
-  if (typeof window === "undefined") return INITIAL_USER_ACCOUNTS;
+  if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.USERS);
-    if (!raw) {
-      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USER_ACCOUNTS));
-      return INITIAL_USER_ACCOUNTS;
-    }
+    if (!raw) return [];
     return JSON.parse(raw);
   } catch {
-    return INITIAL_USER_ACCOUNTS;
+    return [];
   }
 }
 
@@ -240,7 +236,7 @@ export function hasPermission(
 ): boolean {
   switch (role) {
     case "principal":
-      return true; // Principal has full access to all modules
+      return true;
     case "staff_admin":
       return [
         "manage_users",
@@ -258,20 +254,14 @@ export function hasPermission(
   }
 }
 
-import { DEFAULT_CAMPUSES } from "@/lib/data/campuses";
-import { CampusRecord } from "@/lib/supabase/types";
-
 export function getStoredCampuses(): CampusRecord[] {
-  if (typeof window === "undefined") return DEFAULT_CAMPUSES;
+  if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.CAMPUSES);
-    if (!raw) {
-      localStorage.setItem(STORAGE_KEYS.CAMPUSES, JSON.stringify(DEFAULT_CAMPUSES));
-      return DEFAULT_CAMPUSES;
-    }
+    if (!raw) return [];
     return JSON.parse(raw);
   } catch {
-    return DEFAULT_CAMPUSES;
+    return [];
   }
 }
 
@@ -282,16 +272,13 @@ export function saveStoredCampuses(campuses: CampusRecord[]) {
 }
 
 export function getStoredApplications(): AdmissionApplication[] {
-  if (typeof window === "undefined") return initialApplications;
+  if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.APPLICATIONS);
-    if (!raw) {
-      localStorage.setItem(STORAGE_KEYS.APPLICATIONS, JSON.stringify(initialApplications));
-      return initialApplications;
-    }
+    if (!raw) return [];
     return JSON.parse(raw);
   } catch {
-    return initialApplications;
+    return [];
   }
 }
 
@@ -302,16 +289,13 @@ export function saveStoredApplications(apps: AdmissionApplication[]) {
 }
 
 export function getStoredYearbook(): YearbookScholar[] {
-  if (typeof window === "undefined") return initialYearbook;
+  if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.YEARBOOK);
-    if (!raw) {
-      localStorage.setItem(STORAGE_KEYS.YEARBOOK, JSON.stringify(initialYearbook));
-      return initialYearbook;
-    }
+    if (!raw) return [];
     return JSON.parse(raw);
   } catch {
-    return initialYearbook;
+    return [];
   }
 }
 
@@ -322,16 +306,13 @@ export function saveStoredYearbook(entries: YearbookScholar[]) {
 }
 
 export function getStoredCourses(): CourseItem[] {
-  if (typeof window === "undefined") return initialCourses;
+  if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.COURSES);
-    if (!raw) {
-      localStorage.setItem(STORAGE_KEYS.COURSES, JSON.stringify(initialCourses));
-      return initialCourses;
-    }
+    if (!raw) return [];
     return JSON.parse(raw);
   } catch {
-    return initialCourses;
+    return [];
   }
 }
 
@@ -342,16 +323,13 @@ export function saveStoredCourses(courses: CourseItem[]) {
 }
 
 export function getStoredBulletins(): BulletinNotice[] {
-  if (typeof window === "undefined") return initialAnnouncements;
+  if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.BULLETINS);
-    if (!raw) {
-      localStorage.setItem(STORAGE_KEYS.BULLETINS, JSON.stringify(initialAnnouncements));
-      return initialAnnouncements;
-    }
+    if (!raw) return [];
     return JSON.parse(raw);
   } catch {
-    return initialAnnouncements;
+    return [];
   }
 }
 
@@ -362,16 +340,13 @@ export function saveStoredBulletins(bulletins: BulletinNotice[]) {
 }
 
 export function getStoredClubs(): ClubItem[] {
-  if (typeof window === "undefined") return initialClubs;
+  if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.CLUBS);
-    if (!raw) {
-      localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(initialClubs));
-      return initialClubs;
-    }
+    if (!raw) return [];
     return JSON.parse(raw);
   } catch {
-    return initialClubs;
+    return [];
   }
 }
 
@@ -382,14 +357,17 @@ export function saveStoredClubs(clubs: ClubItem[]) {
 }
 
 export function getActiveAdminRole(): AdminRoleUser {
-  if (typeof window === "undefined") return ADMIN_ROLES[0];
+  if (typeof window === "undefined") return FALLBACK_GUEST_USER;
   try {
     const roleId = localStorage.getItem(STORAGE_KEYS.ACTIVE_ROLE);
     const stored = getStoredUsers();
-    const found = stored.find((r) => r.id === roleId) || ADMIN_ROLES.find((r) => r.id === roleId);
-    return found || stored[0] || ADMIN_ROLES[0];
+    if (stored && stored.length > 0) {
+      const found = stored.find((r) => r && r.id === roleId);
+      return found || stored[0] || FALLBACK_GUEST_USER;
+    }
+    return FALLBACK_GUEST_USER;
   } catch {
-    return ADMIN_ROLES[0];
+    return FALLBACK_GUEST_USER;
   }
 }
 
@@ -401,17 +379,17 @@ export function setActiveAdminRole(roleId: string) {
 
 export function resetAllDemoData() {
   if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEYS.APPLICATIONS, JSON.stringify(initialApplications));
-  localStorage.setItem(STORAGE_KEYS.YEARBOOK, JSON.stringify(initialYearbook));
-  localStorage.setItem(STORAGE_KEYS.COURSES, JSON.stringify(initialCourses));
-  localStorage.setItem(STORAGE_KEYS.BULLETINS, JSON.stringify(initialAnnouncements));
-  localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(initialClubs));
-  localStorage.setItem(STORAGE_KEYS.ACTIVE_ROLE, ADMIN_ROLES[0].id);
+  localStorage.setItem(STORAGE_KEYS.APPLICATIONS, JSON.stringify([]));
+  localStorage.setItem(STORAGE_KEYS.YEARBOOK, JSON.stringify([]));
+  localStorage.setItem(STORAGE_KEYS.COURSES, JSON.stringify([]));
+  localStorage.setItem(STORAGE_KEYS.BULLETINS, JSON.stringify([]));
+  localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify([]));
+  localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify([]));
 
   window.dispatchEvent(new CustomEvent("his_applications_updated"));
   window.dispatchEvent(new CustomEvent("his_yearbook_updated"));
   window.dispatchEvent(new CustomEvent("his_courses_updated"));
   window.dispatchEvent(new CustomEvent("his_bulletins_updated"));
   window.dispatchEvent(new CustomEvent("his_clubs_updated"));
-  window.dispatchEvent(new CustomEvent("his_role_updated", { detail: ADMIN_ROLES[0].id }));
+  window.dispatchEvent(new CustomEvent("his_users_updated"));
 }

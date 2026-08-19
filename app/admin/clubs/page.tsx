@@ -8,7 +8,7 @@ import {
   saveStoredClubs,
   getActiveAdminRole,
   UserProfile,
-  INITIAL_USER_ACCOUNTS,
+  FALLBACK_GUEST_USER,
   HIERARCHICAL_CAMPUS_OPTIONS,
   formatCampusBadge,
 } from "../adminStore";
@@ -17,7 +17,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
 
 export default function AdminClubsPage() {
   const [clubs, setClubs] = useState<ClubItem[]>([]);
-  const [currentUser, setCurrentUser] = useState<UserProfile>(INITIAL_USER_ACCOUNTS[0]);
+  const [currentUser, setCurrentUser] = useState<UserProfile>(FALLBACK_GUEST_USER);
   const [isLoaded, setIsLoaded] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -103,7 +103,7 @@ export default function AdminClubsPage() {
     };
   }, []);
 
-  const isStudent = currentUser.role === "student";
+  const isStudent = (currentUser?.role ?? "") === "student";
 
   const filteredClubs = clubs.filter((c) => {
     const matchesCategory = activeCategory === "All" || c.category === activeCategory;
@@ -504,12 +504,16 @@ export default function AdminClubsPage() {
                 </div>
 
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Members Count</label>
+                  <label className="font-bold text-slate-700 block mb-1">Active Members Count</label>
                   <input
-                    type="text"
-                    value={newForm.members}
-                    onChange={(e) => setNewForm({ ...newForm, members: e.target.value })}
+                    type="number"
+                    min={1}
+                    max={500}
+                    placeholder="e.g. 35"
+                    value={parseInt(newForm.members) || 30}
+                    onChange={(e) => setNewForm({ ...newForm, members: `${e.target.value || 0} Active Members` })}
                     className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#0E3B7D] outline-none"
+                    required
                   />
                 </div>
               </div>
@@ -620,6 +624,34 @@ export default function AdminClubsPage() {
                   className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#0E3B7D] outline-none"
                   required
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Category</label>
+                  <select
+                    value={editingClub.category}
+                    onChange={(e) => setEditingClub({ ...editingClub, category: e.target.value as any })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#0E3B7D] outline-none"
+                  >
+                    <option value="STEM & Tech">STEM & Tech</option>
+                    <option value="Academic & Debate">Academic & Debate</option>
+                    <option value="Creative Arts">Creative Arts</option>
+                    <option value="Sports & Fitness">Sports & Fitness</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Members Count</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={500}
+                    value={parseInt(editingClub.members) || 25}
+                    onChange={(e) => setEditingClub({ ...editingClub, members: `${e.target.value || 0} Members` })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#0E3B7D] outline-none"
+                    required
+                  />
+                </div>
               </div>
 
               <div>

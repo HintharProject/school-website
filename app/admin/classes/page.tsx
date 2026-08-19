@@ -10,7 +10,7 @@ import {
   saveStoredBulletins,
   getActiveAdminRole,
   UserProfile,
-  INITIAL_USER_ACCOUNTS,
+  FALLBACK_GUEST_USER,
 } from "../adminStore";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
 
@@ -18,7 +18,7 @@ export default function AdminClassesPage() {
   const [activeTab, setActiveTab] = useState<"courses" | "announcements">("courses");
   const [courses, setCourses] = useState<CourseItem[]>([]);
   const [announcements, setAnnouncements] = useState<BulletinNotice[]>([]);
-  const [currentUser, setCurrentUser] = useState<UserProfile>(INITIAL_USER_ACCOUNTS[0]);
+  const [currentUser, setCurrentUser] = useState<UserProfile>(FALLBACK_GUEST_USER);
   const [isLoaded, setIsLoaded] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -70,7 +70,7 @@ export default function AdminClassesPage() {
           supabase.from("bulletin_notices").select("*").order("id", { ascending: false }),
         ]);
 
-        if (!cErr && dbCourses && dbCourses.length > 0) {
+        if (!cErr && dbCourses) {
           const mappedCourses: CourseItem[] = dbCourses.map((c: any) => ({
             id: c.id,
             name: c.name,
@@ -79,15 +79,15 @@ export default function AdminClassesPage() {
             category: c.category,
             time: c.time,
             instructor: c.instructor,
-            room: c.room || "Lab 1",
+            room: c.room || "Campus Room",
           }));
           setCourses(mappedCourses);
           saveStoredCourses(mappedCourses);
         } else {
-          setCourses(getStoredCourses());
+          setCourses([]);
         }
 
-        if (!bErr && dbBulletins && dbBulletins.length > 0) {
+        if (!bErr && dbBulletins) {
           const mappedBulletins: BulletinNotice[] = dbBulletins.map((b: any) => ({
             id: Number(b.id),
             title: b.title,
@@ -98,13 +98,13 @@ export default function AdminClassesPage() {
           setAnnouncements(mappedBulletins);
           saveStoredBulletins(mappedBulletins);
         } else {
-          setAnnouncements(getStoredBulletins());
+          setAnnouncements([]);
         }
 
         setIsLoaded(true);
         return;
       } catch (err) {
-        console.warn("Supabase classes/bulletins fetch note, using local fallback:", err);
+        console.warn("Supabase classes/bulletins fetch note:", err);
       }
     }
 

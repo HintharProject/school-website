@@ -8,7 +8,7 @@ import {
   saveStoredApplications,
   getActiveAdminRole,
   UserProfile,
-  INITIAL_USER_ACCOUNTS,
+  FALLBACK_GUEST_USER,
 } from "../adminStore";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
 
@@ -21,7 +21,7 @@ const statusBadgeClasses: Record<ApplicationStatus, string> = {
 
 export default function AdminAdmissionsPage() {
   const [applications, setApplications] = useState<AdmissionApplication[]>([]);
-  const [currentUser, setCurrentUser] = useState<UserProfile>(INITIAL_USER_ACCOUNTS[0]);
+  const [currentUser, setCurrentUser] = useState<UserProfile>(FALLBACK_GUEST_USER);
   const [isLoaded, setIsLoaded] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -62,7 +62,7 @@ export default function AdminAdmissionsPage() {
         const { data, error } = await supabase
           .from("admissions")
           .select("*")
-          .order("id", { ascending: false });
+          .order("created_at", { ascending: false });
 
         if (!error && data) {
           const mapped: AdmissionApplication[] = data.map((d: any) => ({
@@ -94,7 +94,6 @@ export default function AdminAdmissionsPage() {
     setIsLoaded(true);
   };
 
-  // Load applications from live database on mount & listen for updates
   useEffect(() => {
     loadData();
 
@@ -113,7 +112,7 @@ export default function AdminAdmissionsPage() {
     };
   }, []);
 
-  if (currentUser.role === "student") {
+  if (currentUser?.role === "student") {
     return (
       <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-sm max-w-xl mx-auto my-12">
         <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto mb-4">
@@ -151,6 +150,7 @@ export default function AdminAdmissionsPage() {
 
   // Action Handlers
   const handleUpdateStatus = async (id: string, newStatus: ApplicationStatus) => {
+    const targetApp = applications.find((a) => a.id === id);
     const updated = applications.map((a) =>
       a.id === id ? { ...a, status: newStatus } : a
     );
@@ -165,25 +165,48 @@ export default function AdminAdmissionsPage() {
       try {
         await supabase
           .from("admissions")
-          .update({ status: newStatus })
+          .update({ status: newStatus, updated_at: new Date().toISOString() })
           .eq("id", id);
+
+        if (targetApp && targetApp.parentEmail) {
+          fetch("/api/email/notify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              type: newStatus === "Assessment Scheduled" ? "assessment_scheduled" : "admission_status_updated",
+              recipientEmail: targetApp.parentEmail,
+              recipientName: targetApp.parentName || "Parent / Guardian",
+              studentName: targetApp.studentName,
+              applicationId: targetApp.id,
+              grade: targetApp.grade,
+              status: newStatus,
+              assessmentDate: targetApp.assessmentDate,
+              notes: targetApp.notes,
+            }),
+          }).catch((e) => console.warn("Email notify error:", e));
+        }
       } catch (err) {
         console.warn("Supabase status update error:", err);
       }
     }
 
-    showToast(`Application ${id} marked as ${newStatus}`);
+    showToast(`Application ${id} status updated to: ${newStatus}`);
   };
 
   const handleSaveNotes = async (id: string, notes: string, assessmentDate?: string) => {
+    const targetApp = applications.find((a) => a.id === id);
     const updated = applications.map((a) =>
-      a.id === id ? { ...a, notes, assessmentDate: assessmentDate || a.assessmentDate } : a
+      a.id === id ? { ...a, notes, assessmentDate: assessmentDate !== undefined ? assessmentDate : a.assessmentDate } : a
     );
     setApplications(updated);
     saveStoredApplications(updated);
 
     if (selectedApp && selectedApp.id === id) {
-      setSelectedApp({ ...selectedApp, notes, assessmentDate: assessmentDate || selectedApp.assessmentDate });
+      setSelectedApp({
+        ...selectedApp,
+        notes,
+        assessmentDate: assessmentDate !== undefined ? assessmentDate : selectedApp.assessmentDate,
+      });
     }
 
     if (isSupabaseConfigured) {
@@ -192,15 +215,33 @@ export default function AdminAdmissionsPage() {
           .from("admissions")
           .update({
             notes,
-            assessment_date: assessmentDate || undefined,
+            assessment_date: assessmentDate !== undefined ? assessmentDate : targetApp?.assessmentDate || null,
+            updated_at: new Date().toISOString(),
           })
           .eq("id", id);
+
+        if (assessmentDate && targetApp && targetApp.parentEmail) {
+          fetch("/api/email/notify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              type: "assessment_scheduled",
+              recipientEmail: targetApp.parentEmail,
+              recipientName: targetApp.parentName || "Parent / Guardian",
+              studentName: targetApp.studentName,
+              applicationId: targetApp.id,
+              grade: targetApp.grade,
+              assessmentDate: assessmentDate,
+              notes: notes,
+            }),
+          }).catch((e) => console.warn("Email notify error:", e));
+        }
       } catch (err) {
         console.warn("Supabase notes update error:", err);
       }
     }
 
-    showToast("Applicant remarks saved.");
+    showToast("Assessment details and remarks saved successfully.");
   };
 
   const handleCreateApplication = async (e: React.FormEvent) => {
@@ -245,12 +286,25 @@ export default function AdminAdmissionsPage() {
             notes: newRecord.notes || null,
           },
         ]);
+
+        fetch("/api/email/notify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "admission_submitted",
+            recipientEmail: newRecord.parentEmail,
+            recipientName: newRecord.parentName || "Parent / Guardian",
+            studentName: newRecord.studentName,
+            applicationId: newRecord.id,
+            grade: newRecord.grade,
+            status: newRecord.status,
+          }),
+        }).catch((e) => console.warn("Email notify error:", e));
       } catch (err) {
         console.warn("Supabase admission insert error:", err);
       }
     }
 
-    setIsAddModalOpen(false);
     setNewForm({
       studentName: "",
       dateOfBirth: "",
@@ -262,8 +316,8 @@ export default function AdminAdmissionsPage() {
       parentPhone: "",
       notes: "",
     });
-
-    showToast(`Candidate ${newRecord.studentName} registered.`);
+    setIsAddModalOpen(false);
+    showToast(`Candidate ${newRecord.studentName} registered (${newRecord.id}).`);
   };
 
   const handleSaveEdit = async (e: React.FormEvent) => {
@@ -282,23 +336,53 @@ export default function AdminAdmissionsPage() {
           .from("admissions")
           .update({
             student_name: editingApp.studentName,
+            date_of_birth: editingApp.dateOfBirth || null,
+            gender: editingApp.gender || null,
             grade: editingApp.grade,
-            status: editingApp.status,
+            previous_school: editingApp.previousSchool || null,
+            parent_name: editingApp.parentName || null,
             parent_email: editingApp.parentEmail,
             parent_phone: editingApp.parentPhone,
+            status: editingApp.status,
+            assessment_date: editingApp.assessmentDate || null,
+            notes: editingApp.notes || null,
+            updated_at: new Date().toISOString(),
           })
           .eq("id", editingApp.id);
+
+        if (editingApp.parentEmail) {
+          fetch("/api/email/notify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              type: editingApp.status === "Assessment Scheduled" ? "assessment_scheduled" : "admission_status_updated",
+              recipientEmail: editingApp.parentEmail,
+              recipientName: editingApp.parentName || "Parent / Guardian",
+              studentName: editingApp.studentName,
+              applicationId: editingApp.id,
+              grade: editingApp.grade,
+              assessmentDate: editingApp.assessmentDate,
+              status: editingApp.status,
+              notes: editingApp.notes,
+            }),
+          }).catch((e) => console.warn("Email notify error:", e));
+        }
       } catch (err) {
-        console.warn("Supabase candidate update error:", err);
+        console.warn("Supabase edit error:", err);
       }
     }
 
+    if (selectedApp && selectedApp.id === editingApp.id) {
+      setSelectedApp(editingApp);
+    }
+
     setEditingApp(null);
-    showToast("Candidate record updated.");
+    showToast(`Application ${editingApp.id} updated successfully.`);
   };
 
   const handleConfirmDelete = async () => {
     if (!deletingApp) return;
+
     const updated = applications.filter((a) => a.id !== deletingApp.id);
     setApplications(updated);
     saveStoredApplications(updated);
@@ -307,13 +391,17 @@ export default function AdminAdmissionsPage() {
       try {
         await supabase.from("admissions").delete().eq("id", deletingApp.id);
       } catch (err) {
-        console.warn("Supabase admission delete error:", err);
+        console.warn("Supabase delete error:", err);
       }
     }
 
-    if (selectedApp?.id === deletingApp.id) setSelectedApp(null);
+    if (selectedApp && selectedApp.id === deletingApp.id) {
+      setSelectedApp(null);
+    }
+
+    const removedId = deletingApp.id;
     setDeletingApp(null);
-    showToast("Candidate record removed.");
+    showToast(`Application ${removedId} removed from registry.`);
   };
 
   return (
@@ -326,177 +414,189 @@ export default function AdminAdmissionsPage() {
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Header Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
         <div>
           <div className="inline-flex items-center gap-2 bg-[#E8F0FE] px-3.5 py-1 rounded-full mb-2 border border-[#0E3B7D]/20">
-            <span className="material-symbols-outlined text-[#0E3B7D] text-xs font-bold">how_to_reg</span>
+            <span className="material-symbols-outlined text-[#0E3B7D] text-xs font-bold">school</span>
             <span className="text-[11px] font-black text-[#0E3B7D] uppercase tracking-wider">
-              Admissions &amp; Candidate Enrollment Hub
+              Admissions Workflow &amp; Candidate Pipeline
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-[#09234B] tracking-tight">
-            Admissions Management
+          <h1 className="text-2xl font-black text-[#09234B] tracking-tight">
+            Admissions Pipeline (2026–2027)
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 font-normal">
-            Assess, schedule entrance interviews, and enroll candidates for Academic Year 2026–2027
+          <p className="text-xs text-slate-500 font-normal mt-0.5">
+            Review online applications, schedule placement diagnostics, and confirm student enrollment across all 4 campuses.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#0E3B7D] hover:bg-[#164E9A] text-white font-bold text-xs uppercase tracking-wider shadow-sm transition-all"
-          >
-            <span className="material-symbols-outlined text-sm font-bold">person_add</span>
-            <span>Add Candidate</span>
-          </button>
+        <button
+          onClick={() => setIsAddModalOpen(true)}
+          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] font-black text-xs uppercase tracking-wider shadow-sm transition-all active:scale-95 whitespace-nowrap"
+        >
+          <span className="material-symbols-outlined text-base font-bold">person_add</span>
+          <span>Register Candidate</span>
+        </button>
+      </div>
+
+      {/* Metric Counters */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
+          <div className="w-11 h-11 rounded-xl bg-blue-50 text-[#0E3B7D] flex items-center justify-center font-bold">
+            <span className="material-symbols-outlined text-xl">folder_shared</span>
+          </div>
+          <div>
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Total Applications</span>
+            <span className="text-xl font-black text-[#09234B]">{totalCount}</span>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
+          <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold">
+            <span className="material-symbols-outlined text-xl">pending_actions</span>
+          </div>
+          <div>
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Pending Review</span>
+            <span className="text-xl font-black text-amber-700">{pendingCount}</span>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
+          <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold">
+            <span className="material-symbols-outlined text-xl">event_available</span>
+          </div>
+          <div>
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Assessments</span>
+            <span className="text-xl font-black text-blue-700">{scheduledCount}</span>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
+          <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
+            <span className="material-symbols-outlined text-xl">verified</span>
+          </div>
+          <div>
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Enrolled / Approved</span>
+            <span className="text-xl font-black text-emerald-700">{approvedCount}</span>
+          </div>
         </div>
       </div>
 
-      {/* KPI Metric Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
-          <div>
-            <p className="text-2xl font-black text-[#09234B]">{totalCount}</p>
-            <p className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Total Records</p>
+      {/* Filter & Search Bar */}
+      <div className="bg-white p-4 rounded-2xl shadow-xs border border-slate-200 space-y-3">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+          {/* Status Tabs */}
+          <div className="flex flex-wrap gap-1.5 w-full sm:w-auto">
+            <span className="text-[11px] font-bold text-slate-400 mr-1 self-center">Status:</span>
+            {(["All", "Pending", "Assessment Scheduled", "Approved", "Declined"] as const).map((st) => (
+              <button
+                key={st}
+                onClick={() => setStatusFilter(st)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  statusFilter === st
+                    ? "bg-[#0E3B7D] text-white shadow-xs font-black"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                {st}
+              </button>
+            ))}
           </div>
-          <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold">
-            <span className="material-symbols-outlined text-lg">folder_shared</span>
+
+          {/* Search Box */}
+          <div className="relative w-full sm:w-72">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
+              search
+            </span>
+            <input
+              type="text"
+              placeholder="Search candidate, phone, email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0E3B7D] outline-none transition-all text-xs text-slate-900"
+            />
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-amber-200 shadow-xs flex items-center justify-between bg-amber-50/40">
-          <div>
-            <p className="text-2xl font-black text-amber-900">{pendingCount}</p>
-            <p className="text-[11px] font-bold text-amber-800 uppercase tracking-wider">Pending Review</p>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
-            <span className="material-symbols-outlined text-lg">pending_actions</span>
-          </div>
-        </div>
-
-        <div className="bg-white p-4 rounded-2xl border border-blue-200 shadow-xs flex items-center justify-between bg-blue-50/40">
-          <div>
-            <p className="text-2xl font-black text-blue-900">{scheduledCount}</p>
-            <p className="text-[11px] font-bold text-blue-800 uppercase tracking-wider">Scheduled Exam</p>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center font-bold">
-            <span className="material-symbols-outlined text-lg">event_available</span>
-          </div>
-        </div>
-
-        <div className="bg-white p-4 rounded-2xl border border-emerald-200 shadow-xs flex items-center justify-between bg-emerald-50/40">
-          <div>
-            <p className="text-2xl font-black text-emerald-900">{approvedCount}</p>
-            <p className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">Approved / Enrolled</p>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
-            <span className="material-symbols-outlined text-lg">verified</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Filter / Search Bar */}
-      <div className="bg-white p-5 rounded-2xl shadow-xs border border-slate-200">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3.5">
-          {/* Status Filter */}
-          <div>
-            <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
-              Status Filter
-            </label>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as ApplicationStatus | "All")}
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+        {/* Grade Filter Bar */}
+        <div className="flex items-center gap-2 pt-2 border-t border-slate-100 flex-wrap">
+          <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1">
+            <span className="material-symbols-outlined text-xs text-[#0E3B7D]">menu_book</span>
+            <span>Academic Stream:</span>
+          </span>
+          {[
+            { id: "All", label: "All Streams" },
+            { id: "Lower Secondary", label: "Lower Secondary (Y7–9)" },
+            { id: "Pearson IGCSE", label: "IGCSE (Y10–11)" },
+            { id: "Pearson IAL", label: "IAL / A-Level (Y12–13)" },
+          ].map((gradeOpt) => (
+            <button
+              key={gradeOpt.id}
+              onClick={() => setGradeFilter(gradeOpt.id)}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                gradeFilter === gradeOpt.id
+                  ? "bg-[#FFC700] text-[#09234B] font-black shadow-sm"
+                  : "bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200"
+              }`}
             >
-              <option value="All">All Statuses ({totalCount})</option>
-              <option value="Pending">Pending Review ({pendingCount})</option>
-              <option value="Assessment Scheduled">Assessment Scheduled ({scheduledCount})</option>
-              <option value="Approved">Approved / Enrolled ({approvedCount})</option>
-              <option value="Declined">Declined</option>
-            </select>
-          </div>
-
-          {/* Grade Filter */}
-          <div>
-            <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
-              Academic Stream
-            </label>
-            <select
-              value={gradeFilter}
-              onChange={(e) => setGradeFilter(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
-            >
-              <option value="All">All Academic Streams</option>
-              <option value="Lower Secondary (Year 7)">Lower Secondary (Year 7)</option>
-              <option value="Lower Secondary (Year 8)">Lower Secondary (Year 8)</option>
-              <option value="Lower Secondary (Year 9)">Lower Secondary (Year 9)</option>
-              <option value="Pearson IGCSE (Year 10)">Pearson IGCSE (Year 10)</option>
-              <option value="Pearson IGCSE (Year 11)">Pearson IGCSE (Year 11)</option>
-              <option value="Pearson IAL (Year 12)">Pearson IAL (Year 12)</option>
-              <option value="Pearson IAL (Year 13)">Pearson IAL (Year 13)</option>
-            </select>
-          </div>
-
-          {/* Search Input */}
-          <div className="md:col-span-2">
-            <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
-              Search Candidates
-            </label>
-            <div className="relative">
-              <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base pointer-events-none">
-                search
-              </span>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by student name, Ref ID, parent contact, or school..."
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
-              />
-            </div>
-          </div>
+              {gradeOpt.label}
+            </button>
+          ))}
         </div>
       </div>
 
       {/* Applications Table */}
-      <div className="bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 text-slate-600">
-                <th className="px-5 py-3.5 font-bold uppercase tracking-wider">Candidate &amp; ID</th>
-                <th className="px-5 py-3.5 font-bold uppercase tracking-wider">Grade Level</th>
-                <th className="px-5 py-3.5 font-bold uppercase tracking-wider hidden sm:table-cell">Parent Contact</th>
-                <th className="px-5 py-3.5 font-bold uppercase tracking-wider hidden md:table-cell">Date Submitted</th>
-                <th className="px-5 py-3.5 font-bold uppercase tracking-wider">Status</th>
-                <th className="px-5 py-3.5 font-bold uppercase tracking-wider text-right">Actions</th>
+          <table className="w-full text-left text-xs text-slate-700">
+            <thead className="bg-slate-50/80 text-slate-500 font-extrabold uppercase tracking-wider text-[10px] border-b border-slate-200">
+              <tr>
+                <th className="px-5 py-3.5">Ref ID / Candidate</th>
+                <th className="px-5 py-3.5">Target Grade</th>
+                <th className="px-5 py-3.5">Parent / Contact</th>
+                <th className="px-5 py-3.5">Submitted Date</th>
+                <th className="px-5 py-3.5">Pipeline Status</th>
+                <th className="px-5 py-3.5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {isLoaded && filteredApplications.length > 0 ? (
+              {filteredApplications.length > 0 ? (
                 filteredApplications.map((app) => (
-                  <tr key={app.id} className="hover:bg-slate-50/80 transition-colors">
+                  <tr key={app.id} className="hover:bg-slate-50/70 transition-colors">
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-[#E8F0FE] flex items-center justify-center text-[#0E3B7D] font-black shrink-0 border border-[#0E3B7D]/20">
-                          <span className="material-symbols-outlined text-base font-bold">person</span>
+                        <div className="w-8 h-8 rounded-full bg-blue-50 text-[#0E3B7D] flex items-center justify-center font-black text-xs shrink-0">
+                          {app.studentName.charAt(0)}
                         </div>
                         <div>
-                          <p className="font-black text-sm text-[#09234B]">{app.studentName}</p>
-                          <span className="font-mono text-[10px] text-slate-400 font-bold">{app.id}</span>
+                          <p className="font-bold text-[#09234B]">{app.studentName}</p>
+                          <span className="text-[10px] font-mono text-slate-400">{app.id}</span>
                         </div>
                       </div>
                     </td>
-                    <td className="px-5 py-4 text-slate-700 font-semibold">{app.grade}</td>
-                    <td className="px-5 py-4 text-slate-600 hidden sm:table-cell font-medium">
-                      <p>{app.parentEmail}</p>
-                      <p className="text-[10px] text-slate-400 font-mono">{app.parentPhone}</p>
-                    </td>
-                    <td className="px-5 py-4 text-slate-500 hidden md:table-cell font-medium">{app.submittedDate}</td>
                     <td className="px-5 py-4">
-                      <span className={`inline-block px-2.5 py-1 text-[10px] font-black rounded-md uppercase tracking-wider ${statusBadgeClasses[app.status]}`}>
+                      <span className="font-bold text-slate-800">{app.grade}</span>
+                      {app.previousSchool && (
+                        <p className="text-[10px] text-slate-400 mt-0.5 truncate max-w-[150px]">
+                          Prev: {app.previousSchool}
+                        </p>
+                      )}
+                    </td>
+                    <td className="px-5 py-4">
+                      <p className="font-semibold text-slate-800">{app.parentName || "Parent"}</p>
+                      <div className="flex flex-col text-[11px] text-slate-500">
+                        <span>{app.parentPhone}</span>
+                        <span className="text-[10px] text-slate-400">{app.parentEmail}</span>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4 text-slate-500 font-medium whitespace-nowrap">
+                      {app.submittedDate}
+                    </td>
+                    <td className="px-5 py-4">
+                      <span
+                        className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${statusBadgeClasses[app.status]}`}
+                      >
                         {app.status}
                       </span>
                     </td>
@@ -532,7 +632,7 @@ export default function AdminAdmissionsPage() {
                 <tr>
                   <td colSpan={6} className="px-6 py-16 text-center">
                     <span className="material-symbols-outlined text-5xl text-slate-300 block mb-2">how_to_reg</span>
-                    <p className="text-sm font-bold text-[#09234B]">No admission applications submitted yet</p>
+                    <p className="text-sm font-bold text-[#09234B]">No admission applications found</p>
                     <p className="text-xs text-slate-400 max-w-sm mx-auto mt-1">
                       Candidate records submitted online via the 4-step admission wizard will appear here in real-time.
                     </p>
@@ -787,9 +887,9 @@ export default function AdminAdmissionsPage() {
                   />
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Parent Phone *</label>
+                  <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Parent Phone (Tel) *</label>
                   <input
-                    type="text"
+                    type="tel"
                     required
                     value={newForm.parentPhone}
                     onChange={(e) => setNewForm({ ...newForm, parentPhone: e.target.value })}
@@ -830,7 +930,7 @@ export default function AdminAdmissionsPage() {
         </div>
       )}
 
-      {/* 3. EDIT CANDIDATE MODAL */}
+      {/* 3. FULL EDIT CANDIDATE MODAL */}
       {editingApp && (
         <div
           className="fixed inset-0 z-50 bg-[#09234B]/60 backdrop-blur-xs flex items-center justify-center p-4"
@@ -838,7 +938,7 @@ export default function AdminAdmissionsPage() {
             if (e.target === e.currentTarget) setEditingApp(null);
           }}
         >
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-slate-200 relative">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl border border-slate-200 relative max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setEditingApp(null)}
               className="absolute top-5 right-5 p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
@@ -847,25 +947,27 @@ export default function AdminAdmissionsPage() {
             </button>
 
             <div className="mb-5">
-              <h3 className="text-xl font-black text-[#09234B]">Edit Candidate Record</h3>
-              <p className="text-xs text-slate-500">{editingApp.id}</p>
+              <span className="text-[10px] font-black uppercase tracking-widest text-[#0E3B7D]">
+                Comprehensive Application Editor
+              </span>
+              <h3 className="text-xl font-black text-[#09234B] mt-0.5">Edit Candidate Record</h3>
+              <p className="text-xs font-mono text-slate-400">Application Reference ID: {editingApp.id}</p>
             </div>
 
             <form onSubmit={handleSaveEdit} className="space-y-4 text-xs">
-              <div>
-                <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Student Name</label>
-                <input
-                  type="text"
-                  required
-                  value={editingApp.studentName}
-                  onChange={(e) => setEditingApp({ ...editingApp, studentName: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
-                />
-              </div>
-
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Grade Level</label>
+                  <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Student Full Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingApp.studentName}
+                    onChange={(e) => setEditingApp({ ...editingApp, studentName: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Target Grade Level *</label>
                   <select
                     value={editingApp.grade}
                     onChange={(e) => setEditingApp({ ...editingApp, grade: e.target.value })}
@@ -880,12 +982,36 @@ export default function AdminAdmissionsPage() {
                     <option value="Pearson IAL (Year 13)">Pearson IAL (Year 13)</option>
                   </select>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Status</label>
+                  <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Date of Birth</label>
+                  <input
+                    type="date"
+                    value={editingApp.dateOfBirth || ""}
+                    onChange={(e) => setEditingApp({ ...editingApp, dateOfBirth: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Gender</label>
+                  <select
+                    value={editingApp.gender || "Male"}
+                    onChange={(e) => setEditingApp({ ...editingApp, gender: e.target.value as any })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+                  >
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Pipeline Status *</label>
                   <select
                     value={editingApp.status}
                     onChange={(e) => setEditingApp({ ...editingApp, status: e.target.value as ApplicationStatus })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-[#0E3B7D] font-bold"
                   >
                     <option value="Pending">Pending</option>
                     <option value="Assessment Scheduled">Assessment Scheduled</option>
@@ -895,9 +1021,18 @@ export default function AdminAdmissionsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Parent Email</label>
+                  <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Parent / Guardian</label>
+                  <input
+                    type="text"
+                    value={editingApp.parentName || ""}
+                    onChange={(e) => setEditingApp({ ...editingApp, parentName: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Parent Email *</label>
                   <input
                     type="email"
                     required
@@ -907,15 +1042,47 @@ export default function AdminAdmissionsPage() {
                   />
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Parent Phone</label>
+                  <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Parent Phone (Tel) *</label>
                   <input
-                    type="text"
+                    type="tel"
                     required
                     value={editingApp.parentPhone}
                     onChange={(e) => setEditingApp({ ...editingApp, parentPhone: e.target.value })}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Previous School</label>
+                  <input
+                    type="text"
+                    value={editingApp.previousSchool || ""}
+                    onChange={(e) => setEditingApp({ ...editingApp, previousSchool: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Assessment Date &amp; Time Slot</label>
+                  <input
+                    type="datetime-local"
+                    value={editingApp.assessmentDate || ""}
+                    onChange={(e) => setEditingApp({ ...editingApp, assessmentDate: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Internal Faculty Notes &amp; Stream Remarks</label>
+                <textarea
+                  rows={3}
+                  value={editingApp.notes || ""}
+                  onChange={(e) => setEditingApp({ ...editingApp, notes: e.target.value })}
+                  placeholder="Record interview notes, diagnostic score, placement recommendations..."
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-[#0E3B7D] resize-none"
+                />
               </div>
 
               <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-100">
@@ -930,7 +1097,7 @@ export default function AdminAdmissionsPage() {
                   type="submit"
                   className="px-5 py-2 bg-[#0E3B7D] hover:bg-[#164E9A] text-white font-bold uppercase tracking-wider rounded-xl shadow-xs transition-all"
                 >
-                  Save Changes
+                  Save Changes &amp; Sync
                 </button>
               </div>
             </form>

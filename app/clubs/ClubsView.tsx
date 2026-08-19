@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import FooterSection from "../components/sections/FooterSection";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
-import { getStoredClubs, formatCampusBadge } from "../admin/adminStore";
+import { formatCampusBadge } from "../admin/adminStore";
 
 interface ClubItem {
   id: number;
@@ -31,6 +31,7 @@ const campusFilters = [
 
 export default function ClubsView() {
   const [clubs, setClubs] = useState<ClubItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [activeCampus, setActiveCampus] = useState<string>("All");
   const [selectedClub, setSelectedClub] = useState<ClubItem | null>(null);
@@ -40,75 +41,47 @@ export default function ClubsView() {
 
   useEffect(() => {
     async function loadClubs() {
-      if (isSupabaseConfigured) {
-        try {
-          const { data, error } = await supabase
-            .from("clubs")
-            .select("*")
-            .eq("is_active", true)
-            .order("id", { ascending: true });
-
-          if (!error && data && data.length > 0) {
-            const mapped: ClubItem[] = data.map((c: any) => {
-              let cat: "stem" | "debate" | "sports" | "arts" = "stem";
-              if (c.category.includes("Debate")) cat = "debate";
-              else if (c.category.includes("Sports")) cat = "sports";
-              else if (c.category.includes("Creative")) cat = "arts";
-
-              return {
-                id: Number(c.id),
-                name: c.name,
-                category: cat,
-                categoryLabel: c.category,
-                icon: c.icon || "groups",
-                members: c.members || "30+ Members",
-                meetingTime: c.meeting_time || "Weekly",
-                room: "Campus Dedicated Studio",
-                leadership: c.leadership || "Student Council Lead",
-                description: c.description,
-                image: c.image || "/images/g2.jpg",
-                campus: c.campus || "both-campuses",
-              };
-            });
-            setClubs(mapped);
-            return;
-          }
-        } catch (err) {
-          console.warn("Supabase clubs fetch error:", err);
-        }
+      if (!isSupabaseConfigured) {
+        setIsLoading(false);
+        return;
       }
-
-      // Local store fallback
       try {
-        const stored = getStoredClubs();
-        if (stored && stored.length > 0) {
-          const mapped: ClubItem[] = stored
-            .filter((c) => !c.status || c.status === "published")
-            .map((c) => {
-              let cat: "stem" | "debate" | "sports" | "arts" = "stem";
-              if (c.category.includes("Debate")) cat = "debate";
-              else if (c.category.includes("Sports")) cat = "sports";
-              else if (c.category.includes("Creative")) cat = "arts";
+        setIsLoading(true);
+        const { data, error } = await supabase
+          .from("clubs")
+          .select("*")
+          .eq("is_active", true)
+          .eq("status", "published")
+          .order("id", { ascending: true });
 
-              return {
-                id: c.id,
-                name: c.name,
-                category: cat,
-                categoryLabel: c.category,
-                icon: c.icon,
-                members: c.members,
-                meetingTime: c.meetingTime,
-                room: "Dedicated Studio",
-                leadership: c.leadership,
-                description: c.description,
-                image: c.image,
-                campus: c.campus || "both-campuses",
-              };
-            });
+        if (!error && data) {
+          const mapped: ClubItem[] = data.map((c: any) => {
+            let cat: "stem" | "debate" | "sports" | "arts" = "stem";
+            if (c.category.includes("Debate")) cat = "debate";
+            else if (c.category.includes("Sports")) cat = "sports";
+            else if (c.category.includes("Creative")) cat = "arts";
+
+            return {
+              id: Number(c.id),
+              name: c.name,
+              category: cat,
+              categoryLabel: c.category,
+              icon: c.icon || "groups",
+              members: c.members || "30+ Members",
+              meetingTime: c.meeting_time || "Weekly",
+              room: "Campus Dedicated Studio",
+              leadership: c.leadership || "Student Council Lead",
+              description: c.description,
+              image: c.image || "/images/g2.jpg",
+              campus: c.campus || "both-campuses",
+            };
+          });
           setClubs(mapped);
         }
-      } catch {
-        // Keep initial
+      } catch (err) {
+        console.warn("Supabase clubs fetch error:", err);
+      } finally {
+        setIsLoading(false);
       }
     }
 
@@ -206,6 +179,16 @@ export default function ClubsView() {
         </div>
 
         {/* Clubs Grid */}
+        {filteredClubs.length === 0 && !isLoading && (
+          <div className="text-center py-20 bg-white rounded-3xl border border-slate-200 p-8 shadow-xs max-w-xl mx-auto">
+            <span className="material-symbols-outlined text-5xl text-slate-300 mb-2">groups</span>
+            <h3 className="text-base font-bold text-[#09234B]">No student clubs listed</h3>
+            <p className="text-xs text-slate-500 mt-1">
+              Active and approved student clubs in the database will appear here.
+            </p>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredClubs.map((club) => {
             const campusBadge = formatCampusBadge(club.campus);

@@ -4,11 +4,11 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
-import { getActiveAdminRole, UserProfile, INITIAL_USER_ACCOUNTS } from "../../admin/adminStore";
+import { getActiveAdminRole, UserProfile, FALLBACK_GUEST_USER } from "../../admin/adminStore";
 
 export default function AdminSidebar() {
   const pathname = usePathname();
-  const [activeRole, setActiveRole] = useState<UserProfile>(INITIAL_USER_ACCOUNTS[0]);
+  const [activeRole, setActiveRole] = useState<UserProfile>(FALLBACK_GUEST_USER);
 
   useEffect(() => {
     setActiveRole(getActiveAdminRole());
@@ -19,9 +19,9 @@ export default function AdminSidebar() {
     return () => window.removeEventListener("his_role_updated", handleRoleUpdate);
   }, []);
 
-  const isPrincipal = activeRole.role === "principal";
-  const isStaff = activeRole.role === "staff_admin";
-  const isStudent = activeRole.role === "student";
+  const isPrincipal = (activeRole?.role ?? "principal") === "principal";
+  const isStaff = (activeRole?.role ?? "") === "staff_admin";
+  const isStudent = (activeRole?.role ?? "") === "student";
 
   // Dynamic Navigation Items based on Access Level
   const getNavItems = () => {
@@ -130,14 +130,14 @@ export default function AdminSidebar() {
       <div className="p-4 border-t border-white/10 bg-[#061833] space-y-3">
         <div className="flex items-center gap-2.5 px-1">
           <div
-            className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs shrink-0 ${activeRole.badgeColor}`}
+            className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs shrink-0 ${activeRole?.badgeColor || "bg-[#FFC700] text-[#09234B]"}`}
           >
-            {activeRole.initials}
+            {activeRole?.initials || "KM"}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-white truncate">{activeRole.fullName}</p>
+            <p className="text-xs font-bold text-white truncate">{activeRole?.fullName || "Dr. Kaung Myat Htut"}</p>
             <p className="text-[10px] text-[#FFC700] font-semibold truncate">
-              {activeRole.roleLabel}
+              {activeRole?.roleLabel || "Principal Authority"}
             </p>
           </div>
         </div>
