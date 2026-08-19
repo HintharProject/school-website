@@ -385,8 +385,9 @@ export function getActiveAdminRole(): AdminRoleUser {
   if (typeof window === "undefined") return ADMIN_ROLES[0];
   try {
     const roleId = localStorage.getItem(STORAGE_KEYS.ACTIVE_ROLE);
-    const found = ADMIN_ROLES.find((r) => r.id === roleId);
-    return found || ADMIN_ROLES[0];
+    const stored = getStoredUsers();
+    const found = stored.find((r) => r.id === roleId) || ADMIN_ROLES.find((r) => r.id === roleId);
+    return found || stored[0] || ADMIN_ROLES[0];
   } catch {
     return ADMIN_ROLES[0];
   }

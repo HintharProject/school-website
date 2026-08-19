@@ -8,13 +8,19 @@ import {
   saveStoredCourses,
   getStoredBulletins,
   saveStoredBulletins,
+  getActiveAdminRole,
+  UserProfile,
+  INITIAL_USER_ACCOUNTS,
 } from "../adminStore";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
 
 export default function AdminClassesPage() {
   const [activeTab, setActiveTab] = useState<"courses" | "announcements">("courses");
   const [courses, setCourses] = useState<CourseItem[]>([]);
   const [announcements, setAnnouncements] = useState<BulletinNotice[]>([]);
+  const [currentUser, setCurrentUser] = useState<UserProfile>(INITIAL_USER_ACCOUNTS[0]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Search
   const [searchQuery, setSearchQuery] = useState("");
@@ -41,25 +47,87 @@ export default function AdminClassesPage() {
   // New Notice Form
   const [noticeForm, setNoticeForm] = useState({
     title: "",
-    date: "",
+    date: new Date().toISOString().split("T")[0],
     type: "Official Notice" as "Official Notice" | "Academic" | "General",
     content: "",
   });
 
-  useEffect(() => {
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const loadData = async () => {
+    setCurrentUser(getActiveAdminRole());
+
+    if (isSupabaseConfigured) {
+      try {
+        const [
+          { data: dbCourses, error: cErr },
+          { data: dbBulletins, error: bErr },
+        ] = await Promise.all([
+          supabase.from("classes_courses").select("*").eq("is_active", true).order("grade", { ascending: false }),
+          supabase.from("bulletin_notices").select("*").order("id", { ascending: false }),
+        ]);
+
+        if (!cErr && dbCourses && dbCourses.length > 0) {
+          const mappedCourses: CourseItem[] = dbCourses.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            code: c.code,
+            grade: c.grade,
+            category: c.category,
+            time: c.time,
+            instructor: c.instructor,
+            room: c.room || "Lab 1",
+          }));
+          setCourses(mappedCourses);
+          saveStoredCourses(mappedCourses);
+        } else {
+          setCourses(getStoredCourses());
+        }
+
+        if (!bErr && dbBulletins && dbBulletins.length > 0) {
+          const mappedBulletins: BulletinNotice[] = dbBulletins.map((b: any) => ({
+            id: Number(b.id),
+            title: b.title,
+            date: b.date,
+            type: b.type,
+            content: b.content,
+          }));
+          setAnnouncements(mappedBulletins);
+          saveStoredBulletins(mappedBulletins);
+        } else {
+          setAnnouncements(getStoredBulletins());
+        }
+
+        setIsLoaded(true);
+        return;
+      } catch (err) {
+        console.warn("Supabase classes/bulletins fetch note, using local fallback:", err);
+      }
+    }
+
     setCourses(getStoredCourses());
     setAnnouncements(getStoredBulletins());
     setIsLoaded(true);
+  };
+
+  useEffect(() => {
+    loadData();
 
     const handleCoursesUpdate = () => setCourses(getStoredCourses());
     const handleBulletinsUpdate = () => setAnnouncements(getStoredBulletins());
+    const handleRoleUpdate = () => setCurrentUser(getActiveAdminRole());
 
     window.addEventListener("his_courses_updated", handleCoursesUpdate);
     window.addEventListener("his_bulletins_updated", handleBulletinsUpdate);
+    window.addEventListener("his_role_updated", handleRoleUpdate);
 
     return () => {
       window.removeEventListener("his_courses_updated", handleCoursesUpdate);
       window.removeEventListener("his_bulletins_updated", handleBulletinsUpdate);
+      window.removeEventListener("his_role_updated", handleRoleUpdate);
     };
   }, []);
 
@@ -80,24 +148,46 @@ export default function AdminClassesPage() {
   );
 
   // Actions - Courses
-  const handleCreateCourse = (e: React.FormEvent) => {
+  const handleCreateCourse = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!courseForm.name.trim() || !courseForm.code.trim()) return;
 
+    const newId = `course-${Date.now()}`;
     const newRecord: CourseItem = {
-      id: Date.now().toString(),
+      id: newId,
       name: courseForm.name,
       code: courseForm.code,
       grade: courseForm.grade,
       category: courseForm.category,
-      time: courseForm.time || "Mon, Wed, Fri - 10:00 AM",
-      instructor: courseForm.instructor,
+      time: courseForm.time || "Mon, Wed, Fri • 10:00 AM",
+      instructor: courseForm.instructor || "Faculty Lead",
       room: courseForm.room || "Room 101",
     };
 
     const updated = [newRecord, ...courses];
     setCourses(updated);
     saveStoredCourses(updated);
+
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.from("classes_courses").insert([
+          {
+            id: newRecord.id,
+            name: newRecord.name,
+            code: newRecord.code,
+            grade: newRecord.grade,
+            category: newRecord.category,
+            time: newRecord.time,
+            instructor: newRecord.instructor,
+            room: newRecord.room,
+            is_active: true,
+          },
+        ]);
+      } catch (err) {
+        console.warn("Supabase course insert error:", err);
+      }
+    }
+
     setIsAddCourseModalOpen(false);
     setCourseForm({
       name: "",
@@ -108,373 +198,432 @@ export default function AdminClassesPage() {
       instructor: "",
       room: "",
     });
+    showToast(`Course "${newRecord.name}" added successfully.`);
   };
 
-  const handleSaveEditCourse = (e: React.FormEvent) => {
+  const handleSaveEditCourse = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingCourse) return;
 
-    const updated = courses.map((c) =>
-      c.id === editingCourse.id ? editingCourse : c
-    );
+    const updated = courses.map((c) => (c.id === editingCourse.id ? editingCourse : c));
     setCourses(updated);
     saveStoredCourses(updated);
+
+    if (isSupabaseConfigured) {
+      try {
+        await supabase
+          .from("classes_courses")
+          .update({
+            name: editingCourse.name,
+            code: editingCourse.code,
+            grade: editingCourse.grade,
+            category: editingCourse.category,
+            time: editingCourse.time,
+            instructor: editingCourse.instructor,
+            room: editingCourse.room,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", editingCourse.id);
+      } catch (err) {
+        console.warn("Supabase course update error:", err);
+      }
+    }
+
     setEditingCourse(null);
+    showToast(`Course "${editingCourse.name}" updated successfully.`);
   };
 
-  const handleConfirmDeleteCourse = () => {
+  const handleDeleteCourse = async () => {
     if (!deletingCourse) return;
+
     const updated = courses.filter((c) => c.id !== deletingCourse.id);
     setCourses(updated);
     saveStoredCourses(updated);
+
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.from("classes_courses").delete().eq("id", deletingCourse.id);
+      } catch (err) {
+        console.warn("Supabase course delete error:", err);
+      }
+    }
+
+    showToast(`Course "${deletingCourse.name}" removed.`);
     setDeletingCourse(null);
   };
 
   // Actions - Announcements
-  const handleCreateNotice = (e: React.FormEvent) => {
+  const handleCreateNotice = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!noticeForm.title.trim() || !noticeForm.content.trim()) return;
 
-    const newRecord: BulletinNotice = {
+    const newNotice: BulletinNotice = {
       id: Date.now(),
       title: noticeForm.title,
-      date: noticeForm.date || "Today",
+      date: noticeForm.date || new Date().toISOString().split("T")[0],
       type: noticeForm.type,
       content: noticeForm.content,
     };
 
-    const updated = [newRecord, ...announcements];
+    const updated = [newNotice, ...announcements];
     setAnnouncements(updated);
     saveStoredBulletins(updated);
+
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.from("bulletin_notices").insert([
+          {
+            title: newNotice.title,
+            date: newNotice.date,
+            type: newNotice.type,
+            content: newNotice.content,
+          },
+        ]);
+      } catch (err) {
+        console.warn("Supabase bulletin insert error:", err);
+      }
+    }
+
     setIsAddNoticeModalOpen(false);
     setNoticeForm({
       title: "",
-      date: "",
+      date: new Date().toISOString().split("T")[0],
       type: "Official Notice",
       content: "",
     });
+    showToast("Announcement published.");
   };
 
-  const handleConfirmDeleteNotice = () => {
+  const handleDeleteNotice = async () => {
     if (!deletingNotice) return;
+
     const updated = announcements.filter((a) => a.id !== deletingNotice.id);
     setAnnouncements(updated);
     saveStoredBulletins(updated);
+
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.from("bulletin_notices").delete().eq("id", deletingNotice.id);
+      } catch (err) {
+        console.warn("Supabase bulletin delete error:", err);
+      }
+    }
+
+    showToast("Announcement removed.");
     setDeletingNotice(null);
   };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="inline-flex items-center gap-2 bg-[#E8F0FE] px-3.5 py-1 rounded-full mb-2 border border-[#0E3B7D]/20">
-            <span className="material-symbols-outlined text-[#0E3B7D] text-xs font-bold">menu_book</span>
-            <span className="text-[11px] font-black text-[#0E3B7D] uppercase tracking-wider">
-              Academic Timetable &amp; Exam Bulletins
-            </span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-[#09234B] tracking-tight">
-            Classes &amp; Syllabi
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 font-normal">
-            Manage course schedules, instructor assignments, classroom allocations, and official Pearson Edexcel bulletins
-          </p>
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 bg-[#09234B] text-white px-5 py-3 rounded-2xl shadow-2xl border border-[#FFC700]/30 flex items-center gap-3 animate-fade-in text-sm font-medium">
+          <span className="material-symbols-outlined text-[#FFC700]">verified</span>
+          <span>{toastMessage}</span>
         </div>
+      )}
 
-        {/* Tab switcher */}
-        <div className="flex p-1 bg-white border border-slate-200 rounded-2xl shadow-xs">
-          <button
-            onClick={() => setActiveTab("courses")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
-              activeTab === "courses"
-                ? "bg-[#0E3B7D] text-white shadow-xs font-black"
-                : "text-slate-600 hover:text-[#0E3B7D]"
-            }`}
-          >
-            Course Schedules ({courses.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("announcements")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
-              activeTab === "announcements"
-                ? "bg-[#0E3B7D] text-white shadow-xs font-black"
-                : "text-slate-600 hover:text-[#0E3B7D]"
-            }`}
-          >
-            Bulletins ({announcements.length})
-          </button>
+      {/* Header Banner */}
+      <div className="bg-gradient-to-r from-[#0E3B7D] via-[#09234B] to-[#05152E] rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-xl border border-blue-900/40">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-[#FFC700]/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFC700]/20 text-[#FFC700] text-xs font-bold uppercase tracking-wider mb-3 border border-[#FFC700]/30">
+              <span className="material-symbols-outlined text-sm">menu_book</span>
+              Pearson Edexcel Continuum & Timetables
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+              Classes & Announcements Management
+            </h1>
+            <p className="text-blue-200 text-sm mt-1 max-w-2xl">
+              Curate Lower Secondary, Pearson IGCSE, and Pearson IAL schedules, faculty instructors, and official bulletins with live public synchronization.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {activeTab === "courses" ? (
+              <button
+                onClick={() => setIsAddCourseModalOpen(true)}
+                className="px-5 py-2.5 rounded-xl bg-[#FFC700] hover:bg-[#E5B300] text-[#09234B] font-extrabold text-xs sm:text-sm transition-all shadow-md flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined text-lg">add_circle</span>
+                <span>Add Class Schedule</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => setIsAddNoticeModalOpen(true)}
+                className="px-5 py-2.5 rounded-xl bg-[#FFC700] hover:bg-[#E5B300] text-[#09234B] font-extrabold text-xs sm:text-sm transition-all shadow-md flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined text-lg">campaign</span>
+                <span>Post Announcement</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Action Bar */}
-      <div className="bg-white p-4 rounded-2xl shadow-xs border border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4">
-        <div className="relative w-full sm:w-80">
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-base pointer-events-none">
-            search
-          </span>
+      {/* Tabs & Search Bar */}
+      <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 flex flex-col md:flex-row gap-4 justify-between items-center">
+        <div className="flex rounded-xl bg-slate-100 p-1 border border-slate-200 w-full md:w-auto">
+          <button
+            onClick={() => setActiveTab("courses")}
+            className={`flex-1 md:flex-initial px-5 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+              activeTab === "courses"
+                ? "bg-white text-[#0E3B7D] shadow-sm"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <span className="material-symbols-outlined text-base">school</span>
+            <span>Academic Courses ({courses.length})</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("announcements")}
+            className={`flex-1 md:flex-initial px-5 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+              activeTab === "announcements"
+                ? "bg-white text-[#0E3B7D] shadow-sm"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <span className="material-symbols-outlined text-base">campaign</span>
+            <span>Bulletins & Notices ({announcements.length})</span>
+          </button>
+        </div>
+
+        <div className="relative w-full md:w-80">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={
-              activeTab === "courses"
-                ? "Search course, code, or faculty..."
-                : "Search academic bulletin notice..."
-            }
-            className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+            placeholder={activeTab === "courses" ? "Search course name, code, instructor..." : "Search announcements..."}
+            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
           />
+          <span className="material-symbols-outlined absolute left-3 top-2.5 text-slate-400 text-lg">
+            search
+          </span>
         </div>
-
-        {activeTab === "courses" ? (
-          <button
-            onClick={() => setIsAddCourseModalOpen(true)}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#0E3B7D] hover:bg-[#164E9A] text-white font-bold text-xs uppercase tracking-wider shadow-xs transition-all"
-          >
-            <span className="material-symbols-outlined text-sm font-bold">add</span>
-            <span>Add New Course</span>
-          </button>
-        ) : (
-          <button
-            onClick={() => setIsAddNoticeModalOpen(true)}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#0E3B7D] hover:bg-[#164E9A] text-white font-bold text-xs uppercase tracking-wider shadow-xs transition-all"
-          >
-            <span className="material-symbols-outlined text-sm font-bold">campaign</span>
-            <span>Post New Bulletin</span>
-          </button>
-        )}
       </div>
 
-      {/* Courses Tab */}
+      {/* Courses Tab View */}
       {activeTab === "courses" && (
-        <div className="bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50 text-slate-600">
-                  <th className="px-5 py-3.5 font-bold uppercase tracking-wider">Course Name &amp; Code</th>
-                  <th className="px-5 py-3.5 font-bold uppercase tracking-wider">Academic Grade</th>
-                  <th className="px-5 py-3.5 font-bold uppercase tracking-wider">Weekly Schedule &amp; Room</th>
-                  <th className="px-5 py-3.5 font-bold uppercase tracking-wider">Faculty Instructor</th>
-                  <th className="px-5 py-3.5 font-bold uppercase tracking-wider text-right">Actions</th>
+            <table className="w-full text-left text-sm text-slate-600">
+              <thead className="bg-slate-50 border-b border-slate-200 text-[11px] uppercase tracking-wider font-extrabold text-slate-500">
+                <tr>
+                  <th className="py-3.5 px-6">Course & Code</th>
+                  <th className="py-3.5 px-4">Curriculum Stream</th>
+                  <th className="py-3.5 px-4">Schedule & Venue</th>
+                  <th className="py-3.5 px-4">Instructor</th>
+                  <th className="py-3.5 px-6 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {isLoaded && filteredCourses.length > 0 ? (
-                  filteredCourses.map((course) => (
-                    <tr key={course.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="px-5 py-4">
-                        <p className="font-black text-sm text-[#09234B]">{course.name}</p>
-                        <span className="font-mono text-[10px] text-slate-400 font-bold">{course.code}</span>
-                      </td>
-                      <td className="px-5 py-4">
-                        <span className="px-2.5 py-1 bg-[#E8F0FE] text-[#0E3B7D] text-[10px] font-black rounded-md uppercase tracking-wider">
-                          {course.grade}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4">
-                        <p className="text-slate-700 font-medium">{course.time}</p>
-                        {course.room && (
-                          <span className="text-[10px] text-slate-400 font-medium">📍 {course.room}</span>
-                        )}
-                      </td>
-                      <td className="px-5 py-4 text-slate-700 font-bold">{course.instructor}</td>
-                      <td className="px-5 py-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => setEditingCourse({ ...course })}
-                            className="p-1.5 text-slate-500 hover:text-[#0E3B7D] hover:bg-slate-100 rounded-lg transition-colors"
-                            title="Edit Course"
-                          >
-                            <span className="material-symbols-outlined text-sm">edit</span>
-                          </button>
-                          <button
-                            onClick={() => setDeletingCourse(course)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                            title="Remove Course"
-                          >
-                            <span className="material-symbols-outlined text-sm">delete</span>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center">
-                      <span className="material-symbols-outlined text-4xl text-slate-300 block mb-2">search_off</span>
-                      <p className="text-slate-500 font-medium">No courses found matching criteria.</p>
+                {filteredCourses.map((c) => (
+                  <tr key={c.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-4 px-6">
+                      <div className="font-bold text-slate-900 leading-snug">{c.name}</div>
+                      <span className="inline-block mt-1 font-mono text-[11px] px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                        {c.code}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4">
+                      <span
+                        className={`inline-block px-2.5 py-0.5 rounded-md text-[11px] font-bold ${
+                          c.grade.includes("IAL")
+                            ? "bg-purple-100 text-purple-800 border border-purple-200"
+                            : c.grade.includes("IGCSE")
+                            ? "bg-blue-100 text-[#0E3B7D] border border-blue-200"
+                            : "bg-amber-100 text-amber-800 border border-amber-200"
+                        }`}
+                      >
+                        {c.grade}
+                      </span>
+                      <p className="text-xs text-slate-500 mt-1 font-medium">{c.category}</p>
+                    </td>
+                    <td className="py-4 px-4">
+                      <p className="text-xs font-semibold text-slate-800">{c.time}</p>
+                      <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-xs">meeting_room</span>
+                        {c.room || "Main Hall"}
+                      </p>
+                    </td>
+                    <td className="py-4 px-4">
+                      <p className="text-xs font-bold text-slate-900">{c.instructor}</p>
+                    </td>
+                    <td className="py-4 px-6 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => setEditingCourse(c)}
+                          className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-[#0E3B7D] transition-all"
+                          title="Edit Course"
+                        >
+                          <span className="material-symbols-outlined text-base">edit</span>
+                        </button>
+                        <button
+                          onClick={() => setDeletingCourse(c)}
+                          className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 hover:text-rose-700 transition-all"
+                          title="Delete Course"
+                        >
+                          <span className="material-symbols-outlined text-base">delete</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
-                )}
+                ))}
               </tbody>
             </table>
           </div>
         </div>
       )}
 
-      {/* Bulletins Tab */}
+      {/* Announcements Tab View */}
       {activeTab === "announcements" && (
-        <div className="grid grid-cols-1 gap-4">
-          {isLoaded && filteredAnnouncements.length > 0 ? (
-            filteredAnnouncements.map((ann) => (
-              <div
-                key={ann.id}
-                className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-start justify-between gap-4 hover:shadow-md transition-shadow"
-              >
-                <div className="space-y-1.5 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-[#E8F0FE] text-[#0E3B7D]">
-                      {ann.type}
-                    </span>
-                    <span className="text-[11px] text-slate-400 font-medium">{ann.date}</span>
-                  </div>
-                  <h4 className="text-base font-black text-[#09234B]">{ann.title}</h4>
-                  <p className="text-xs text-slate-600 font-normal leading-relaxed">{ann.content}</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {filteredAnnouncements.map((a) => (
+            <div
+              key={a.id}
+              className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hover:shadow-md transition-all flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span
+                    className={`px-2.5 py-0.5 rounded-md text-[11px] font-bold ${
+                      a.type === "Official Notice"
+                        ? "bg-rose-100 text-rose-800 border border-rose-200"
+                        : a.type === "Academic"
+                        ? "bg-blue-100 text-[#0E3B7D] border border-blue-200"
+                        : "bg-slate-100 text-slate-700 border border-slate-200"
+                    }`}
+                  >
+                    {a.type}
+                  </span>
+                  <span className="text-xs text-slate-400 font-medium">{a.date}</span>
                 </div>
+                <h3 className="font-extrabold text-[#09234B] text-base leading-snug mb-2">{a.title}</h3>
+                <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap">{a.content}</p>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-slate-100 flex justify-end">
                 <button
-                  onClick={() => setDeletingNotice(ann)}
-                  className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors shrink-0"
-                  title="Delete Bulletin"
+                  onClick={() => setDeletingNotice(a)}
+                  className="px-3 py-1 rounded-lg text-rose-600 hover:bg-rose-50 text-xs font-bold transition-all flex items-center gap-1"
                 >
-                  <span className="material-symbols-outlined text-lg">delete</span>
+                  <span className="material-symbols-outlined text-sm">delete</span>
+                  <span>Remove</span>
                 </button>
               </div>
-            ))
-          ) : (
-            <div className="bg-white p-12 text-center rounded-2xl border border-slate-200">
-              <span className="material-symbols-outlined text-4xl text-slate-300 block mb-2">campaign</span>
-              <p className="text-slate-500 font-medium">No official bulletins found.</p>
             </div>
-          )}
+          ))}
         </div>
       )}
 
-      {/* 1. ADD COURSE MODAL */}
+      {/* Add Course Modal */}
       {isAddCourseModalOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-[#09234B]/60 backdrop-blur-xs flex items-center justify-center p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setIsAddCourseModalOpen(false);
-          }}
-        >
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-slate-200 relative max-h-[90vh] overflow-y-auto">
-            <button
-              onClick={() => setIsAddCourseModalOpen(false)}
-              className="absolute top-5 right-5 p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
-            >
-              <span className="material-symbols-outlined text-lg">close</span>
-            </button>
-
-            <div className="mb-5">
-              <span className="text-[10px] font-black uppercase tracking-widest text-[#0E3B7D]">
-                Academic Curriculum
-              </span>
-              <h3 className="text-xl font-black text-[#09234B] mt-1">Add New Course Module</h3>
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-100">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-extrabold text-[#09234B]">Add Class Schedule</h3>
+              <button onClick={() => setIsAddCourseModalOpen(false)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-xl">
+                <span className="material-symbols-outlined">close</span>
+              </button>
             </div>
-
-            <form onSubmit={handleCreateCourse} className="space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <form onSubmit={handleCreateCourse} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Course Title *</label>
+                <input
+                  type="text"
+                  required
+                  value={courseForm.name}
+                  onChange={(e) => setCourseForm({ ...courseForm, name: e.target.value })}
+                  placeholder="e.g. Pure Mathematics (P1 – P4)"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Course Title *</label>
-                  <input
-                    type="text"
-                    required
-                    value={courseForm.name}
-                    onChange={(e) => setCourseForm({ ...courseForm, name: e.target.value })}
-                    placeholder="e.g. Pure Mathematics (P1–P4)"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
-                  />
-                </div>
-                <div>
-                  <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Module Code *</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Course Code *</label>
                   <input
                     type="text"
                     required
                     value={courseForm.code}
                     onChange={(e) => setCourseForm({ ...courseForm, code: e.target.value })}
-                    placeholder="e.g. WMA11 / WMA12"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+                    placeholder="e.g. WMA11"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Academic Tier *</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Stream Level</label>
                   <select
                     value={courseForm.grade}
                     onChange={(e) => setCourseForm({ ...courseForm, grade: e.target.value as any })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
                   >
-                    <option value="Pearson IAL">Pearson IAL (A-Level)</option>
-                    <option value="Pearson IGCSE">Pearson IGCSE</option>
                     <option value="Lower Secondary (Year 7–9)">Lower Secondary (Year 7–9)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Subject Area *</label>
-                  <select
-                    value={courseForm.category}
-                    onChange={(e) => setCourseForm({ ...courseForm, category: e.target.value as any })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
-                  >
-                    <option value="STEM">STEM &amp; Sciences</option>
-                    <option value="Computing">Computing &amp; IT</option>
-                    <option value="Business">Economics &amp; Business</option>
-                    <option value="Languages">Languages &amp; Arts</option>
+                    <option value="Pearson IGCSE">Pearson IGCSE</option>
+                    <option value="Pearson IAL">Pearson IAL</option>
                   </select>
                 </div>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Faculty Instructor *</label>
-                  <input
-                    type="text"
-                    required
-                    value={courseForm.instructor}
-                    onChange={(e) => setCourseForm({ ...courseForm, instructor: e.target.value })}
-                    placeholder="e.g. Dr. Kaung Myat Htut"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
-                  />
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Category</label>
+                  <select
+                    value={courseForm.category}
+                    onChange={(e) => setCourseForm({ ...courseForm, category: e.target.value as any })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+                  >
+                    <option value="STEM">STEM</option>
+                    <option value="Business">Business</option>
+                    <option value="Computing">Computing</option>
+                    <option value="Languages">Languages</option>
+                  </select>
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Weekly Time Slot</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Instructor</label>
+                  <input
+                    type="text"
+                    value={courseForm.instructor}
+                    onChange={(e) => setCourseForm({ ...courseForm, instructor: e.target.value })}
+                    placeholder="e.g. Dr. Htet Aung Lin"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Schedule Time</label>
                   <input
                     type="text"
                     value={courseForm.time}
                     onChange={(e) => setCourseForm({ ...courseForm, time: e.target.value })}
-                    placeholder="e.g. Mon, Wed, Fri - 8:30 AM"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+                    placeholder="e.g. Mon, Wed • 08:30 AM"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Room / Venue</label>
+                  <input
+                    type="text"
+                    value={courseForm.room}
+                    onChange={(e) => setCourseForm({ ...courseForm, room: e.target.value })}
+                    placeholder="e.g. Newton Lab"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
                   />
                 </div>
               </div>
-
-              <div>
-                <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Classroom / Lab</label>
-                <input
-                  type="text"
-                  value={courseForm.room}
-                  onChange={(e) => setCourseForm({ ...courseForm, room: e.target.value })}
-                  placeholder="e.g. Newton Hall 101"
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-100">
+              <div className="pt-4 flex gap-3">
                 <button
                   type="button"
                   onClick={() => setIsAddCourseModalOpen(false)}
-                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-bold transition-colors"
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200 font-bold text-xs text-slate-600 hover:bg-slate-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[#0E3B7D] hover:bg-[#164E9A] text-white font-bold uppercase tracking-wider rounded-xl shadow-xs transition-all"
+                  className="flex-1 py-2.5 rounded-xl bg-[#0E3B7D] hover:bg-[#09234B] text-white font-bold text-xs shadow-md"
                 >
-                  Add Course
+                  Save Class
                 </button>
               </div>
             </form>
@@ -482,95 +631,108 @@ export default function AdminClassesPage() {
         </div>
       )}
 
-      {/* 2. EDIT COURSE MODAL */}
+      {/* Edit Course Modal */}
       {editingCourse && (
-        <div
-          className="fixed inset-0 z-50 bg-[#09234B]/60 backdrop-blur-xs flex items-center justify-center p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setEditingCourse(null);
-          }}
-        >
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-slate-200 relative max-h-[90vh] overflow-y-auto">
-            <button
-              onClick={() => setEditingCourse(null)}
-              className="absolute top-5 right-5 p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
-            >
-              <span className="material-symbols-outlined text-lg">close</span>
-            </button>
-
-            <div className="mb-5">
-              <h3 className="text-xl font-black text-[#09234B]">Edit Course Module</h3>
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-100">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-extrabold text-[#09234B]">Edit Class Schedule</h3>
+              <button onClick={() => setEditingCourse(null)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-xl">
+                <span className="material-symbols-outlined">close</span>
+              </button>
             </div>
-
-            <form onSubmit={handleSaveEditCourse} className="space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <form onSubmit={handleSaveEditCourse} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Course Title</label>
+                <input
+                  type="text"
+                  required
+                  value={editingCourse.name}
+                  onChange={(e) => setEditingCourse({ ...editingCourse, name: e.target.value })}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Course Title</label>
-                  <input
-                    type="text"
-                    required
-                    value={editingCourse.name}
-                    onChange={(e) => setEditingCourse({ ...editingCourse, name: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
-                  />
-                </div>
-                <div>
-                  <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Module Code</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Course Code</label>
                   <input
                     type="text"
                     required
                     value={editingCourse.code}
                     onChange={(e) => setEditingCourse({ ...editingCourse, code: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Stream Level</label>
+                  <select
+                    value={editingCourse.grade}
+                    onChange={(e) => setEditingCourse({ ...editingCourse, grade: e.target.value as any })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+                  >
+                    <option value="Lower Secondary (Year 7–9)">Lower Secondary (Year 7–9)</option>
+                    <option value="Pearson IGCSE">Pearson IGCSE</option>
+                    <option value="Pearson IAL">Pearson IAL</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Category</label>
+                  <select
+                    value={editingCourse.category}
+                    onChange={(e) => setEditingCourse({ ...editingCourse, category: e.target.value as any })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+                  >
+                    <option value="STEM">STEM</option>
+                    <option value="Business">Business</option>
+                    <option value="Computing">Computing</option>
+                    <option value="Languages">Languages</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Instructor</label>
+                  <input
+                    type="text"
+                    value={editingCourse.instructor}
+                    onChange={(e) => setEditingCourse({ ...editingCourse, instructor: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
                   />
                 </div>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Faculty Instructor</label>
-                  <input
-                    type="text"
-                    required
-                    value={editingCourse.instructor}
-                    onChange={(e) => setEditingCourse({ ...editingCourse, instructor: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
-                  />
-                </div>
-                <div>
-                  <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Schedule Slot</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Schedule Time</label>
                   <input
                     type="text"
                     value={editingCourse.time}
                     onChange={(e) => setEditingCourse({ ...editingCourse, time: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Room / Venue</label>
+                  <input
+                    type="text"
+                    value={editingCourse.room || ""}
+                    onChange={(e) => setEditingCourse({ ...editingCourse, room: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
                   />
                 </div>
               </div>
-
-              <div>
-                <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Room Allocation</label>
-                <input
-                  type="text"
-                  value={editingCourse.room || ""}
-                  onChange={(e) => setEditingCourse({ ...editingCourse, room: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-100">
+              <div className="pt-4 flex gap-3">
                 <button
                   type="button"
                   onClick={() => setEditingCourse(null)}
-                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-bold transition-colors"
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200 font-bold text-xs text-slate-600 hover:bg-slate-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[#0E3B7D] hover:bg-[#164E9A] text-white font-bold uppercase tracking-wider rounded-xl shadow-xs transition-all"
+                  className="flex-1 py-2.5 rounded-xl bg-[#0E3B7D] hover:bg-[#09234B] text-white font-bold text-xs shadow-md"
                 >
-                  Save Changes
+                  Update Class
                 </button>
               </div>
             </form>
@@ -578,124 +740,73 @@ export default function AdminClassesPage() {
         </div>
       )}
 
-      {/* 3. DELETE COURSE MODAL */}
-      {deletingCourse && (
-        <div
-          className="fixed inset-0 z-50 bg-[#09234B]/60 backdrop-blur-xs flex items-center justify-center p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setDeletingCourse(null);
-          }}
-        >
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-3">
-              <span className="material-symbols-outlined text-2xl font-bold">delete_forever</span>
-            </div>
-            <h3 className="text-lg font-black text-[#09234B]">Remove Course Module</h3>
-            <p className="text-xs text-slate-500 mt-1 mb-5">
-              Remove <strong>{deletingCourse.name}</strong> ({deletingCourse.code}) from active timetable?
-            </p>
-            <div className="flex gap-2.5 justify-center">
-              <button
-                onClick={() => setDeletingCourse(null)}
-                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmDeleteCourse}
-                className="px-5 py-2 text-xs font-black bg-rose-600 hover:bg-rose-700 text-white uppercase tracking-wider rounded-xl shadow-xs transition-all"
-              >
-                Confirm Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 4. ADD NOTICE MODAL */}
+      {/* Add Notice Modal */}
       {isAddNoticeModalOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-[#09234B]/60 backdrop-blur-xs flex items-center justify-center p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setIsAddNoticeModalOpen(false);
-          }}
-        >
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-slate-200 relative max-h-[90vh] overflow-y-auto">
-            <button
-              onClick={() => setIsAddNoticeModalOpen(false)}
-              className="absolute top-5 right-5 p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
-            >
-              <span className="material-symbols-outlined text-lg">close</span>
-            </button>
-
-            <div className="mb-5">
-              <span className="text-[10px] font-black uppercase tracking-widest text-[#0E3B7D]">
-                Academic Bulletin
-              </span>
-              <h3 className="text-xl font-black text-[#09234B] mt-1">Publish Notice</h3>
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-100">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-extrabold text-[#09234B]">Post Bulletin Notice</h3>
+              <button onClick={() => setIsAddNoticeModalOpen(false)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-xl">
+                <span className="material-symbols-outlined">close</span>
+              </button>
             </div>
-
-            <form onSubmit={handleCreateNotice} className="space-y-4 text-xs">
+            <form onSubmit={handleCreateNotice} className="space-y-4">
               <div>
-                <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Notice Headline *</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Title *</label>
                 <input
                   type="text"
                   required
                   value={noticeForm.title}
                   onChange={(e) => setNoticeForm({ ...noticeForm, title: e.target.value })}
-                  placeholder="e.g. October Exam Series Registration"
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+                  placeholder="e.g. Pearson IAL May/June Examination Briefing"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
                 />
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Notice Category</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Notice Type</label>
                   <select
                     value={noticeForm.type}
                     onChange={(e) => setNoticeForm({ ...noticeForm, type: e.target.value as any })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
                   >
                     <option value="Official Notice">Official Notice</option>
-                    <option value="Academic">Academic Schedule</option>
-                    <option value="General">General Bulletin</option>
+                    <option value="Academic">Academic</option>
+                    <option value="General">General</option>
                   </select>
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Display Date</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Publish Date</label>
                   <input
-                    type="text"
+                    type="date"
                     value={noticeForm.date}
                     onChange={(e) => setNoticeForm({ ...noticeForm, date: e.target.value })}
-                    placeholder="e.g. Aug 25, 2026"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
                   />
                 </div>
               </div>
-
               <div>
-                <label className="font-bold text-slate-700 uppercase tracking-wider block mb-1">Notice Details *</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">Announcement Content *</label>
                 <textarea
                   required
-                  rows={3}
+                  rows={4}
                   value={noticeForm.content}
                   onChange={(e) => setNoticeForm({ ...noticeForm, content: e.target.value })}
-                  placeholder="Complete announcement text..."
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-[#0E3B7D] resize-none"
+                  placeholder="Write the notice details here..."
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
                 />
               </div>
-
-              <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-100">
+              <div className="pt-4 flex gap-3">
                 <button
                   type="button"
                   onClick={() => setIsAddNoticeModalOpen(false)}
-                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-bold transition-colors"
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200 font-bold text-xs text-slate-600 hover:bg-slate-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[#0E3B7D] hover:bg-[#164E9A] text-white font-bold uppercase tracking-wider rounded-xl shadow-xs transition-all"
+                  className="flex-1 py-2.5 rounded-xl bg-[#0E3B7D] hover:bg-[#09234B] text-white font-bold text-xs shadow-md"
                 >
                   Publish Notice
                 </button>
@@ -705,34 +816,58 @@ export default function AdminClassesPage() {
         </div>
       )}
 
-      {/* 5. DELETE NOTICE MODAL */}
-      {deletingNotice && (
-        <div
-          className="fixed inset-0 z-50 bg-[#09234B]/60 backdrop-blur-xs flex items-center justify-center p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setDeletingNotice(null);
-          }}
-        >
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-3">
-              <span className="material-symbols-outlined text-2xl font-bold">delete_forever</span>
+      {/* Delete Course Modal */}
+      {deletingCourse && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 text-center">
+            <div className="w-14 h-14 bg-rose-50 rounded-2xl mx-auto flex items-center justify-center text-rose-600 mb-4 border border-rose-200">
+              <span className="material-symbols-outlined text-3xl">warning</span>
             </div>
-            <h3 className="text-lg font-black text-[#09234B]">Delete Bulletin Notice</h3>
-            <p className="text-xs text-slate-500 mt-1 mb-5">
-              Are you sure you want to delete <strong>&ldquo;{deletingNotice.title}&rdquo;</strong>?
+            <h3 className="text-lg font-black text-[#09234B]">Delete Course?</h3>
+            <p className="text-xs text-slate-500 mt-2">
+              Are you sure you want to remove <strong>{deletingCourse.name}</strong> ({deletingCourse.code})?
             </p>
-            <div className="flex gap-2.5 justify-center">
+            <div className="mt-6 flex gap-3">
               <button
-                onClick={() => setDeletingNotice(null)}
-                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                onClick={() => setDeletingCourse(null)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 font-bold text-xs text-slate-600 hover:bg-slate-50"
               >
                 Cancel
               </button>
               <button
-                onClick={handleConfirmDeleteNotice}
-                className="px-5 py-2 text-xs font-black bg-rose-600 hover:bg-rose-700 text-white uppercase tracking-wider rounded-xl shadow-xs transition-all"
+                onClick={handleDeleteCourse}
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md"
               >
-                Confirm Delete
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Notice Modal */}
+      {deletingNotice && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 text-center">
+            <div className="w-14 h-14 bg-rose-50 rounded-2xl mx-auto flex items-center justify-center text-rose-600 mb-4 border border-rose-200">
+              <span className="material-symbols-outlined text-3xl">warning</span>
+            </div>
+            <h3 className="text-lg font-black text-[#09234B]">Delete Announcement?</h3>
+            <p className="text-xs text-slate-500 mt-2">
+              Are you sure you want to remove <strong>{deletingNotice.title}</strong>?
+            </p>
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => setDeletingNotice(null)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 font-bold text-xs text-slate-600 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteNotice}
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md"
+              >
+                Delete
               </button>
             </div>
           </div>

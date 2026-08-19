@@ -10,6 +10,7 @@ import {
   UserProfile,
   UserRole,
   getStoredUsers,
+  saveStoredUsers,
 } from "../adminStore";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
 
@@ -95,6 +96,9 @@ export default function LoginForm() {
             createdAt: profile?.created_at || new Date().toISOString(),
           };
 
+          const existingUsers = getStoredUsers();
+          const updatedUsers = [activeProfile, ...existingUsers.filter((u) => u.id !== activeProfile.id)];
+          saveStoredUsers(updatedUsers);
           setActiveAdminRole(activeProfile.id);
           router.push("/admin");
           return;

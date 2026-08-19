@@ -5,7 +5,7 @@ import { UserProfileRecord, UserRole } from "@/lib/supabase/types";
 
 async function getCallerAuth() {
   if (!isSupabaseConfigured) {
-    return { isAuth: true, role: "principal" as UserRole, userId: "dev-local-principal" };
+    return { isAuth: true, role: "principal" as UserRole, userId: "dev-local-principal", suspended: false };
   }
 
   const serverSupabase = await createSupabaseServerClient();
@@ -15,7 +15,7 @@ async function getCallerAuth() {
   } = await serverSupabase.auth.getUser();
 
   if (!user || error) {
-    return { isAuth: false, role: null, userId: null };
+    return { isAuth: false, role: null, userId: null, suspended: false };
   }
 
   const { data: profile } = await supabaseAdmin
@@ -77,21 +77,22 @@ export async function POST(req: Request) {
     }
 
     const cleanEmail = email.trim().toLowerCase();
-    const host = req.headers.get("origin") || req.headers.get("referer") || "https://hinthar.education";
-    const redirectUrl = `${new URL(host).origin}/admin`;
+    const host = req.headers.get("origin") || req.headers.get("referer") || "http://localhost:3000";
+    const origin = new URL(host).origin;
+    const redirectUrl = `${origin}/auth/callback?type=invite&next=/admin/update-password`;
 
     let actionLink: string | null = null;
     let authUserId: string | null = null;
     let inviteSentViaEmail = false;
 
-    // 1. Attempt to invite user via Supabase Auth Admin API (Sends email if SMTP is configured)
+    // 1. Attempt to invite user via Supabase Auth Admin API (dispatches email if SMTP is configured)
     try {
       const { data: inviteData, error: inviteErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(
         cleanEmail,
         {
           data: {
             full_name: full_name?.trim() || cleanEmail.split("@")[0],
-            title: title || role,
+            title: title || (role === "student" ? "Student Contributor" : "Faculty Staff"),
             role,
           },
           redirectTo: redirectUrl,
@@ -103,7 +104,7 @@ export async function POST(req: Request) {
         inviteSentViaEmail = true;
       }
     } catch (e) {
-      console.warn("Direct inviteUserByEmail error:", e);
+      console.warn("Direct inviteUserByEmail note:", e);
     }
 
     // 2. Also generate direct action link for immediate administrative copy/use
@@ -123,34 +124,46 @@ export async function POST(req: Request) {
         }
       }
     } catch (e) {
-      console.warn("generateLink error:", e);
+      console.warn("generateLink note:", e);
     }
 
-    // 3. Ensure profile is saved in user_profiles table
-    if (full_name) {
-      const profileData: UserProfileRecord = {
-        id: authUserId || `user-${Date.now()}`,
-        email: cleanEmail,
-        full_name: full_name.trim(),
-        role: role as UserRole,
-        title: title || (role === "student" ? "Student Contributor" : "Faculty Staff"),
-        campus_id: campus_id || "ywarma-campus",
-        grade: role === "student" ? grade : undefined,
-        status: "active",
-        created_at: new Date().toISOString(),
-      };
-
+    // 3. Ensure profile is saved in user_profiles table with app_metadata updated
+    if (authUserId) {
       try {
-        await supabaseAdmin.from("user_profiles").upsert(profileData);
+        await supabaseAdmin.auth.admin.updateUserById(authUserId, {
+          app_metadata: { role },
+          user_metadata: {
+            full_name: full_name?.trim(),
+            title: title || (role === "student" ? "Student Contributor" : "Faculty Staff"),
+          },
+        });
       } catch (e) {
-        console.warn("user_profiles upsert error:", e);
+        console.warn("updateUserById metadata error:", e);
       }
+    }
+
+    const profileData: UserProfileRecord = {
+      id: authUserId || `user-${Date.now()}`,
+      email: cleanEmail,
+      full_name: full_name?.trim() || cleanEmail.split("@")[0],
+      role: role as UserRole,
+      title: title || (role === "student" ? "Student Contributor" : "Faculty Staff"),
+      campus_id: campus_id || "ywarma-campus",
+      grade: role === "student" ? grade : undefined,
+      status: "active",
+      created_at: new Date().toISOString(),
+    };
+
+    try {
+      await supabaseAdmin.from("user_profiles").upsert(profileData);
+    } catch (e) {
+      console.warn("user_profiles upsert error:", e);
     }
 
     return NextResponse.json({
       success: true,
       email: cleanEmail,
-      magicLink: actionLink || `${redirectUrl}?invited=${encodeURIComponent(cleanEmail)}`,
+      magicLink: actionLink || `${redirectUrl}&invited=${encodeURIComponent(cleanEmail)}`,
       emailSent: inviteSentViaEmail,
       message: `Magic invite link successfully generated for ${cleanEmail}.`,
     });
@@ -161,4 +174,3 @@ export async function POST(req: Request) {
     );
   }
 }
-

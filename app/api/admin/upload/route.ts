@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
@@ -16,8 +17,53 @@ const ALLOWED_MIME_TYPES = [
   "image/svg+xml",
 ];
 
+async function verifyAdminAuth() {
+  if (!isSupabaseConfigured) {
+    return { isAuthorized: true };
+  }
+
+  const serverSupabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+    error,
+  } = await serverSupabase.auth.getUser();
+
+  if (!user || error) {
+    return { isAuthorized: false };
+  }
+
+  // Check user role in database
+  const { data: profile } = await supabaseAdmin
+    .from("user_profiles")
+    .select("role, status")
+    .eq("id", user.id)
+    .single();
+
+  const role = profile?.role || user.app_metadata?.role;
+  const status = profile?.status || "active";
+
+  if (status !== "active") {
+    return { isAuthorized: false };
+  }
+
+  // Principal and Staff are authorized to upload school assets
+  if (role === "principal" || role === "staff_admin") {
+    return { isAuthorized: true, userId: user.id };
+  }
+
+  return { isAuthorized: false };
+}
+
 export async function POST(req: NextRequest) {
   try {
+    const { isAuthorized } = await verifyAdminAuth();
+    if (!isAuthorized) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized: Faculty or Principal administrative credentials required to upload assets." },
+        { status: 401 }
+      );
+    }
+
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     const folder = (formData.get("folder") as string) || "general";
@@ -55,7 +101,8 @@ export async function POST(req: NextRequest) {
       .toLowerCase()
       .replace(/[^a-z0-9.]/g, "-")
       .replace(/-+/g, "-");
-    const filePath = `${folder}/${timestamp}-${sanitizedName}`;
+    const cleanFolder = folder.replace(/[^a-z0-9_-]/gi, "");
+    const filePath = `${cleanFolder}/${timestamp}-${sanitizedName}`;
 
     // Attempt 1: Upload to Supabase Storage
     try {
@@ -93,14 +140,14 @@ export async function POST(req: NextRequest) {
             size: file.size,
           });
         } else if (uploadError) {
-          console.warn("Supabase storage upload error, falling back to base64:", uploadError.message);
+          console.warn("Supabase storage upload note, using local fallback:", uploadError.message);
         }
       }
     } catch (storageErr) {
       console.warn("Supabase storage exception, using local fallback:", storageErr);
     }
 
-    // Fallback: Generate optimized Base64 Data URI for offline/local resilience
+    // Fallback: Generate Base64 Data URI for offline/local resilience
     const base64Url = `data:${file.type};base64,${buffer.toString("base64")}`;
 
     return NextResponse.json({

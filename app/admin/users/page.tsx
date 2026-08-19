@@ -21,6 +21,8 @@ export default function AdminUsersPage() {
 
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isTemplatesModalOpen, setIsTemplatesModalOpen] = useState(false);
+  const [templatesTab, setTemplatesTab] = useState<"staff_email" | "student_email" | "supabase_guide">("staff_email");
   const [deletingUser, setDeletingUser] = useState<UserProfile | null>(null);
   const [inviteModalData, setInviteModalData] = useState<{
     name: string;
@@ -29,6 +31,7 @@ export default function AdminUsersPage() {
     role: string;
   } | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedTemplate, setCopiedTemplate] = useState(false);
   const [isSendingInvite, setIsSendingInvite] = useState(false);
 
   // New Account Form
@@ -300,15 +303,19 @@ export default function AdminUsersPage() {
   const handleToggleStatus = async (id: string) => {
     const target = users.find((u) => u.id === id);
     if (!target) return;
+
     if (target.role === "principal") {
-      alert("The School Principal master account cannot be suspended.");
+      alert("The Principal master account cannot be disabled.");
       return;
     }
 
-    const nextStatus = target.status === "active" ? "inactive" : "active";
-    const updated = users.map((u) =>
-      u.id === id ? { ...u, status: nextStatus as "active" | "inactive" } : u
-    );
+    if (isStaff && target.role !== "student") {
+      alert("Staff administrators can only alter Student Contributor accounts.");
+      return;
+    }
+
+    const newStatus = target.status === "active" ? "inactive" : "active";
+    const updated = users.map((u) => (u.id === id ? { ...u, status: newStatus as "active" | "inactive" } : u));
     setUsers(updated);
     saveStoredUsers(updated);
 
@@ -316,309 +323,358 @@ export default function AdminUsersPage() {
       await fetch("/api/admin/users", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, status: nextStatus }),
+        body: JSON.stringify({ id, status: newStatus }),
       });
     } catch (err) {
-      console.warn("Status toggle error:", err);
+      console.warn("Status toggle API note:", err);
     }
 
-    showToast(`Account status set to ${nextStatus}.`);
+    showToast(`${target.fullName} is now ${newStatus.toUpperCase()}`);
   };
 
   const handleDeleteUser = async () => {
     if (!deletingUser) return;
     if (deletingUser.role === "principal") {
-      alert("The School Principal master account cannot be deleted.");
+      alert("The Principal master account cannot be deleted.");
       setDeletingUser(null);
       return;
     }
 
-    if (isStaff && deletingUser.role !== "student") {
-      alert("Staff administrators can only delete Student Contributor accounts.");
-      setDeletingUser(null);
-      return;
-    }
-
-    const targetId = deletingUser.id;
-    const updated = users.filter((u) => u.id !== targetId);
+    const updated = users.filter((u) => u.id !== deletingUser.id);
     setUsers(updated);
     saveStoredUsers(updated);
-    setDeletingUser(null);
 
     try {
-      await fetch(`/api/admin/users?id=${encodeURIComponent(targetId)}`, {
+      await fetch(`/api/admin/users?id=${encodeURIComponent(deletingUser.id)}`, {
         method: "DELETE",
       });
     } catch (err) {
-      console.warn("Delete API error:", err);
+      console.warn("Delete user API note:", err);
     }
 
-    showToast(`Account deleted successfully.`);
+    showToast(`Account for ${deletingUser.fullName} removed.`);
+    setDeletingUser(null);
   };
 
-  const copyMagicLinkToClipboard = () => {
-    if (!inviteModalData?.magicLink) return;
-    navigator.clipboard.writeText(inviteModalData.magicLink);
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 2500);
+  const copyToClipboard = (text: string, type: "link" | "template" = "link") => {
+    navigator.clipboard.writeText(text);
+    if (type === "link") {
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2500);
+    } else {
+      setCopiedTemplate(true);
+      setTimeout(() => setCopiedTemplate(false), 2500);
+    }
   };
 
-  // If Student tries to access User Management
-  if (isStudent) {
-    return (
-      <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-sm max-w-xl mx-auto my-12">
-        <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto mb-4">
-          <span className="material-symbols-outlined text-3xl">lock</span>
-        </div>
-        <h2 className="text-xl font-black text-slate-800">Access Restricted</h2>
-        <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-          User Account Management is restricted to School Principal &amp; Staff Administrators. As a Student Contributor, you can contribute to the <strong>Yearbook Gallery</strong> and <strong>Student Clubs</strong>.
-        </p>
+  // Pre-formatted Email Templates
+  const staffEmailTemplateHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 24px; color: #1e293b; }
+    .card { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    .header { background: #0E3B7D; padding: 32px 24px; text-align: center; color: #ffffff; }
+    .header h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+    .header p { margin: 6px 0 0; font-size: 13px; color: #FFC700; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+    .content { padding: 32px 28px; line-height: 1.6; font-size: 15px; }
+    .button-container { text-align: center; margin: 28px 0; }
+    .button { background: #0E3B7D; color: #ffffff !important; padding: 14px 28px; border-radius: 10px; font-weight: 700; text-decoration: none; display: inline-block; font-size: 15px; border: 2px solid #FFC700; }
+    .info-box { background: #f1f5f9; border-left: 4px solid #0E3B7D; padding: 14px 18px; border-radius: 6px; margin: 20px 0; font-size: 14px; }
+    .footer { background: #09234B; color: #94a3b8; padding: 20px; text-align: center; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <h1>HINTHAR INTERNATIONAL SCHOOL</h1>
+      <p>Faculty & Staff Administrative Access</p>
+    </div>
+    <div class="content">
+      <p>Dear Faculty Member,</p>
+      <p>You have been provisioned with an administrative account for the <strong>Hinthar International School Administration Portal</strong>.</p>
+      <div class="info-box">
+        <strong>Authorized Role:</strong> Staff Administrator<br>
+        <strong>Accessible Modules:</strong> Admissions Management, Class Timetables, Yearbook Review & Student Societies.
       </div>
-    );
-  }
+      <p>Please click the button below to accept your invitation, set your account password, and access the school management platform:</p>
+      <div class="button-container">
+        <a href="{{ .SiteURL }}/auth/callback?code={{ .TokenHash }}&type=invite" class="button">Accept Faculty Invitation & Set Password</a>
+      </div>
+      <p style="font-size: 13px; color: #64748b;">This invite link is single-use and expires in 24 hours. If you have any inquiries, contact Principal Dr. Kaung Myat Htut at <a href="mailto:kaungmyat.htut@gmail.com" style="color: #0E3B7D;">kaungmyat.htut@gmail.com</a>.</p>
+    </div>
+    <div class="footer">
+      &copy; 2026 Hinthar International School. Yangon & Mawlamyine Campuses.
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const studentEmailTemplateHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 24px; color: #1e293b; }
+    .card { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    .header { background: #0E3B7D; padding: 32px 24px; text-align: center; color: #ffffff; }
+    .header h1 { margin: 0; font-size: 22px; font-weight: 800; }
+    .header p { margin: 6px 0 0; font-size: 13px; color: #FFC700; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+    .content { padding: 32px 28px; line-height: 1.6; font-size: 15px; }
+    .button-container { text-align: center; margin: 28px 0; }
+    .button { background: #059669; color: #ffffff !important; padding: 14px 28px; border-radius: 10px; font-weight: 700; text-decoration: none; display: inline-block; font-size: 15px; }
+    .info-box { background: #ecfdf5; border-left: 4px solid #059669; padding: 14px 18px; border-radius: 6px; margin: 20px 0; font-size: 14px; color: #065f46; }
+    .footer { background: #09234B; color: #94a3b8; padding: 20px; text-align: center; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <h1>HINTHAR INTERNATIONAL SCHOOL</h1>
+      <p>Student Contributor Invitation</p>
+    </div>
+    <div class="content">
+      <p>Dear Student Scholar,</p>
+      <p>You have been invited to join the <strong>Hinthar International School Student Editorial & Societies Portal</strong> as an authorized Student Contributor.</p>
+      <div class="info-box">
+        <strong>Authorized Privileges:</strong> Alumni Yearbook Entry Submissions & Student Club Proposals.
+      </div>
+      <p>Click the link below to set your account password and start contributing your achievements and club activities:</p>
+      <div class="button-container">
+        <a href="{{ .SiteURL }}/auth/callback?code={{ .TokenHash }}&type=invite" class="button">Activate Student Contributor Account</a>
+      </div>
+      <p style="font-size: 13px; color: #64748b;">Note: Your submissions will be reviewed by faculty coordinators prior to public release on the school website.</p>
+    </div>
+    <div class="footer">
+      &copy; 2026 Hinthar International School &bull; Pearson Edexcel Academic Excellence
+    </div>
+  </div>
+</body>
+</html>`;
 
   return (
     <div className="space-y-6">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#0E3B7D] text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-[#FFC700] animate-bounce">
-          <span className="material-symbols-outlined text-[#FFC700]">check_circle</span>
-          <span className="text-sm font-bold">{toastMessage}</span>
+        <div className="fixed bottom-6 right-6 z-50 bg-[#09234B] text-white px-5 py-3 rounded-2xl shadow-2xl border border-[#FFC700]/30 flex items-center gap-3 animate-fade-in text-sm font-medium">
+          <span className="material-symbols-outlined text-[#FFC700]">verified</span>
+          <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-black text-[#0E3B7D]">Account &amp; Role Management</h1>
-            <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-[#0E3B7D] font-extrabold text-xs">
-              {users.length} Total Users
-            </span>
-          </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            {isPrincipal
-              ? "Full authority: Issue accounts directly or dispatch one-time Magic Invite Links."
-              : "Staff authority: Provision and dispatch Magic Invite Links for Student Contributors."}
-          </p>
-        </div>
-
-        <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] font-black text-xs uppercase tracking-wider shadow-sm transition-all active:scale-95"
-        >
-          <span className="material-symbols-outlined text-base font-bold">person_add</span>
-          <span>{isPrincipal ? "Create New User / Send Invite" : "Provision Student Account"}</span>
-        </button>
-      </div>
-
-      {/* Role Counts Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-amber-50 text-[#FFC700] flex items-center justify-center">
-            <span className="material-symbols-outlined text-2xl">verified_user</span>
-          </div>
+      {/* Header Banner */}
+      <div className="bg-gradient-to-r from-[#0E3B7D] via-[#09234B] to-[#05152E] rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-xl border border-blue-900/40">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-[#FFC700]/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">School Principal</p>
-            <p className="text-xl font-black text-[#09234B]">
-              {users.filter((u) => u.role === "principal").length} Superadmin
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFC700]/20 text-[#FFC700] text-xs font-bold uppercase tracking-wider mb-3 border border-[#FFC700]/30">
+              <span className="material-symbols-outlined text-sm">shield_person</span>
+              3-Tier RBAC & Account Invitations
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+              Faculty & Contributor Provisioning
+            </h1>
+            <p className="text-blue-200 text-sm mt-1 max-w-2xl">
+              Manage accounts for School Principal, Staff Administrators, and Student Contributors. Issue secure magic invite links with automated email templates.
             </p>
           </div>
-        </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-blue-50 text-[#0E3B7D] flex items-center justify-center">
-            <span className="material-symbols-outlined text-2xl">badge</span>
-          </div>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Faculty &amp; Staff</p>
-            <p className="text-xl font-black text-[#0E3B7D]">
-              {users.filter((u) => u.role === "staff_admin").length} Administrators
-            </p>
-          </div>
-        </div>
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Supabase Guide & Email Templates Button */}
+            <button
+              onClick={() => setIsTemplatesModalOpen(true)}
+              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm border border-white/20 transition-all flex items-center gap-2 shadow-sm"
+            >
+              <span className="material-symbols-outlined text-[#FFC700] text-lg">mail</span>
+              <span>Email Templates & Setup Guide</span>
+            </button>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-            <span className="material-symbols-outlined text-2xl">school</span>
-          </div>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Student Contributors</p>
-            <p className="text-xl font-black text-emerald-700">
-              {users.filter((u) => u.role === "student").length} Scholars
-            </p>
+            {/* Add User Button */}
+            {(isPrincipal || isStaff) && (
+              <button
+                onClick={() => setIsAddModalOpen(true)}
+                className="px-5 py-2.5 rounded-xl bg-[#FFC700] hover:bg-[#E5B300] text-[#09234B] font-extrabold text-xs sm:text-sm transition-all shadow-md flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined text-lg">person_add</span>
+                <span>{isStaff ? "Add Student Contributor" : "Provision New Account"}</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-3">
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[11px] font-bold text-slate-400 mr-1">Role:</span>
-            {[
-              { id: "all", label: "All Roles" },
-              { id: "principal", label: "Principal" },
-              { id: "staff_admin", label: "Staff Admin" },
-              { id: "student", label: "Students" },
-            ].map((tab) => (
+      <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 flex flex-col md:flex-row gap-4 justify-between items-center">
+        {/* Search */}
+        <div className="relative w-full md:w-80">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search by name, email, title..."
+            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+          />
+          <span className="material-symbols-outlined absolute left-3 top-2.5 text-slate-400 text-lg">
+            search
+          </span>
+        </div>
+
+        {/* Role Filters */}
+        <div className="flex flex-wrap gap-2 w-full md:w-auto items-center">
+          <div className="flex rounded-xl bg-slate-100 p-1 border border-slate-200">
+            {["all", "principal", "staff_admin", "student"].map((r) => (
               <button
-                key={tab.id}
-                onClick={() => setSelectedRoleFilter(tab.id)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all ${
-                  selectedRoleFilter === tab.id
-                    ? "bg-[#0E3B7D] text-white shadow-sm"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                key={r}
+                onClick={() => setSelectedRoleFilter(r)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  selectedRoleFilter === r
+                    ? "bg-white text-[#0E3B7D] shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                {tab.label}
+                {r === "all" ? "All Roles" : r === "principal" ? "Principal" : r === "staff_admin" ? "Staff" : "Students"}
               </button>
             ))}
           </div>
 
-          <div className="relative w-full sm:w-72">
-            <span className="material-symbols-outlined absolute left-3 top-2.5 text-slate-400 text-sm">
-              search
-            </span>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by name, email, role..."
-              className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
-            />
-          </div>
-        </div>
-
-        {/* Campus Location Filter Bar */}
-        <div className="flex items-center gap-2 pt-2 border-t border-slate-100 flex-wrap">
-          <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1">
-            <span className="material-symbols-outlined text-xs text-[#0E3B7D]">pin_drop</span>
-            <span>Campus:</span>
-          </span>
-          {[
-            { id: "All", label: "All Locations" },
-            { id: "Yangon", label: "Yangon Branches" },
-            { id: "Mawlamyine", label: "Mawlamyine Regional" },
-            { id: "Both", label: "Both (Dual Network)" },
-          ].map((loc) => (
-            <button
-              key={loc.id}
-              onClick={() => setSelectedCampusFilter(loc.id)}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
-                selectedCampusFilter === loc.id
-                  ? "bg-[#FFC700] text-[#09234B] font-black shadow-sm"
-                  : "bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200"
-              }`}
-            >
-              {loc.label}
-            </button>
-          ))}
+          {/* Campus Filter */}
+          <select
+            value={selectedCampusFilter}
+            onChange={(e) => setSelectedCampusFilter(e.target.value)}
+            className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+          >
+            <option value="All">All Campuses</option>
+            <option value="Yangon">Yangon</option>
+            <option value="Mawlamyine">Mawlamyine</option>
+          </select>
         </div>
       </div>
 
-      {/* User Accounts Table */}
-      <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+      {/* Users Table */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider">
-                <th className="p-4">User &amp; Email</th>
-                <th className="p-4">Role / Level</th>
-                <th className="p-4">Title &amp; Department</th>
-                <th className="p-4">Assigned Campus / Grade</th>
-                <th className="p-4">Status</th>
-                <th className="p-4 text-right">Actions &amp; Invites</th>
+          <table className="w-full text-left text-sm text-slate-600">
+            <thead className="bg-slate-50 border-b border-slate-200 text-[11px] uppercase tracking-wider font-extrabold text-slate-500">
+              <tr>
+                <th className="py-3.5 px-6">User / Identity</th>
+                <th className="py-3.5 px-4">Role & Privileges</th>
+                <th className="py-3.5 px-4">Assigned Campus / Grade</th>
+                <th className="py-3.5 px-4">Status</th>
+                <th className="py-3.5 px-6 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredUsers.map((user) => {
-                const canManage = isPrincipal || (isStaff && user.role === "student");
                 const campusBadge = formatCampusBadge(user.campusId);
+                const isMasterPrincipal = user.role === "principal";
+                const isEditable = isPrincipal || (isStaff && user.role === "student");
 
                 return (
                   <tr key={user.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="p-4">
+                    <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
                         <div
-                          className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${user.badgeColor}`}
+                          className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-xs shadow-sm ${user.badgeColor}`}
                         >
                           {user.initials}
                         </div>
                         <div>
-                          <p className="font-bold text-slate-900">{user.fullName}</p>
-                          <p className="text-slate-400 font-mono text-[11px]">{user.email}</p>
+                          <p className="font-bold text-slate-900 leading-snug flex items-center gap-1.5">
+                            {user.fullName}
+                            {isMasterPrincipal && (
+                              <span className="material-symbols-outlined text-[#FFC700] text-sm" title="Master Principal">
+                                star
+                              </span>
+                            )}
+                          </p>
+                          <p className="text-xs text-slate-500 font-mono mt-0.5">{user.email}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="p-4">
-                      <span
-                        className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                          user.role === "principal"
-                            ? "bg-amber-100 text-amber-800 border border-amber-300"
-                            : user.role === "staff_admin"
-                            ? "bg-blue-100 text-blue-800 border border-blue-200"
-                            : "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                        }`}
-                      >
-                        {user.roleLabel}
-                      </span>
+
+                    <td className="py-4 px-4">
+                      <div>
+                        <span
+                          className={`inline-block px-2.5 py-0.5 rounded-md text-[11px] font-bold ${
+                            user.role === "principal"
+                              ? "bg-amber-100 text-amber-900 border border-amber-300"
+                              : user.role === "staff_admin"
+                              ? "bg-blue-100 text-[#0E3B7D] border border-blue-200"
+                              : "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                          }`}
+                        >
+                          {user.roleLabel}
+                        </span>
+                        <p className="text-xs text-slate-500 mt-1">{user.title}</p>
+                      </div>
                     </td>
-                    <td className="p-4 font-medium text-slate-700">{user.title}</td>
-                    <td className="p-4 text-slate-600 font-medium">
-                      <div className="flex flex-col gap-1 items-start">
-                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${campusBadge.badgeClass}`}>
+
+                    <td className="py-4 px-4">
+                      <div>
+                        <span className={`inline-block px-2 py-0.5 rounded-md text-[11px] font-semibold ${campusBadge.badgeClass}`}>
                           {campusBadge.label}
                         </span>
                         {user.grade && (
-                          <span className="text-[10px] text-slate-400 font-semibold">{user.grade}</span>
+                          <p className="text-xs text-slate-500 font-medium mt-1">
+                            {user.grade}
+                          </p>
                         )}
                       </div>
                     </td>
-                    <td className="p-4">
+
+                    <td className="py-4 px-4">
                       <span
-                        className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase ${
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
                           user.status === "active"
                             ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                            : "bg-slate-100 text-slate-600 border border-slate-200"
+                            : "bg-slate-100 text-slate-500 border border-slate-200"
                         }`}
                       >
-                        {user.status}
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            user.status === "active" ? "bg-emerald-500" : "bg-slate-400"
+                          }`}
+                        />
+                        {user.status.toUpperCase()}
                       </span>
                     </td>
-                    <td className="p-4 text-right">
-                      {canManage && user.role !== "principal" ? (
-                        <div className="flex items-center justify-end gap-1.5">
-                          {/* Magic Invite Link Button */}
-                          <button
-                            type="button"
-                            onClick={() => handleSendMagicInvite(user)}
-                            disabled={isSendingInvite}
-                            title="Generate & Send Magic Invite Link"
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-[#0E3B7D] font-black text-[10px] transition-colors border border-blue-200"
-                          >
-                            <span className="material-symbols-outlined text-xs">mark_email_read</span>
-                            <span>Magic Link</span>
-                          </button>
 
+                    <td className="py-4 px-6 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {/* Invite / Magic Link Button */}
+                        <button
+                          onClick={() => handleSendMagicInvite(user)}
+                          disabled={isSendingInvite}
+                          title="Generate & Copy Direct Magic Link"
+                          className="px-2.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-[#0E3B7D] text-xs font-bold border border-blue-200 transition-all flex items-center gap-1"
+                        >
+                          <span className="material-symbols-outlined text-sm">link</span>
+                          <span>Invite</span>
+                        </button>
+
+                        {/* Status Toggle */}
+                        {isEditable && !isMasterPrincipal && (
                           <button
                             onClick={() => handleToggleStatus(user.id)}
-                            className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[10px] transition-colors"
+                            className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all"
+                            title={user.status === "active" ? "Deactivate Account" : "Activate Account"}
                           >
-                            {user.status === "active" ? "Deactivate" : "Activate"}
+                            {user.status === "active" ? "Disable" : "Enable"}
                           </button>
+                        )}
+
+                        {/* Delete Button */}
+                        {isEditable && !isMasterPrincipal && (
                           <button
                             onClick={() => setDeletingUser(user)}
-                            className="px-2 py-1 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 font-bold text-[10px] transition-colors"
-                            title="Delete User Account"
+                            className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 hover:text-rose-700 transition-all"
+                            title="Remove Account"
                           >
-                            <span className="material-symbols-outlined text-xs">delete</span>
+                            <span className="material-symbols-outlined text-base">delete</span>
                           </button>
-                        </div>
-                      ) : (
-                        <span className="text-[11px] text-slate-400 font-medium">Protected Master</span>
-                      )}
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -628,147 +684,104 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
-      {/* ── Add User Modal ────────────────────────────────────────── */}
+      {/* ── Add User Modal ────────────────────────────────────── */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200">
-            <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-200">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
               <div>
-                <h2 className="text-lg font-black text-[#0E3B7D]">Direct Account Provisioning</h2>
-                <p className="text-xs text-slate-400">Accounts &amp; Magic Invite Links are managed here.</p>
+                <h3 className="text-xl font-extrabold text-[#09234B]">Provision New Account</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Direct provisioning with Supabase Auth & user_profiles sync.
+                </p>
               </div>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-slate-700">
+              <button
+                onClick={() => setIsAddModalOpen(false)}
+                className="p-2 rounded-xl text-slate-400 hover:bg-slate-100"
+              >
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
 
-            <form onSubmit={handleCreateUser} className="space-y-4 text-xs">
-              {/* Provisioning Mode Toggle */}
+            <form onSubmit={handleCreateUser} className="space-y-4">
               <div>
-                <label className="font-bold text-slate-700 block mb-1.5 uppercase tracking-wider text-[10px]">
-                  Provisioning Method
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
+                  Full Name *
                 </label>
-                <div className="grid grid-cols-2 p-1 rounded-xl bg-slate-100 border border-slate-200">
-                  <button
-                    type="button"
-                    onClick={() => setNewForm({ ...newForm, provisionMethod: "magic_link" })}
-                    className={`py-2 px-3 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 ${
-                      newForm.provisionMethod === "magic_link"
-                        ? "bg-[#0E3B7D] text-white shadow-sm"
-                        : "text-slate-600 hover:text-slate-900"
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-sm">mark_email_read</span>
-                    <span>Magic Invite Link</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNewForm({ ...newForm, provisionMethod: "password" })}
-                    className={`py-2 px-3 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 ${
-                      newForm.provisionMethod === "password"
-                        ? "bg-[#0E3B7D] text-white shadow-sm"
-                        : "text-slate-600 hover:text-slate-900"
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-sm">lock</span>
-                    <span>Set Initial Password</span>
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Full Name</label>
                 <input
                   type="text"
-                  placeholder="e.g. Aung Myat Min"
+                  required
                   value={newForm.fullName}
                   onChange={(e) => setNewForm({ ...newForm, fullName: e.target.value })}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#0E3B7D] outline-none"
-                  required
+                  placeholder="e.g. Tr. Rachel Evans"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
                 />
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">School Email Address</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
+                  Email Address *
+                </label>
                 <input
                   type="email"
-                  placeholder="e.g. aungmyat.min@student.hinthar.education"
+                  required
                   value={newForm.email}
                   onChange={(e) => setNewForm({ ...newForm, email: e.target.value })}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#0E3B7D] outline-none"
-                  required
+                  placeholder="e.g. rachel.evans@hinthar.education"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Access Role</label>
-                  <select
-                    value={newForm.role}
-                    onChange={(e) =>
-                      setNewForm({
-                        ...newForm,
-                        role: e.target.value as UserRole,
-                        title:
-                          e.target.value === "student"
-                            ? "Student Contributor"
-                            : e.target.value === "staff_admin"
-                            ? "Staff Administrator"
-                            : "School Principal",
-                      })
-                    }
-                    className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#0E3B7D] outline-none"
-                  >
-                    <option value="student">Student (Data Entry)</option>
-                    {isPrincipal && <option value="staff_admin">Staff / Admin</option>}
-                  </select>
-                </div>
-
-                {newForm.provisionMethod === "password" ? (
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Initial Password</label>
-                    <input
-                      type="text"
-                      value={newForm.password}
-                      onChange={(e) => setNewForm({ ...newForm, password: e.target.value })}
-                      className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#0E3B7D] outline-none font-mono"
-                      required
-                    />
-                  </div>
-                ) : (
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Delivery Channel</label>
-                    <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200 text-[#0E3B7D] font-bold text-[11px] flex items-center gap-1.5">
-                      <span className="material-symbols-outlined text-sm">send</span>
-                      <span>Instant Magic Link Dispatch</span>
-                    </div>
-                  </div>
-                )}
+              {/* Role Selector */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
+                  Role Permission *
+                </label>
+                <select
+                  disabled={isStaff}
+                  value={newForm.role}
+                  onChange={(e) =>
+                    setNewForm({
+                      ...newForm,
+                      role: e.target.value as UserRole,
+                      title:
+                        e.target.value === "student"
+                          ? "Student Contributor"
+                          : e.target.value === "staff_admin"
+                          ? "Staff Administrator"
+                          : "Principal & Founder",
+                    })
+                  }
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+                >
+                  <option value="student">Student Contributor (Yearbook & Clubs)</option>
+                  {isPrincipal && <option value="staff_admin">Staff Administrator (Admissions & Classes)</option>}
+                  {isPrincipal && <option value="principal">School Principal (Superadmin)</option>}
+                </select>
               </div>
 
-              {newForm.role === "student" && (
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Grade Level</label>
-                  <select
-                    value={newForm.grade}
-                    onChange={(e) => setNewForm({ ...newForm, grade: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#0E3B7D] outline-none"
-                  >
-                    <option value="Lower Secondary (Year 7–9)">Lower Secondary (Year 7–9)</option>
-                    <option value="Pearson IGCSE (Year 10)">Pearson IGCSE (Year 10)</option>
-                    <option value="Pearson IGCSE (Year 11)">Pearson IGCSE (Year 11)</option>
-                    <option value="Pearson IAL (Year 12)">Pearson IAL (Year 12)</option>
-                    <option value="Pearson IAL (Year 13)">Pearson IAL (Year 13)</option>
-                  </select>
-                </div>
-              )}
-
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Assigned Campus / Scope</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
+                  Designation / Academic Title
+                </label>
+                <input
+                  type="text"
+                  value={newForm.title}
+                  onChange={(e) => setNewForm({ ...newForm, title: e.target.value })}
+                  placeholder="e.g. Head of Science Department"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+                />
+              </div>
+
+              {/* Campus */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
+                  Primary Campus
+                </label>
                 <select
                   value={newForm.campusId}
                   onChange={(e) => setNewForm({ ...newForm, campusId: e.target.value })}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#0E3B7D] outline-none"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
                 >
                   {HIERARCHICAL_CAMPUS_OPTIONS.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -778,19 +791,89 @@ export default function AdminUsersPage() {
                 </select>
               </div>
 
-              <div className="pt-4 flex justify-end gap-3 border-t border-slate-200">
+              {/* Grade (If Student) */}
+              {newForm.role === "student" && (
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
+                    Student Grade Level
+                  </label>
+                  <input
+                    type="text"
+                    value={newForm.grade}
+                    onChange={(e) => setNewForm({ ...newForm, grade: e.target.value })}
+                    placeholder="e.g. Pearson IGCSE (Year 10)"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+                  />
+                </div>
+              )}
+
+              {/* Provision Method */}
+              <div className="pt-2">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
+                  Activation Method
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setNewForm({ ...newForm, provisionMethod: "magic_link" })}
+                    className={`p-3 rounded-xl border text-xs font-bold text-left transition-all ${
+                      newForm.provisionMethod === "magic_link"
+                        ? "border-[#0E3B7D] bg-blue-50 text-[#0E3B7D] ring-2 ring-[#0E3B7D]/20"
+                        : "border-slate-200 bg-slate-50 text-slate-600"
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className="material-symbols-outlined text-sm">link</span>
+                      <span>Magic Invite Link</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 font-normal">Generate one-click login link</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setNewForm({ ...newForm, provisionMethod: "password" })}
+                    className={`p-3 rounded-xl border text-xs font-bold text-left transition-all ${
+                      newForm.provisionMethod === "password"
+                        ? "border-[#0E3B7D] bg-blue-50 text-[#0E3B7D] ring-2 ring-[#0E3B7D]/20"
+                        : "border-slate-200 bg-slate-50 text-slate-600"
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className="material-symbols-outlined text-sm">password</span>
+                      <span>Set Password</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 font-normal">Pre-configure credentials</p>
+                  </button>
+                </div>
+              </div>
+
+              {newForm.provisionMethod === "password" && (
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
+                    Initial Password
+                  </label>
+                  <input
+                    type="text"
+                    value={newForm.password}
+                    onChange={(e) => setNewForm({ ...newForm, password: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+                  />
+                </div>
+              )}
+
+              <div className="pt-4 flex gap-3">
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 font-bold text-slate-700"
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200 font-bold text-xs text-slate-600 hover:bg-slate-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] font-black"
+                  className="flex-1 py-2.5 rounded-xl bg-[#0E3B7D] hover:bg-[#09234B] text-white font-bold text-xs shadow-md"
                 >
-                  {newForm.provisionMethod === "magic_link" ? "Dispatch Magic Invite" : "Issue Account"}
+                  Provision Account
                 </button>
               </div>
             </form>
@@ -798,65 +881,60 @@ export default function AdminUsersPage() {
         </div>
       )}
 
-      {/* ── Magic Invite Link Generated Modal ────────────────────────── */}
+      {/* ── Invite Generated Modal ────────────────────────────────────── */}
       {inviteModalData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 text-left">
-            <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-100">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#0E3B7D] flex items-center justify-center">
-                <span className="material-symbols-outlined text-2xl">mark_email_read</span>
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-100 animate-fade-in">
+            <div className="text-center mb-6">
+              <div className="w-14 h-14 bg-emerald-50 rounded-2xl mx-auto flex items-center justify-center text-emerald-600 mb-3 border border-emerald-200">
+                <span className="material-symbols-outlined text-3xl">mark_email_read</span>
               </div>
-              <div>
-                <h3 className="text-base font-black text-[#09234B]">Magic Invite Link Ready</h3>
-                <p className="text-xs text-slate-400">One-time secure authentication link</p>
-              </div>
+              <h3 className="text-xl font-extrabold text-[#09234B]">Magic Invite Ready!</h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Account provisioned for <strong>{inviteModalData.name}</strong> ({inviteModalData.email}).
+              </p>
             </div>
 
-            <div className="space-y-3 text-xs mb-5">
-              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
-                <p className="text-slate-500 font-medium">
-                  Recipient: <strong className="text-slate-800">{inviteModalData.name}</strong> ({inviteModalData.email})
-                </p>
-                <p className="text-slate-500 font-medium">
-                  Role: <strong className="text-slate-800">{inviteModalData.role}</strong>
-                </p>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="font-bold text-slate-700 block">Direct Magic Sign-in Link</label>
+            <div className="space-y-4">
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                  Direct Magic Activation URL
+                </label>
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
                     readOnly
                     value={inviteModalData.magicLink}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-100 text-slate-700 font-mono text-[11px] outline-none"
+                    className="w-full text-xs font-mono text-slate-700 bg-white px-3 py-2 rounded-xl border border-slate-200 select-all"
                   />
                   <button
-                    type="button"
-                    onClick={copyMagicLinkToClipboard}
-                    className={`px-3 py-2.5 rounded-xl font-black text-xs shrink-0 flex items-center gap-1 transition-all ${
-                      copiedLink
-                        ? "bg-emerald-600 text-white"
-                        : "bg-[#0E3B7D] hover:bg-[#164E9A] text-white"
-                    }`}
+                    onClick={() => copyToClipboard(inviteModalData.magicLink, "link")}
+                    className="px-3.5 py-2 rounded-xl bg-[#0E3B7D] hover:bg-[#09234B] text-white text-xs font-bold flex-shrink-0 transition-all flex items-center gap-1"
                   >
                     <span className="material-symbols-outlined text-sm">
-                      {copiedLink ? "check" : "content_copy"}
+                      {copiedLink ? "done" : "content_copy"}
                     </span>
-                    <span>{copiedLink ? "Copied!" : "Copy Link"}</span>
+                    <span>{copiedLink ? "Copied" : "Copy"}</span>
                   </button>
                 </div>
-                <p className="text-[11px] text-slate-400">
-                  Share this link directly with the user or let Supabase deliver it automatically to their email inbox.
+              </div>
+
+              <div className="p-3.5 bg-blue-50 rounded-2xl border border-blue-100 text-xs text-blue-900 leading-relaxed">
+                <p className="font-bold flex items-center gap-1.5 text-[#0E3B7D] mb-1">
+                  <span className="material-symbols-outlined text-sm">info</span>
+                  Instant Delivery Options:
                 </p>
+                <ul className="list-disc pl-4 space-y-1 text-slate-600 text-[11px]">
+                  <li>Share this direct link with the user via WhatsApp, Viber, or Telegram.</li>
+                  <li>Or use our copyable email templates to email them directly.</li>
+                </ul>
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+            <div className="mt-6 flex justify-end">
               <button
-                type="button"
                 onClick={() => setInviteModalData(null)}
-                className="px-5 py-2 rounded-xl bg-[#09234B] text-[#FFC700] font-black text-xs"
+                className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-all"
               >
                 Done
               </button>
@@ -865,29 +943,190 @@ export default function AdminUsersPage() {
         </div>
       )}
 
-      {/* ── Delete Confirmation Modal ─────────────────────────────── */}
-      {deletingUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 text-center">
-            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-3">
-              <span className="material-symbols-outlined">warning</span>
+      {/* ── Email Templates & Supabase Guide Modal ───────────────────────── */}
+      {isTemplatesModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h3 className="text-xl font-extrabold text-[#09234B] flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[#FFC700]">mark_email_unread</span>
+                  Email Templates & Setup Guide
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Ready-to-use HTML templates and Supabase dashboard configuration steps.
+                </p>
+              </div>
+              <button
+                onClick={() => setIsTemplatesModalOpen(false)}
+                className="p-2 rounded-xl text-slate-400 hover:bg-slate-100"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
             </div>
-            <h3 className="text-lg font-black text-slate-900">Delete User Account</h3>
-            <p className="text-xs text-slate-600 mt-1 mb-5">
-              Are you sure you want to remove <strong>{deletingUser.fullName}</strong> ({deletingUser.email})?
+
+            {/* Navigation Tabs */}
+            <div className="flex border-b border-slate-200 mb-5 gap-2">
+              <button
+                onClick={() => setTemplatesTab("staff_email")}
+                className={`pb-2.5 px-3 text-xs font-bold transition-all border-b-2 ${
+                  templatesTab === "staff_email"
+                    ? "border-[#0E3B7D] text-[#0E3B7D]"
+                    : "border-transparent text-slate-500 hover:text-slate-900"
+                }`}
+              >
+                Staff Invite Template
+              </button>
+              <button
+                onClick={() => setTemplatesTab("student_email")}
+                className={`pb-2.5 px-3 text-xs font-bold transition-all border-b-2 ${
+                  templatesTab === "student_email"
+                    ? "border-[#0E3B7D] text-[#0E3B7D]"
+                    : "border-transparent text-slate-500 hover:text-slate-900"
+                }`}
+              >
+                Student Invite Template
+              </button>
+              <button
+                onClick={() => setTemplatesTab("supabase_guide")}
+                className={`pb-2.5 px-3 text-xs font-bold transition-all border-b-2 ${
+                  templatesTab === "supabase_guide"
+                    ? "border-[#0E3B7D] text-[#0E3B7D]"
+                    : "border-transparent text-slate-500 hover:text-slate-900"
+                }`}
+              >
+                Supabase Dashboard Guide
+              </button>
+            </div>
+
+            {/* Staff Email Template Tab */}
+            {templatesTab === "staff_email" && (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Staff Admin HTML Email Template
+                  </span>
+                  <button
+                    onClick={() => copyToClipboard(staffEmailTemplateHtml, "template")}
+                    className="px-3 py-1.5 rounded-lg bg-[#0E3B7D] hover:bg-[#09234B] text-white text-xs font-bold transition-all flex items-center gap-1.5"
+                  >
+                    <span className="material-symbols-outlined text-sm">
+                      {copiedTemplate ? "done" : "content_copy"}
+                    </span>
+                    <span>{copiedTemplate ? "Copied HTML!" : "Copy HTML"}</span>
+                  </button>
+                </div>
+                <div className="p-4 bg-slate-900 text-slate-100 rounded-2xl text-xs font-mono max-h-60 overflow-y-auto select-all leading-relaxed">
+                  {staffEmailTemplateHtml}
+                </div>
+                <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-900">
+                  <p className="font-bold mb-1">How to use in Supabase Dashboard:</p>
+                  <p className="text-[11px] leading-relaxed">
+                    Go to <strong>Authentication &rarr; Email Templates &rarr; Invite user</strong>, paste this HTML into the message body, and click Save.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Student Email Template Tab */}
+            {templatesTab === "student_email" && (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Student Contributor HTML Email Template
+                  </span>
+                  <button
+                    onClick={() => copyToClipboard(studentEmailTemplateHtml, "template")}
+                    className="px-3 py-1.5 rounded-lg bg-[#0E3B7D] hover:bg-[#09234B] text-white text-xs font-bold transition-all flex items-center gap-1.5"
+                  >
+                    <span className="material-symbols-outlined text-sm">
+                      {copiedTemplate ? "done" : "content_copy"}
+                    </span>
+                    <span>{copiedTemplate ? "Copied HTML!" : "Copy HTML"}</span>
+                  </button>
+                </div>
+                <div className="p-4 bg-slate-900 text-slate-100 rounded-2xl text-xs font-mono max-h-60 overflow-y-auto select-all leading-relaxed">
+                  {studentEmailTemplateHtml}
+                </div>
+                <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 text-xs text-emerald-900">
+                  <p className="font-bold mb-1">How to use in Supabase Dashboard:</p>
+                  <p className="text-[11px] leading-relaxed">
+                    Use this template when sending customized student contributor onboarding emails or in Supabase Magic Link templates.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Supabase Dashboard Guide Tab */}
+            {templatesTab === "supabase_guide" && (
+              <div className="space-y-4 text-xs text-slate-700 leading-relaxed">
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                  <div className="font-bold text-sm text-[#09234B] flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[#0E3B7D]">link</span>
+                    1. Site URL & Redirect URLs Setup
+                  </div>
+                  <p className="text-slate-600">
+                    Open your Supabase Dashboard: <strong>https://supabase.com/dashboard/project/ytmylxemqrsjxdvrthxx/auth/url-configuration</strong>
+                  </p>
+                  <div className="bg-white p-3 rounded-xl border border-slate-200 font-mono text-[11px] space-y-1">
+                    <p><strong>Site URL:</strong> http://localhost:3000</p>
+                    <p><strong>Redirect URLs (Add all of the following):</strong></p>
+                    <ul className="list-disc pl-4 text-blue-800">
+                      <li>http://localhost:3000/auth/callback</li>
+                      <li>http://localhost:3000/admin/**</li>
+                      <li>https://*.hinthar.education/auth/callback</li>
+                      <li>https://*.pages.dev/auth/callback</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                  <div className="font-bold text-sm text-[#09234B] flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[#0E3B7D]">forward_to_inbox</span>
+                    2. Email Delivery (SMTP Settings)
+                  </div>
+                  <p className="text-slate-600">
+                    Supabase default email has a rate limit of 3 emails/hour. For production, enable Custom SMTP under <strong>Project Settings &rarr; Authentication &rarr; SMTP Settings</strong> (using Resend, Brevo, SendGrid, or Google Workspace).
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setIsTemplatesModalOpen(false)}
+                className="py-2.5 px-5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-all"
+              >
+                Close Guide
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete Confirmation Modal ───────────────────────────────── */}
+      {deletingUser && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 text-center animate-fade-in">
+            <div className="w-14 h-14 bg-rose-50 rounded-2xl mx-auto flex items-center justify-center text-rose-600 mb-4 border border-rose-200">
+              <span className="material-symbols-outlined text-3xl">warning</span>
+            </div>
+            <h3 className="text-lg font-black text-[#09234B]">Remove Account?</h3>
+            <p className="text-xs text-slate-500 mt-2">
+              Are you sure you want to remove access for <strong>{deletingUser.fullName}</strong> ({deletingUser.email})?
             </p>
-            <div className="flex gap-3 justify-center">
+            <div className="mt-6 flex gap-3">
               <button
                 onClick={() => setDeletingUser(null)}
-                className="px-4 py-2 rounded-xl bg-slate-100 font-bold text-xs text-slate-700"
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 font-bold text-xs text-slate-600 hover:bg-slate-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDeleteUser}
-                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 font-black text-xs text-white"
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md"
               >
-                Yes, Delete
+                Remove
               </button>
             </div>
           </div>

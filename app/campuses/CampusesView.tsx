@@ -52,63 +52,6 @@ export default function CampusesView() {
     <>
       <Navbar />
       <main className="min-h-screen bg-[#F8FAFC] pt-24 md:pt-28 pb-20">
-        {/* ── Hero Banner ────────────────────────────────────────── */}
-        <section className="relative overflow-hidden bg-gradient-to-b from-[#09234B] via-[#0E3B7D] to-[#164E9A] text-white py-16 md:py-24 px-4 sm:px-6 lg:px-8 mb-12">
-          {/* Decorative glows */}
-          <div className="absolute top-0 right-0 w-96 h-96 bg-[#FFC700]/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-80 h-80 bg-cyan-400/10 rounded-full blur-3xl pointer-events-none" />
-
-          <div className="max-w-7xl mx-auto relative z-10 text-center">
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[#FFC700] text-xs md:text-sm font-bold uppercase tracking-wider mb-5"
-            >
-              <span className="material-symbols-outlined text-sm">location_on</span>
-              <span>4 Modern Campuses Across Myanmar</span>
-            </motion.div>
-
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tight max-w-4xl mx-auto leading-tight"
-            >
-              State-of-the-Art <span className="text-[#FFC700]">Learning Spaces</span>
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="mt-4 text-base sm:text-lg md:text-xl text-slate-200 max-w-2xl mx-auto font-medium"
-            >
-              Discover our 3 specialized campuses in Yangon and our regional excellence campus in Mawlamyine — equipped with British Council labs, Turing computer suites, and collegiate libraries.
-            </motion.p>
-
-            {/* Quick stats pills */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-              className="mt-8 flex flex-wrap justify-center items-center gap-4 text-xs md:text-sm font-bold"
-            >
-              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl border border-white/15">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#FFC700] animate-pulse" />
-                <span>3 Yangon Campuses</span>
-              </div>
-              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl border border-white/15">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-                <span>1 Mawlamyine Campus</span>
-              </div>
-              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl border border-white/15">
-                <span className="material-symbols-outlined text-base text-[#FFC700]">verified</span>
-                <span>Pearson Center Certified</span>
-              </div>
-            </motion.div>
-          </div>
-        </section>
 
         {/* ── Filter Tabs & Campus Grid ──────────────────────────── */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
