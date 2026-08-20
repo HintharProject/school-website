@@ -2,21 +2,29 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
-import { getActiveAdminRole, UserProfile, FALLBACK_GUEST_USER } from "../../admin/adminStore";
+import { UserProfile, FALLBACK_GUEST_USER, mapUserProfileRecord } from "../../admin/adminStore";
+import { supabase } from "@/lib/supabase/client";
+import { getCurrentUserProfile } from "@/lib/supabase/actions";
 
 export default function AdminSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [activeRole, setActiveRole] = useState<UserProfile>(FALLBACK_GUEST_USER);
 
   useEffect(() => {
-    setActiveRole(getActiveAdminRole());
-    const handleRoleUpdate = () => {
-      setActiveRole(getActiveAdminRole());
-    };
-    window.addEventListener("his_role_updated", handleRoleUpdate);
-    return () => window.removeEventListener("his_role_updated", handleRoleUpdate);
+    async function loadUser() {
+      try {
+        const profile = await getCurrentUserProfile();
+        if (profile) {
+          setActiveRole(mapUserProfileRecord(profile));
+        }
+      } catch (err) {
+        console.warn("Sidebar: failed to load user profile", err);
+      }
+    }
+    loadUser();
   }, []);
 
   const isPrincipal = (activeRole?.role ?? "principal") === "principal";
@@ -146,14 +154,14 @@ export default function AdminSidebar() {
           type="button"
           onClick={async () => {
             try {
-              const { supabase } = await import("@/lib/supabase/client");
-              if (supabase) await supabase.auth.signOut();
+              await supabase.auth.signOut();
             } catch (err) {
               console.warn("Sidebar sign out error:", err);
             }
-            window.location.href = "/admin/login";
+            router.push("/admin/login");
+            router.refresh();
           }}
-          className="flex items-center justify-center gap-2 w-full py-2 px-3 bg-red-500/10 hover:bg-red-500 text-red-300 hover:text-white border border-red-500/30 rounded-xl transition-all text-xs font-bold uppercase tracking-wider"
+          className="flex items-center justify-center gap-2 w-full py-2 px-3 bg-red-500/10 hover:bg-red-500 text-red-300 hover:text-white border border-red-500/30 rounded-xl transition-all text-xs font-bold uppercase tracking-wider cursor-pointer"
         >
           <span className="material-symbols-outlined text-base">logout</span>
           <span>Sign Out</span>

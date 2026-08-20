@@ -656,3 +656,46 @@ ON CONFLICT (id) DO UPDATE SET
   room = EXCLUDED.room,
   credits = EXCLUDED.credits,
   description = EXCLUDED.description;
+
+-- ------------------------------------------------------------------------------
+-- 7. SUPABASE STORAGE BUCKET & POLICIES ('school-assets')
+-- ------------------------------------------------------------------------------
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'school-assets',
+  'school-assets',
+  true,
+  8388608, -- 8MB
+  ARRAY['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/avif', 'image/gif', 'image/svg+xml']
+)
+ON CONFLICT (id) DO UPDATE SET
+  public = true,
+  file_size_limit = 8388608,
+  allowed_mime_types = ARRAY['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/avif', 'image/gif', 'image/svg+xml'];
+
+-- Storage Policies for 'school-assets'
+DROP POLICY IF EXISTS "Public can view school assets" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can upload school assets" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can update school assets" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can delete school assets" ON storage.objects;
+
+-- 1. Anyone can view public school assets
+CREATE POLICY "Public can view school assets" ON storage.objects
+  FOR SELECT TO anon, authenticated
+  USING (bucket_id = 'school-assets');
+
+-- 2. Authenticated users (Principal, Staff, Student) can upload school assets
+CREATE POLICY "Authenticated users can upload school assets" ON storage.objects
+  FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'school-assets');
+
+-- 3. Authenticated users can update/replace assets
+CREATE POLICY "Authenticated users can update school assets" ON storage.objects
+  FOR UPDATE TO authenticated
+  USING (bucket_id = 'school-assets');
+
+-- 4. Authenticated users can delete assets
+CREATE POLICY "Authenticated users can delete school assets" ON storage.objects
+  FOR DELETE TO authenticated
+  USING (bucket_id = 'school-assets');
+

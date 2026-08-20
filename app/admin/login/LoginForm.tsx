@@ -3,139 +3,71 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import {
-  INITIAL_USER_ACCOUNTS,
-  setActiveAdminRole,
-  UserProfile,
-  UserRole,
-  getStoredUsers,
-  saveStoredUsers,
-} from "../adminStore";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
 
 export default function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectParam = searchParams.get("redirect");
+  const targetUrl = redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//") ? redirectParam : "/admin";
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const users = typeof window !== "undefined" ? getStoredUsers() : INITIAL_USER_ACCOUNTS;
-
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setErrorMessage(null);
 
+    if (!isSupabaseConfigured) {
+      setErrorMessage("Authentication service is not configured. Please contact the school administrator.");
+      setLoading(false);
+      return;
+    }
+
     const enteredEmail = email.trim().toLowerCase();
 
-    // 1. Live Supabase Authentication
-    if (isSupabaseConfigured) {
-      try {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: enteredEmail,
-          password,
-        });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: enteredEmail,
+        password,
+      });
 
-        if (error) {
-          setErrorMessage(error.message || "Invalid email or password.");
+      if (error) {
+        setErrorMessage(error.message || "Invalid email or password.");
+        setLoading(false);
+        return;
+      }
+
+      if (data.user) {
+        // Fetch profile from user_profiles table to check account status
+        const { data: profile } = await supabase
+          .from("user_profiles")
+          .select("role, status, full_name")
+          .eq("id", data.user.id)
+          .single();
+
+        if (profile && profile.status !== "active") {
+          await supabase.auth.signOut();
+          setErrorMessage("This account has been suspended by the School Administration.");
           setLoading(false);
           return;
         }
 
-        if (data.user) {
-          // Fetch profile from user_profiles table
-          const { data: profile } = await supabase
-            .from("user_profiles")
-            .select("*")
-            .eq("id", data.user.id)
-            .single();
-
-          if (profile && profile.status !== "active") {
-            await supabase.auth.signOut();
-            setErrorMessage("This account has been suspended by the School Administration.");
-            setLoading(false);
-            return;
-          }
-
-          const role = (profile?.role || data.user.app_metadata?.role || "principal") as UserRole;
-          const fullName = profile?.full_name || data.user.user_metadata?.full_name || "Dr. Kaung Myat Htut";
-
-          const roleLabels: Record<UserRole, string> = {
-            principal: "School Principal & Founder",
-            staff_admin: "Staff Administrator",
-            student: "Student Contributor",
-          };
-
-          const initials = fullName
-            .split(" ")
-            .map((n: string) => n[0])
-            .slice(0, 2)
-            .join("")
-            .toUpperCase() || "KM";
-
-          const activeProfile: UserProfile = {
-            id: data.user.id,
-            email: enteredEmail,
-            fullName,
-            role,
-            roleLabel: roleLabels[role] || "School Principal",
-            title: profile?.title || (role === "principal" ? "Principal & CAO" : "Faculty Staff"),
-            campusId: profile?.campus_id || "ywarma-campus",
-            grade: profile?.grade,
-            initials,
-            badgeColor:
-              role === "principal"
-                ? "bg-[#FFC700] text-[#09234B]"
-                : role === "staff_admin"
-                ? "bg-[#0E3B7D] text-white"
-                : "bg-emerald-600 text-white",
-            status: "active",
-            createdAt: profile?.created_at || new Date().toISOString(),
-          };
-
-          const existingUsers = getStoredUsers();
-          const updatedUsers = [activeProfile, ...existingUsers.filter((u) => u.id !== activeProfile.id)];
-          saveStoredUsers(updatedUsers);
-          setActiveAdminRole(activeProfile.id);
-          router.push("/admin");
-          return;
-        }
-      } catch (err: any) {
-        console.warn("Supabase auth error:", err);
-        setErrorMessage(err.message || "Authentication failed. Please try again.");
-        setLoading(false);
+        // Supabase session cookie is now set automatically by @supabase/ssr
+        router.push(targetUrl);
+        router.refresh();
         return;
       }
+    } catch (err: any) {
+      console.warn("Supabase auth error:", err);
+      setErrorMessage(err.message || "Authentication failed. Please try again.");
+      setLoading(false);
     }
-
-    // 2. Local Demo fallback if Supabase is unconfigured in development
-    const matchedAccount = users.find(
-      (u) => u.email.toLowerCase() === enteredEmail
-    );
-
-    if (matchedAccount) {
-      if (matchedAccount.status !== "active") {
-        setErrorMessage("This account has been suspended by the School Administration.");
-        setLoading(false);
-        return;
-      }
-
-      if (!password || password.length < 6) {
-        setErrorMessage("Password must be at least 6 characters.");
-        setLoading(false);
-        return;
-      }
-
-      setActiveAdminRole(matchedAccount.id);
-      router.push("/admin");
-      return;
-    }
-
-    setErrorMessage("Account not found or invalid credentials. Please contact Dr. Kaung Myat Htut (School Principal).");
-    setLoading(false);
   };
 
   return (

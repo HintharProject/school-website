@@ -46,8 +46,8 @@ async function verifyAdminAuth() {
     return { isAuthorized: false };
   }
 
-  // Principal and Staff are authorized to upload school assets
-  if (role === "principal" || role === "staff_admin") {
+  // Principal, Staff, and Student Contributors are authorized to upload school assets
+  if (role === "principal" || role === "staff_admin" || role === "student") {
     return { isAuthorized: true, userId: user.id };
   }
 

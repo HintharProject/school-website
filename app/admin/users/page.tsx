@@ -4,16 +4,16 @@ import { useState, useEffect } from "react";
 import {
   UserProfile,
   UserRole,
-  getStoredUsers,
-  saveStoredUsers,
-  getActiveAdminRole,
   HIERARCHICAL_CAMPUS_OPTIONS,
   formatCampusBadge,
+  FALLBACK_GUEST_USER,
+  mapUserProfileRecord,
 } from "../adminStore";
+import { fetchUsers, getCurrentUserProfile } from "@/lib/supabase/actions";
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<UserProfile[]>([]);
-  const [currentUser, setCurrentUser] = useState<UserProfile>(getActiveAdminRole());
+  const [currentUser, setCurrentUser] = useState<UserProfile>(FALLBACK_GUEST_USER);
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>("all");
   const [selectedCampusFilter, setSelectedCampusFilter] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState("");
@@ -52,24 +52,27 @@ export default function AdminUsersPage() {
   };
 
   useEffect(() => {
-    const active = getActiveAdminRole();
-    setCurrentUser(active);
-    setUsers(getStoredUsers());
+    async function loadData() {
+      try {
+        const profile = await getCurrentUserProfile();
+        if (profile) setCurrentUser(mapUserProfileRecord(profile));
+      } catch (err) {
+        console.warn("Could not load current user profile:", err);
+      }
 
-    const handleUsersUpdate = () => {
-      setUsers(getStoredUsers());
-    };
-    const handleRoleUpdate = () => {
-      setCurrentUser(getActiveAdminRole());
-    };
-
-    window.addEventListener("his_users_updated", handleUsersUpdate);
-    window.addEventListener("his_role_updated", handleRoleUpdate);
-
-    return () => {
-      window.removeEventListener("his_users_updated", handleUsersUpdate);
-      window.removeEventListener("his_role_updated", handleRoleUpdate);
-    };
+      try {
+        const res = await fetch("/api/admin/users");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.users && data.users.length > 0) {
+            setUsers(data.users.map(mapUserProfileRecord));
+          }
+        }
+      } catch (err) {
+        console.warn("Could not fetch API users:", err);
+      }
+    }
+    loadData();
   }, []);
 
   const isPrincipal = (currentUser?.role ?? "principal") === "principal";
@@ -96,57 +99,6 @@ export default function AdminUsersPage() {
 
     return matchesRole && matchesCampus && matchesSearch;
   });
-
-  // Fetch users from live API on mount
-  useEffect(() => {
-    async function fetchApiUsers() {
-      try {
-        const res = await fetch("/api/admin/users");
-        if (res.ok) {
-          const data = await res.json();
-          if (data.users && data.users.length > 0) {
-            const roleLabels: Record<UserRole, string> = {
-              principal: "School Principal",
-              staff_admin: "Staff Administrator",
-              student: "Student Contributor",
-            };
-            const roleBadgeColors: Record<UserRole, string> = {
-              principal: "bg-[#FFC700] text-[#09234B]",
-              staff_admin: "bg-[#0E3B7D] text-white",
-              student: "bg-emerald-600 text-white",
-            };
-            const mapped: UserProfile[] = data.users.map((u: any) => {
-              const initials = (u.full_name || "AU")
-                .split(" ")
-                .map((n: string) => n[0])
-                .slice(0, 2)
-                .join("")
-                .toUpperCase();
-              return {
-                id: u.id,
-                email: u.email,
-                fullName: u.full_name,
-                role: u.role as UserRole,
-                roleLabel: roleLabels[u.role as UserRole] || u.role,
-                title: u.title || roleLabels[u.role as UserRole] || "Faculty Staff",
-                campusId: u.campus_id || "ywarma-campus",
-                grade: u.grade,
-                initials: initials || "US",
-                badgeColor: roleBadgeColors[u.role as UserRole] || "bg-[#0E3B7D] text-white",
-                status: u.status === "inactive" ? "inactive" : "active",
-                createdAt: u.created_at?.split("T")[0] || new Date().toISOString().split("T")[0],
-              };
-            });
-            setUsers(mapped);
-            saveStoredUsers(mapped);
-          }
-        }
-      } catch (err) {
-        console.warn("Could not fetch API users, using cached store:", err);
-      }
-    }
-    fetchApiUsers();
-  }, []);
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -199,9 +151,7 @@ export default function AdminUsersPage() {
     };
 
     // Optimistically update UI
-    const updated = [newUser, ...users];
-    setUsers(updated);
-    saveStoredUsers(updated);
+    setUsers((prev) => [newUser, ...prev]);
 
     const isMagicLink = newForm.provisionMethod === "magic_link";
 
@@ -315,9 +265,7 @@ export default function AdminUsersPage() {
     }
 
     const newStatus = target.status === "active" ? "inactive" : "active";
-    const updated = users.map((u) => (u.id === id ? { ...u, status: newStatus as "active" | "inactive" } : u));
-    setUsers(updated);
-    saveStoredUsers(updated);
+    setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, status: newStatus as "active" | "inactive" } : u)));
 
     try {
       await fetch("/api/admin/users", {
@@ -340,9 +288,7 @@ export default function AdminUsersPage() {
       return;
     }
 
-    const updated = users.filter((u) => u.id !== deletingUser.id);
-    setUsers(updated);
-    saveStoredUsers(updated);
+    setUsers((prev) => prev.filter((u) => u.id !== deletingUser.id));
 
     try {
       await fetch(`/api/admin/users?id=${encodeURIComponent(deletingUser.id)}`, {

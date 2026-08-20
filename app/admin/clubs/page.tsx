@@ -4,16 +4,16 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import {
   ClubItem,
-  getStoredClubs,
-  saveStoredClubs,
-  getActiveAdminRole,
+  mapClubRecord,
   UserProfile,
   FALLBACK_GUEST_USER,
   HIERARCHICAL_CAMPUS_OPTIONS,
   formatCampusBadge,
+  mapUserProfileRecord,
 } from "../adminStore";
 import ImageUploadPicker from "@/app/components/admin/ImageUploadPicker";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
+import { supabase } from "@/lib/supabase/client";
+import { fetchClubs, createClub, updateClub, deleteClub, getCurrentUserProfile } from "@/lib/supabase/actions";
 
 export default function AdminClubsPage() {
   const [clubs, setClubs] = useState<ClubItem[]>([]);
@@ -50,57 +50,21 @@ export default function AdminClubsPage() {
   };
 
   const loadData = async () => {
-    setCurrentUser(getActiveAdminRole());
+    try {
+      const profile = await getCurrentUserProfile();
+      if (profile) setCurrentUser(mapUserProfileRecord(profile));
 
-    if (isSupabaseConfigured) {
-      try {
-        const { data, error } = await supabase
-          .from("clubs")
-          .select("*")
-          .order("id", { ascending: false });
-
-        if (!error && data) {
-          const mapped: ClubItem[] = data.map((d: any) => ({
-            id: Number(d.id),
-            name: d.name,
-            category: d.category,
-            icon: d.icon || "groups",
-            members: d.members || "25+ Members",
-            meetingTime: d.meeting_time || "",
-            leadership: d.leadership || "",
-            description: d.description || "",
-            image: d.image || "/images/engineering.avif",
-            campus: d.campus || "both-campuses",
-            status: d.status || "published",
-            submittedBy: d.submitted_by,
-          }));
-          setClubs(mapped);
-          saveStoredClubs(mapped);
-          setIsLoaded(true);
-          return;
-        }
-      } catch (err) {
-        console.warn("Supabase clubs fetch failed, falling back to local store", err);
-      }
+      const data = await fetchClubs();
+      setClubs(data.map(mapClubRecord));
+    } catch (err) {
+      console.warn("Failed to load clubs:", err);
+    } finally {
+      setIsLoaded(true);
     }
-
-    setClubs(getStoredClubs());
-    setIsLoaded(true);
   };
 
   useEffect(() => {
     loadData();
-
-    const handleClubsUpdate = () => setClubs(getStoredClubs());
-    const handleRoleUpdate = () => setCurrentUser(getActiveAdminRole());
-
-    window.addEventListener("his_clubs_updated", handleClubsUpdate);
-    window.addEventListener("his_role_updated", handleRoleUpdate);
-
-    return () => {
-      window.removeEventListener("his_clubs_updated", handleClubsUpdate);
-      window.removeEventListener("his_role_updated", handleRoleUpdate);
-    };
   }, []);
 
   const isStudent = (currentUser?.role ?? "") === "student";
@@ -129,66 +93,38 @@ export default function AdminClubsPage() {
     e.preventDefault();
     if (!newForm.name.trim()) return;
 
-    const newRecord: ClubItem = {
-      id: Date.now(),
-      name: newForm.name.trim(),
-      category: newForm.category,
-      icon: newForm.icon || "groups",
-      members: newForm.members,
-      meetingTime: newForm.meetingTime,
-      leadership: newForm.leadership,
-      description: newForm.description,
-      image: newForm.image || "/images/engineering.avif",
-      campus: newForm.campus || "both-campuses",
-      status: isStudent ? "pending_review" : "published",
-      submittedBy: isStudent ? currentUser.id : undefined,
-      submittedByName: isStudent ? currentUser.fullName : undefined,
-    };
-
-    const updated = [newRecord, ...clubs];
-    setClubs(updated);
-    saveStoredClubs(updated);
-
-    if (isSupabaseConfigured) {
-      try {
-        await supabase.from("clubs").insert([
-          {
-            name: newRecord.name,
-            category: newRecord.category,
-            icon: newRecord.icon,
-            members: newRecord.members,
-            meeting_time: newRecord.meetingTime,
-            leadership: newRecord.leadership,
-            description: newRecord.description,
-            image: newRecord.image,
-            campus: newRecord.campus,
-            status: newRecord.status,
-            submitted_by: isStudent ? currentUser.id : null,
-            is_active: true,
-          },
-        ]);
-      } catch (err) {
-        console.warn("Supabase insert error:", err);
-      }
-    }
-
-    setIsAddModalOpen(false);
-    setNewForm({
-      name: "",
-      category: "STEM & Tech",
-      icon: "smart_toy",
-      members: "30 Active Members",
-      meetingTime: "Wednesdays · 03:45 PM – 05:15 PM",
-      leadership: "Student Lead: Lead | Advisor: Faculty Lead",
-      description: "",
-      image: "/images/engineering.avif",
-      campus: "both-campuses",
-    });
-
-    if (isStudent) {
-      showToast("Club proposal submitted for Faculty review!");
-    } else {
-      showToast(`Club "${newRecord.name}" created successfully.`);
+    try {
+      const created = await createClub({
+        name: newForm.name.trim(),
+        category: newForm.category,
+        icon: newForm.icon || "groups",
+        members: newForm.members,
+        meeting_time: newForm.meetingTime,
+        leadership: newForm.leadership,
+        description: newForm.description,
+        image: newForm.image || "/images/engineering.avif",
+        campus: newForm.campus || "both-campuses",
+        status: isStudent ? "pending_review" : "published",
+        submitted_by: isStudent ? currentUser.id : undefined,
+        is_active: true,
+      });
+      setClubs((prev) => [mapClubRecord(created), ...prev]);
+      setIsAddModalOpen(false);
+      setNewForm({
+        name: "",
+        category: "STEM & Tech",
+        icon: "smart_toy",
+        members: "30 Active Members",
+        meetingTime: "Wednesdays · 03:45 PM – 05:15 PM",
+        leadership: "Student Lead: Lead | Advisor: Faculty Lead",
+        description: "",
+        image: "/images/engineering.avif",
+        campus: "both-campuses",
+      });
+      showToast(isStudent ? "Club proposal submitted for Faculty review!" : `Club "${newForm.name.trim()}" created successfully.`);
+    } catch (err: any) {
+      console.error("Club create error:", err);
+      showToast(`Error: ${err.message || "Failed to create club."}`);
     }
   };
 
@@ -196,59 +132,44 @@ export default function AdminClubsPage() {
     e.preventDefault();
     if (!editingClub) return;
 
-    const updated = clubs.map((c) =>
-      c.id === editingClub.id ? editingClub : c
-    );
-    setClubs(updated);
-    saveStoredClubs(updated);
-
-    if (isSupabaseConfigured) {
-      try {
-        await supabase
-          .from("clubs")
-          .update({
-            name: editingClub.name,
-            category: editingClub.category,
-            icon: editingClub.icon,
-            members: editingClub.members,
-            meeting_time: editingClub.meetingTime,
-            leadership: editingClub.leadership,
-            description: editingClub.description,
-            image: editingClub.image,
-            campus: editingClub.campus,
-          })
-          .eq("id", editingClub.id);
-      } catch (err) {
-        console.warn("Supabase club update error:", err);
-      }
+    try {
+      const updated = await updateClub(editingClub.id, {
+        name: editingClub.name,
+        category: editingClub.category,
+        icon: editingClub.icon,
+        members: editingClub.members,
+        meeting_time: editingClub.meetingTime,
+        leadership: editingClub.leadership,
+        description: editingClub.description,
+        image: editingClub.image,
+        campus: editingClub.campus,
+      });
+      setClubs((prev) => prev.map((c) => c.id === editingClub.id ? mapClubRecord(updated) : c));
+      setEditingClub(null);
+      showToast("Club details updated.");
+    } catch (err: any) {
+      console.error("Club update error:", err);
+      showToast(`Error: ${err.message || "Failed to update club."}`);
     }
-
-    setEditingClub(null);
-    showToast("Club details updated.");
   };
 
   const handleConfirmDeleteClub = async () => {
     if (!deletingClub) return;
     if (isStudent) {
-      alert("Students cannot delete clubs.");
+      showToast("Students cannot delete clubs.");
       setDeletingClub(null);
       return;
     }
 
-    const updated = clubs.filter((c) => c.id !== deletingClub.id);
-    setClubs(updated);
-    saveStoredClubs(updated);
-
-    if (isSupabaseConfigured) {
-      try {
-        await supabase.from("clubs").delete().eq("id", deletingClub.id);
-      } catch (err) {
-        console.warn("Supabase club delete error:", err);
-      }
+    try {
+      await deleteClub(deletingClub.id);
+      setClubs((prev) => prev.filter((c) => c.id !== deletingClub.id));
+      setDeletingClub(null);
+      showToast("Club removed.");
+    } catch (err: any) {
+      console.error("Club delete error:", err);
+      showToast(`Error: ${err.message || "Failed to delete club."}`);
     }
-
-    setDeletingClub(null);
-    showToast("Club removed.");
   };
 
   return (
