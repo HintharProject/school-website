@@ -10,7 +10,10 @@ function applySecurityHeaders(res: NextResponse) {
 }
 
 export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
+  const { pathname } = request.nextUrl;
+  const isAdminRoute = pathname.startsWith("/admin");
+  const isAuthRoute = pathname === "/admin/login" || pathname === "/admin/update-password";
+  const isApiAdminRoute = pathname.startsWith("/api/admin");
 
   const supabaseUrl =
     process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -20,37 +23,40 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
     "";
 
-  // If Supabase is not configured, bypass auth in dev
-  if (!supabaseAnonKey || supabaseAnonKey.length < 10) {
-    return applySecurityHeaders(supabaseResponse);
+  let supabaseResponse = NextResponse.next({ request });
+  let user = null;
+
+  if (supabaseAnonKey && supabaseAnonKey.length > 10) {
+    try {
+      const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value }) =>
+              request.cookies.set(name, value)
+            );
+            supabaseResponse = NextResponse.next({ request });
+            cookiesToSet.forEach(({ name, value, options }) =>
+              supabaseResponse.cookies.set(name, value, options)
+            );
+          },
+        },
+      });
+
+      const { data } = await supabase.auth.getUser();
+      user = data?.user || null;
+    } catch {
+      user = null;
+    }
   }
 
-  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
-      },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value }) =>
-          request.cookies.set(name, value)
-        );
-        supabaseResponse = NextResponse.next({ request });
-        cookiesToSet.forEach(({ name, value, options }) =>
-          supabaseResponse.cookies.set(name, value, options)
-        );
-      },
-    },
-  });
-
-  // Refresh the session — required for @supabase/ssr
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { pathname } = request.nextUrl;
+  // Only Supabase auth.getUser() grants access — no cookie or localStorage fallback
+  const isAuthenticated = Boolean(user);
 
   // Protect /api/admin/* endpoints
-  if (pathname.startsWith("/api/admin") && !user) {
+  if (isApiAdminRoute && !isAuthenticated) {
     // Exclude init-principal if caller has administrative header
     if (pathname === "/api/admin/init-principal") {
       return applySecurityHeaders(supabaseResponse);
@@ -60,11 +66,8 @@ export async function middleware(request: NextRequest) {
     );
   }
 
-  // Protect /admin/* routes (except /admin/login and /admin/update-password)
-  const isAdminRoute = pathname.startsWith("/admin");
-  const isAuthRoute = pathname === "/admin/login" || pathname === "/admin/update-password";
-
-  if (isAdminRoute && !isAuthRoute && !user) {
+  // Protect /admin/* routes (redirect unauthenticated users to /admin/login)
+  if (isAdminRoute && !isAuthRoute && !isAuthenticated) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/admin/login";
     // Sanitize redirect target to relative path only
@@ -74,7 +77,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // If already authenticated and hitting login, redirect to admin dashboard
-  if (pathname === "/admin/login" && user) {
+  if (pathname === "/admin/login" && isAuthenticated) {
     const adminUrl = request.nextUrl.clone();
     adminUrl.pathname = "/admin";
     adminUrl.search = "";
@@ -96,4 +99,3 @@ export const config = {
     "/((?!_next/static|_next/image|favicon.ico|images|fonts|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
-

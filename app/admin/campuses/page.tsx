@@ -4,13 +4,12 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { CampusRecord } from "@/lib/supabase/types";
 import {
-  getStoredCampuses,
-  saveStoredCampuses,
-  getActiveAdminRole,
-  UserProfile,
   FALLBACK_GUEST_USER,
+  UserProfile,
+  mapUserProfileRecord,
 } from "../adminStore";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
+import { supabase } from "@/lib/supabase/client";
+import { fetchCampuses, createCampus, updateCampus, deleteCampus, getCurrentUserProfile } from "@/lib/supabase/actions";
 import ImageUploadPicker from "@/app/components/admin/ImageUploadPicker";
 
 export default function AdminCampusesPage() {
@@ -48,36 +47,20 @@ export default function AdminCampusesPage() {
   };
 
   const loadData = async () => {
-    setCurrentUser(getActiveAdminRole());
-    if (isSupabaseConfigured) {
-      try {
-        const { data, error } = await supabase
-          .from("campuses")
-          .select("*")
-          .order("city", { ascending: false });
-
-        if (!error && data && data.length > 0) {
-          setCampuses(data as CampusRecord[]);
-          saveStoredCampuses(data as CampusRecord[]);
-          setIsLoaded(true);
-          return;
-        }
-      } catch (err) {
-        console.warn("Supabase fetch failed, falling back to local store", err);
-      }
+    try {
+      const profile = await getCurrentUserProfile();
+      if (profile) setCurrentUser(mapUserProfileRecord(profile));
+      const data = await fetchCampuses();
+      setCampuses(data);
+    } catch (err) {
+      console.warn("Failed to load campuses:", err);
+    } finally {
+      setIsLoaded(true);
     }
-    setCampuses(getStoredCampuses());
-    setIsLoaded(true);
   };
 
   useEffect(() => {
     loadData();
-
-    const handleUpdate = () => {
-      setCampuses(getStoredCampuses());
-    };
-    window.addEventListener("his_campuses_updated", handleUpdate);
-    return () => window.removeEventListener("his_campuses_updated", handleUpdate);
   }, []);
 
   // Filter & Search
@@ -95,44 +78,20 @@ export default function AdminCampusesPage() {
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingCampus) return;
-
-    const updated = campuses.map((c) => (c.id === editingCampus.id ? editingCampus : c));
-    setCampuses(updated);
-    saveStoredCampuses(updated);
-
-    if (isSupabaseConfigured) {
-      try {
-        await supabase
-          .from("campuses")
-          .update({
-            name: editingCampus.name,
-            city: editingCampus.city,
-            tagline: editingCampus.tagline,
-            address: editingCampus.address,
-            phone: editingCampus.phone,
-            email: editingCampus.email,
-            office_hours: editingCampus.office_hours,
-            grades_served: editingCampus.grades_served,
-            facilities: editingCampus.facilities,
-            image_url: editingCampus.image_url,
-            is_active: editingCampus.is_active,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", editingCampus.id);
-      } catch (err) {
-        console.error("Supabase update error:", err);
-      }
+    try {
+      const updated = await updateCampus(editingCampus.id, editingCampus);
+      setCampuses((prev) => prev.map((c) => c.id === editingCampus.id ? updated : c));
+      setEditingCampus(null);
+      showToast(`Campus "${editingCampus.name}" updated successfully!`);
+    } catch (err: any) {
+      showToast(`Error: ${err.message || "Failed to update campus."}`);
     }
-
-    setEditingCampus(null);
-    showToast(`Campus "${editingCampus.name}" updated successfully!`);
   };
 
   // Add Campus
   const handleCreateCampus = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formState.name || !formState.address) return;
-
     const newId = formState.id || `campus-${Date.now()}`;
     const newRecord: CampusRecord = {
       id: newId,
@@ -148,41 +107,27 @@ export default function AdminCampusesPage() {
       image_url: formState.image_url || "/images/heroImg.png",
       is_active: formState.is_active ?? true,
     };
-
-    const updated = [newRecord, ...campuses];
-    setCampuses(updated);
-    saveStoredCampuses(updated);
-
-    if (isSupabaseConfigured) {
-      try {
-        await supabase.from("campuses").insert([newRecord]);
-      } catch (err) {
-        console.error("Supabase insert error:", err);
-      }
+    try {
+      const created = await createCampus(newRecord);
+      setCampuses((prev) => [created, ...prev]);
+      setIsAddModalOpen(false);
+      showToast(`Campus "${created.name}" added successfully!`);
+    } catch (err: any) {
+      showToast(`Error: ${err.message || "Failed to add campus."}`);
     }
-
-    setIsAddModalOpen(false);
-    showToast(`Campus "${newRecord.name}" added successfully!`);
   };
 
   // Delete Campus
   const handleDeleteCampus = async () => {
     if (!deletingCampus) return;
-
-    const updated = campuses.filter((c) => c.id !== deletingCampus.id);
-    setCampuses(updated);
-    saveStoredCampuses(updated);
-
-    if (isSupabaseConfigured) {
-      try {
-        await supabase.from("campuses").delete().eq("id", deletingCampus.id);
-      } catch (err) {
-        console.error("Supabase delete error:", err);
-      }
+    try {
+      await deleteCampus(deletingCampus.id);
+      setCampuses((prev) => prev.filter((c) => c.id !== deletingCampus.id));
+      setDeletingCampus(null);
+      showToast("Campus deleted.");
+    } catch (err: any) {
+      showToast(`Error: ${err.message || "Failed to delete campus."}`);
     }
-
-    setDeletingCampus(null);
-    showToast(`Campus deleted.`);
   };
 
   if (currentUser?.role === "student") {

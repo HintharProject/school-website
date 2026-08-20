@@ -212,10 +212,10 @@ export default function ImageUploadPicker({
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onClick={() => fileInputRef.current?.click()}
-          className={`border-2 border-dashed rounded-2xl p-4 text-center cursor-pointer transition-all ${
+          className={`border-2 border-dashed rounded-2xl p-6 min-h-[150px] flex flex-col items-center justify-center text-center cursor-pointer transition-all ${
             dragActive
-              ? "border-[#0E3B7D] bg-blue-50/70"
-              : "border-slate-300 hover:border-[#0E3B7D] bg-slate-50/50 hover:bg-slate-50"
+              ? "border-[#0E3B7D] bg-blue-50/80 scale-[1.01]"
+              : "border-slate-300 hover:border-[#0E3B7D] bg-slate-50/70 hover:bg-slate-50"
           }`}
         >
           <input
@@ -232,33 +232,33 @@ export default function ImageUploadPicker({
 
           {isUploading ? (
             <div className="py-4 flex flex-col items-center justify-center gap-2">
-              <div className="w-7 h-7 border-2 border-[#0E3B7D] border-t-transparent rounded-full animate-spin" />
-              <p className="font-bold text-[#0E3B7D]">Uploading to Supabase Storage...</p>
+              <div className="w-8 h-8 border-3 border-[#0E3B7D] border-t-transparent rounded-full animate-spin" />
+              <p className="font-bold text-[#0E3B7D] text-xs">Uploading to Supabase Storage...</p>
             </div>
           ) : (
-            <div className="py-3 flex flex-col items-center justify-center gap-2">
-              <div className="w-10 h-10 rounded-full bg-blue-100/70 text-[#0E3B7D] flex items-center justify-center">
-                <span className="material-symbols-outlined text-xl">file_upload</span>
+            <div className="py-2 flex flex-col items-center justify-center gap-2.5 w-full">
+              <div className="w-11 h-11 rounded-2xl bg-blue-100/80 text-[#0E3B7D] flex items-center justify-center shadow-xs">
+                <span className="material-symbols-outlined text-2xl">file_upload</span>
               </div>
-              <div className="text-center">
+              <div className="text-center pointer-events-none">
                 <p className="font-bold text-slate-800 text-xs mb-0.5">
                   Select Banner Image or Drag &amp; Drop Here
                 </p>
-                <p className="text-[10px] text-slate-400 mb-2.5">
+                <p className="text-[10px] text-slate-400">
                   Supports PNG, JPG, JPEG, WebP, AVIF (Max 8MB)
                 </p>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    fileInputRef.current?.click();
-                  }}
-                  className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-[#0E3B7D] hover:bg-[#164E9A] text-white font-bold text-xs shadow-sm transition-all active:scale-95 cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-sm">folder_open</span>
-                  <span>Browse Image File</span>
-                </button>
               </div>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  fileInputRef.current?.click();
+                }}
+                className="mt-1 inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-[#0E3B7D] hover:bg-[#164E9A] text-white font-black text-xs shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer border border-[#FFC700]/30"
+              >
+                <span className="material-symbols-outlined text-base">folder_open</span>
+                <span>Browse Image File</span>
+              </button>
             </div>
           )}
         </div>

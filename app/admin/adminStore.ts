@@ -2,24 +2,56 @@
 
 import { CampusRecord } from "@/lib/supabase/types";
 
+// ── APPLICATION STATUS ────────────────────────────────────────────────────────
 export type ApplicationStatus = "Pending" | "Assessment Scheduled" | "Approved" | "Declined";
 
+// ── ADMISSION APPLICATION (camelCase UI type) ─────────────────────────────────
 export interface AdmissionApplication {
   id: string;
   studentName: string;
   dateOfBirth?: string;
   gender?: "Male" | "Female" | "Other";
+  nationality?: string;
   grade: string;
+  academicStream?: string;
+  selectedSubjects?: string[];
   previousSchool?: string;
   parentName?: string;
   parentEmail: string;
   parentPhone: string;
+  address?: string;
+  medicalNotes?: string;
   submittedDate: string;
   status: ApplicationStatus;
   assessmentDate?: string;
   notes?: string;
 }
 
+// Map from DB snake_case AdmissionRecord to UI camelCase AdmissionApplication
+export function mapAdmissionRecord(d: any): AdmissionApplication {
+  return {
+    id: d.id,
+    studentName: d.student_name,
+    dateOfBirth: d.date_of_birth,
+    gender: d.gender,
+    nationality: d.nationality,
+    grade: d.grade,
+    academicStream: d.academic_stream,
+    selectedSubjects: d.selected_subjects,
+    previousSchool: d.previous_school,
+    parentName: d.parent_name,
+    parentEmail: d.parent_email,
+    parentPhone: d.parent_phone,
+    address: d.address,
+    medicalNotes: d.medical_notes,
+    submittedDate: d.submitted_date || d.created_at?.split("T")[0] || new Date().toISOString().split("T")[0],
+    status: d.status as ApplicationStatus,
+    assessmentDate: d.assessment_date,
+    notes: d.notes,
+  };
+}
+
+// ── YEARBOOK SCHOLAR (camelCase UI type) ──────────────────────────────────────
 export interface YearbookScholar {
   id: number;
   name: string;
@@ -37,6 +69,26 @@ export interface YearbookScholar {
   reviewerNotes?: string;
 }
 
+// Map from DB snake_case to UI type
+export function mapYearbookRecord(d: any): YearbookScholar {
+  return {
+    id: Number(d.id),
+    name: d.name,
+    category: d.category,
+    role: d.role || "",
+    destination: d.destination || "",
+    subjects: d.subjects || "",
+    quote: d.quote || "",
+    image: d.image || "/images/g5.jpg",
+    badge: d.badge,
+    campus: d.campus,
+    status: d.status || "published",
+    submittedBy: d.submitted_by,
+    reviewerNotes: d.reviewer_notes,
+  };
+}
+
+// ── COURSE ITEM (camelCase UI type) ───────────────────────────────────────────
 export interface CourseItem {
   id: string;
   name: string;
@@ -46,16 +98,49 @@ export interface CourseItem {
   time: string;
   instructor: string;
   room?: string;
+  credits?: string;
+  description?: string;
+  is_active?: boolean;
 }
 
+export function mapCourseRecord(d: any): CourseItem {
+  return {
+    id: d.id,
+    name: d.name,
+    code: d.code || "",
+    grade: d.grade,
+    category: d.category,
+    time: d.time || "",
+    instructor: d.instructor || "",
+    room: d.room,
+    credits: d.credits,
+    description: d.description,
+    is_active: d.is_active,
+  };
+}
+
+// ── BULLETIN NOTICE (camelCase UI type) ───────────────────────────────────────
 export interface BulletinNotice {
   id: number;
   title: string;
   date: string;
   type: "Official Notice" | "Academic" | "General";
   content: string;
+  is_pinned?: boolean;
 }
 
+export function mapBulletinRecord(d: any): BulletinNotice {
+  return {
+    id: Number(d.id),
+    title: d.title,
+    date: d.date,
+    type: d.type,
+    content: d.content,
+    is_pinned: d.is_pinned,
+  };
+}
+
+// ── CLUB ITEM (camelCase UI type) ─────────────────────────────────────────────
 export interface ClubItem {
   id: number;
   name: string;
@@ -70,8 +155,28 @@ export interface ClubItem {
   status?: "published" | "pending_review" | "archived";
   submittedBy?: string;
   submittedByName?: string;
+  is_active?: boolean;
 }
 
+export function mapClubRecord(d: any): ClubItem {
+  return {
+    id: Number(d.id),
+    name: d.name,
+    category: d.category,
+    icon: d.icon || "groups",
+    members: d.members || "25+ Members",
+    meetingTime: d.meeting_time || "",
+    leadership: d.leadership || "",
+    description: d.description || "",
+    image: d.image || "/images/engineering.avif",
+    campus: d.campus || "both-campuses",
+    status: d.status || "published",
+    submittedBy: d.submitted_by,
+    is_active: d.is_active,
+  };
+}
+
+// ── CAMPUS OPTION ─────────────────────────────────────────────────────────────
 export interface CampusOption {
   id: string;
   label: string;
@@ -136,6 +241,7 @@ export function formatCampusBadge(campusIdOrCity?: string): {
   };
 }
 
+// ── USER PROFILE ──────────────────────────────────────────────────────────────
 export type UserRole = "principal" | "staff_admin" | "student";
 
 export interface UserProfile {
@@ -167,68 +273,43 @@ export const FALLBACK_GUEST_USER: UserProfile = {
   createdAt: "2026-08-01",
 };
 
-export const INITIAL_USER_ACCOUNTS: UserProfile[] = [FALLBACK_GUEST_USER];
+// Map DB profile row to UI UserProfile
+export function mapUserProfileRecord(d: any): UserProfile {
+  const roleLabels: Record<string, string> = {
+    principal: "School Principal & Founder",
+    staff_admin: "Staff Administrator",
+    student: "Student Contributor",
+  };
+  const badgeColors: Record<string, string> = {
+    principal: "bg-[#FFC700] text-[#09234B]",
+    staff_admin: "bg-[#0E3B7D] text-white",
+    student: "bg-emerald-600 text-white",
+  };
+  const fullName = d.full_name || d.email || "School Staff";
+  const initials = fullName
+    .split(" ")
+    .map((n: string) => n[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase() || "HIS";
+
+  return {
+    id: d.id,
+    email: d.email,
+    fullName,
+    role: d.role as UserRole,
+    roleLabel: roleLabels[d.role] || "Staff Member",
+    title: d.title || roleLabels[d.role] || "Faculty Staff",
+    campusId: d.campus_id || "ywarma-campus",
+    grade: d.grade,
+    initials,
+    badgeColor: badgeColors[d.role] || "bg-[#0E3B7D] text-white",
+    status: d.status === "inactive" ? "inactive" : "active",
+    createdAt: d.created_at?.split("T")[0] || new Date().toISOString().split("T")[0],
+  };
+}
+
 export type AdminRoleUser = UserProfile;
-export const ADMIN_ROLES: UserProfile[] = [FALLBACK_GUEST_USER];
-
-export const initialApplications: AdmissionApplication[] = [];
-export const initialYearbook: YearbookScholar[] = [];
-export const initialCourses: CourseItem[] = [];
-export const initialAnnouncements: BulletinNotice[] = [];
-export const initialClubs: ClubItem[] = [];
-
-// Helper Functions for LocalStorage Persistence
-const STORAGE_KEYS = {
-  USERS: "his_admin_users_v2",
-  CAMPUSES: "his_admin_campuses_v2",
-  APPLICATIONS: "his_admin_applications_v2",
-  YEARBOOK: "his_admin_yearbook_v2",
-  COURSES: "his_admin_courses_v2",
-  BULLETINS: "his_admin_bulletins_v2",
-  CLUBS: "his_admin_clubs_v2",
-  ACTIVE_ROLE: "his_admin_active_role_v2",
-};
-
-// Purge any legacy v1 demo caches from client browsers
-export function purgeLegacyStorageCaches() {
-  if (typeof window === "undefined") return;
-  try {
-    const legacyKeys = [
-      "his_admin_users_v1",
-      "his_admin_applications_v1",
-      "his_admin_yearbook_v1",
-      "his_admin_clubs_v1",
-      "his_admin_courses_v1",
-      "his_admin_bulletins_v1",
-      "his_admin_campuses_v1",
-      "his_admin_active_role_v1",
-    ];
-    legacyKeys.forEach((k) => localStorage.removeItem(k));
-  } catch {
-    // Ignore storage errors
-  }
-}
-
-if (typeof window !== "undefined") {
-  purgeLegacyStorageCaches();
-}
-
-export function getStoredUsers(): UserProfile[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.USERS);
-    if (!raw) return [];
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
-
-export function saveStoredUsers(users: UserProfile[]) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
-  window.dispatchEvent(new CustomEvent("his_users_updated"));
-}
 
 export function hasPermission(
   role: UserRole,
@@ -252,144 +333,4 @@ export function hasPermission(
     default:
       return false;
   }
-}
-
-export function getStoredCampuses(): CampusRecord[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.CAMPUSES);
-    if (!raw) return [];
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
-
-export function saveStoredCampuses(campuses: CampusRecord[]) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEYS.CAMPUSES, JSON.stringify(campuses));
-  window.dispatchEvent(new CustomEvent("his_campuses_updated"));
-}
-
-export function getStoredApplications(): AdmissionApplication[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.APPLICATIONS);
-    if (!raw) return [];
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
-
-export function saveStoredApplications(apps: AdmissionApplication[]) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEYS.APPLICATIONS, JSON.stringify(apps));
-  window.dispatchEvent(new CustomEvent("his_applications_updated"));
-}
-
-export function getStoredYearbook(): YearbookScholar[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.YEARBOOK);
-    if (!raw) return [];
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
-
-export function saveStoredYearbook(entries: YearbookScholar[]) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEYS.YEARBOOK, JSON.stringify(entries));
-  window.dispatchEvent(new CustomEvent("his_yearbook_updated"));
-}
-
-export function getStoredCourses(): CourseItem[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.COURSES);
-    if (!raw) return [];
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
-
-export function saveStoredCourses(courses: CourseItem[]) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEYS.COURSES, JSON.stringify(courses));
-  window.dispatchEvent(new CustomEvent("his_courses_updated"));
-}
-
-export function getStoredBulletins(): BulletinNotice[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.BULLETINS);
-    if (!raw) return [];
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
-
-export function saveStoredBulletins(bulletins: BulletinNotice[]) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEYS.BULLETINS, JSON.stringify(bulletins));
-  window.dispatchEvent(new CustomEvent("his_bulletins_updated"));
-}
-
-export function getStoredClubs(): ClubItem[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.CLUBS);
-    if (!raw) return [];
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
-
-export function saveStoredClubs(clubs: ClubItem[]) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(clubs));
-  window.dispatchEvent(new CustomEvent("his_clubs_updated"));
-}
-
-export function getActiveAdminRole(): AdminRoleUser {
-  if (typeof window === "undefined") return FALLBACK_GUEST_USER;
-  try {
-    const roleId = localStorage.getItem(STORAGE_KEYS.ACTIVE_ROLE);
-    const stored = getStoredUsers();
-    if (stored && stored.length > 0) {
-      const found = stored.find((r) => r && r.id === roleId);
-      return found || stored[0] || FALLBACK_GUEST_USER;
-    }
-    return FALLBACK_GUEST_USER;
-  } catch {
-    return FALLBACK_GUEST_USER;
-  }
-}
-
-export function setActiveAdminRole(roleId: string) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEYS.ACTIVE_ROLE, roleId);
-  window.dispatchEvent(new CustomEvent("his_role_updated", { detail: roleId }));
-}
-
-export function resetAllDemoData() {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEYS.APPLICATIONS, JSON.stringify([]));
-  localStorage.setItem(STORAGE_KEYS.YEARBOOK, JSON.stringify([]));
-  localStorage.setItem(STORAGE_KEYS.COURSES, JSON.stringify([]));
-  localStorage.setItem(STORAGE_KEYS.BULLETINS, JSON.stringify([]));
-  localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify([]));
-  localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify([]));
-
-  window.dispatchEvent(new CustomEvent("his_applications_updated"));
-  window.dispatchEvent(new CustomEvent("his_yearbook_updated"));
-  window.dispatchEvent(new CustomEvent("his_courses_updated"));
-  window.dispatchEvent(new CustomEvent("his_bulletins_updated"));
-  window.dispatchEvent(new CustomEvent("his_clubs_updated"));
-  window.dispatchEvent(new CustomEvent("his_users_updated"));
 }

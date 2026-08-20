@@ -4,16 +4,15 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import {
   YearbookScholar,
-  getStoredYearbook,
-  saveStoredYearbook,
-  getActiveAdminRole,
+  mapYearbookRecord,
   UserProfile,
   FALLBACK_GUEST_USER,
   HIERARCHICAL_CAMPUS_OPTIONS,
   formatCampusBadge,
+  mapUserProfileRecord,
 } from "../adminStore";
 import ImageUploadPicker from "@/app/components/admin/ImageUploadPicker";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
+import { fetchYearbook, createYearbookEntry, updateYearbookEntry, deleteYearbookEntry, getCurrentUserProfile } from "@/lib/supabase/actions";
 
 const badgePresets = [
   "World Top Scorer",
@@ -66,75 +65,24 @@ export default function YearbookManagementPage() {
   };
 
   const loadData = async () => {
-    const active = getActiveAdminRole();
-    setCurrentUser(active);
-    if (active.role === "student") {
-      setActiveTab("my_submissions");
-    }
-
-    if (isSupabaseConfigured) {
-      try {
-        const { data, error } = await supabase
-          .from("yearbook_alumni")
-          .select("*")
-          .order("id", { ascending: false });
-
-        if (!error && data) {
-          const mapped: YearbookScholar[] = data.map((d: any) => ({
-            id: Number(d.id),
-            name: d.name,
-            category: d.category,
-            role: d.role,
-            destination: d.destination,
-            subjects: d.subjects,
-            quote: d.quote,
-            image: d.image || "/images/g5.jpg",
-            badge: d.badge,
-            campus: d.campus || "both-campuses",
-            status: d.status || "published",
-            submittedBy: d.submitted_by,
-            reviewerNotes: d.reviewer_notes,
-          }));
-          setEntries(mapped);
-          saveStoredYearbook(mapped);
-          setIsLoaded(true);
-          return;
-        }
-      } catch (err) {
-        console.warn("Supabase fetch failed, falling back to local store", err);
+    try {
+      const profile = await getCurrentUserProfile();
+      if (profile) {
+        const u = mapUserProfileRecord(profile);
+        setCurrentUser(u);
+        if (u.role === "student") setActiveTab("my_submissions");
       }
+      const data = await fetchYearbook();
+      setEntries(data.map(mapYearbookRecord));
+    } catch (err) {
+      console.warn("Failed to load yearbook:", err);
+    } finally {
+      setIsLoaded(true);
     }
-
-    const loaded = getStoredYearbook().map((item) => ({
-      ...item,
-      status: item.status || "published",
-      campus: item.campus || "both-campuses",
-    }));
-    setEntries(loaded);
-    setIsLoaded(true);
   };
 
   useEffect(() => {
     loadData();
-
-    const handleStorageUpdate = () => {
-      setEntries(getStoredYearbook());
-    };
-    const handleRoleUpdate = () => {
-      const u = getActiveAdminRole();
-      setCurrentUser(u);
-      if (u.role === "student") {
-        setActiveTab("my_submissions");
-      }
-    };
-
-    window.addEventListener("his_yearbook_updated", handleStorageUpdate);
-    window.addEventListener("his_role_updated", handleRoleUpdate);
-
-    return () => {
-      window.removeEventListener("his_yearbook_updated", handleStorageUpdate);
-      window.removeEventListener("his_role_updated", handleRoleUpdate);
-    };
   }, []);
 
   const isStudent = (currentUser?.role ?? "") === "student";
@@ -189,169 +137,85 @@ export default function YearbookManagementPage() {
   const handleCreateScholar = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newForm.name.trim()) return;
-
     const initialStatus = isStudent ? "pending_review" : "published";
-
-    const newRecord: YearbookScholar = {
-      id: Date.now(),
-      name: newForm.name.trim(),
-      category: newForm.category,
-      role: newForm.role,
-      destination: newForm.destination,
-      subjects: newForm.subjects,
-      quote: newForm.quote,
-      image: newForm.image || "/images/g5.jpg",
-      badge: newForm.badge || undefined,
-      campus: newForm.campus || "both-campuses",
-      status: initialStatus,
-      submittedBy: isStudent ? currentUser.id : undefined,
-      submittedByName: isStudent ? currentUser.fullName : undefined,
-    };
-
-    const updated = [newRecord, ...entries];
-    setEntries(updated);
-    saveStoredYearbook(updated);
-
-    if (isSupabaseConfigured) {
-      try {
-        await supabase.from("yearbook_alumni").insert([
-          {
-            name: newRecord.name,
-            category: newRecord.category,
-            role: newRecord.role,
-            destination: newRecord.destination,
-            subjects: newRecord.subjects,
-            quote: newRecord.quote,
-            image: newRecord.image,
-            badge: newRecord.badge,
-            campus: newRecord.campus,
-            status: newRecord.status,
-            submitted_by: isStudent ? currentUser.id : null,
-          },
-        ]);
-      } catch (err) {
-        console.warn("Supabase insert error:", err);
-      }
-    }
-
-    setIsAddModalOpen(false);
-    setNewForm({
-      name: "",
-      category: "Class of 2026",
-      role: "Senior Scholar & High Distinction",
-      destination: "",
-      subjects: "",
-      quote: "",
-      image: "/images/g5.jpg",
-      badge: "World Top Scorer",
-      campus: "both-campuses",
-    });
-
-    if (isStudent) {
-      showToast("Profile submitted! Sent to Staff Review Queue for approval.");
-    } else {
-      showToast(`Scholar "${newRecord.name}" published directly to Yearbook.`);
+    try {
+      const created = await createYearbookEntry({
+        name: newForm.name.trim(),
+        category: newForm.category,
+        role: newForm.role,
+        destination: newForm.destination,
+        subjects: newForm.subjects,
+        quote: newForm.quote,
+        image: newForm.image || "/images/g5.jpg",
+        badge: newForm.badge || undefined,
+        campus: newForm.campus || "both-campuses",
+        status: initialStatus,
+        submitted_by: isStudent ? currentUser.id : undefined,
+      });
+      setEntries((prev) => [mapYearbookRecord(created), ...prev]);
+      setIsAddModalOpen(false);
+      setNewForm({ name: "", category: "Class of 2026", role: "Senior Scholar & High Distinction", destination: "", subjects: "", quote: "", image: "/images/g5.jpg", badge: "World Top Scorer", campus: "both-campuses" });
+      showToast(isStudent ? "Profile submitted! Sent to Staff Review Queue for approval." : `Scholar "${newForm.name.trim()}" published directly to Yearbook.`);
+    } catch (err: any) {
+      showToast(`Error: ${err.message || "Failed to create yearbook entry."}`);
     }
   };
 
   const handleApproveEntry = async (id: number) => {
-    const updated = entries.map((e) =>
-      e.id === id ? { ...e, status: "published" as const } : e
-    );
-    setEntries(updated);
-    saveStoredYearbook(updated);
-
-    if (isSupabaseConfigured) {
-      try {
-        await supabase
-          .from("yearbook_alumni")
-          .update({ status: "published" })
-          .eq("id", id);
-      } catch (err) {
-        console.warn("Supabase update error:", err);
-      }
+    try {
+      await updateYearbookEntry(id, { status: "published" });
+      setEntries((prev) => prev.map((e) => e.id === id ? { ...e, status: "published" as const } : e));
+      showToast("Profile approved and published to public Yearbook!");
+    } catch (err: any) {
+      showToast(`Error: ${err.message || "Failed to approve."}`);
     }
-
-    showToast("Profile approved and published to public Yearbook!");
   };
 
   const handleRejectEntry = async (id: number) => {
-    const updated = entries.map((e) =>
-      e.id === id ? { ...e, status: "archived" as const } : e
-    );
-    setEntries(updated);
-    saveStoredYearbook(updated);
-
-    if (isSupabaseConfigured) {
-      try {
-        await supabase
-          .from("yearbook_alumni")
-          .update({ status: "archived" })
-          .eq("id", id);
-      } catch (err) {
-        console.warn("Supabase archive error:", err);
-      }
+    try {
+      await updateYearbookEntry(id, { status: "archived" });
+      setEntries((prev) => prev.map((e) => e.id === id ? { ...e, status: "archived" as const } : e));
+      showToast("Submission returned / archived.");
+    } catch (err: any) {
+      showToast(`Error: ${err.message || "Failed to archive."}`);
     }
-
-    showToast("Submission returned / archived.");
   };
 
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingScholar) return;
-
-    const updated = entries.map((e) =>
-      e.id === editingScholar.id ? editingScholar : e
-    );
-    setEntries(updated);
-    saveStoredYearbook(updated);
-
-    if (isSupabaseConfigured) {
-      try {
-        await supabase
-          .from("yearbook_alumni")
-          .update({
-            name: editingScholar.name,
-            category: editingScholar.category,
-            role: editingScholar.role,
-            destination: editingScholar.destination,
-            subjects: editingScholar.subjects,
-            quote: editingScholar.quote,
-            image: editingScholar.image,
-            badge: editingScholar.badge,
-            campus: editingScholar.campus,
-            status: editingScholar.status,
-          })
-          .eq("id", editingScholar.id);
-      } catch (err) {
-        console.warn("Supabase update error:", err);
-      }
+    try {
+      const updated = await updateYearbookEntry(editingScholar.id, {
+        name: editingScholar.name,
+        category: editingScholar.category,
+        role: editingScholar.role,
+        destination: editingScholar.destination,
+        subjects: editingScholar.subjects,
+        quote: editingScholar.quote,
+        image: editingScholar.image,
+        badge: editingScholar.badge,
+        campus: editingScholar.campus,
+        status: editingScholar.status,
+      });
+      setEntries((prev) => prev.map((e) => e.id === editingScholar.id ? mapYearbookRecord(updated) : e));
+      setEditingScholar(null);
+      showToast("Scholar profile updated successfully.");
+    } catch (err: any) {
+      showToast(`Error: ${err.message || "Failed to update."}`);
     }
-
-    setEditingScholar(null);
-    showToast("Scholar profile updated successfully.");
   };
 
   const handleConfirmDelete = async () => {
     if (!deletingScholar) return;
-    const updated = entries.filter((e) => e.id !== deletingScholar.id);
-    setEntries(updated);
-    saveStoredYearbook(updated);
-
-    if (isSupabaseConfigured) {
-      try {
-        await supabase
-          .from("yearbook_alumni")
-          .delete()
-          .eq("id", deletingScholar.id);
-      } catch (err) {
-        console.warn("Supabase delete error:", err);
-      }
+    try {
+      await deleteYearbookEntry(deletingScholar.id);
+      setEntries((prev) => prev.filter((e) => e.id !== deletingScholar.id));
+      if (inspectingScholar?.id === deletingScholar.id) setInspectingScholar(null);
+      setDeletingScholar(null);
+      showToast("Scholar profile removed.");
+    } catch (err: any) {
+      showToast(`Error: ${err.message || "Failed to delete."}`);
     }
-
-    if (inspectingScholar?.id === deletingScholar.id) setInspectingScholar(null);
-    setDeletingScholar(null);
-    showToast("Scholar profile removed.");
   };
 
   return (

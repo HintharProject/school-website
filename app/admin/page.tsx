@@ -4,17 +4,13 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   AdmissionApplication,
-  getStoredApplications,
-  getStoredClubs,
-  getStoredCourses,
-  getStoredCampuses,
-  getStoredUsers,
-  getStoredYearbook,
-  getActiveAdminRole,
+  mapAdmissionRecord,
   UserProfile,
   FALLBACK_GUEST_USER,
+  mapUserProfileRecord,
 } from "./adminStore";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
+import { supabase } from "@/lib/supabase/client";
+import { getCurrentUserProfile } from "@/lib/supabase/actions";
 
 export default function AdminDashboardPage() {
   const [applications, setApplications] = useState<AdmissionApplication[]>([]);
@@ -23,95 +19,61 @@ export default function AdminDashboardPage() {
   const [campusCount, setCampusCount] = useState(0);
   const [userCount, setUserCount] = useState(0);
   const [yearbookCount, setYearbookCount] = useState(0);
+  const [mySubmissionsCount, setMySubmissionsCount] = useState(0);
   const [activeRole, setActiveRole] = useState<UserProfile>(FALLBACK_GUEST_USER);
   const [isLoaded, setIsLoaded] = useState(false);
 
   const loadLiveStats = async () => {
-    setActiveRole(getActiveAdminRole());
-
-    if (isSupabaseConfigured) {
-      try {
-        const [
-          { data: appsData },
-          { count: clubsCnt },
-          { count: yearbookCnt },
-          { count: usersCnt },
-          { count: campusCnt },
-          { count: coursesCnt },
-        ] = await Promise.all([
-          supabase.from("admissions").select("*").order("id", { ascending: false }).limit(5),
-          supabase.from("clubs").select("*", { count: "exact", head: true }),
-          supabase.from("yearbook_alumni").select("*", { count: "exact", head: true }),
-          supabase.from("user_profiles").select("*", { count: "exact", head: true }),
-          supabase.from("campuses").select("*", { count: "exact", head: true }),
-          supabase.from("classes_courses").select("*", { count: "exact", head: true }),
-        ]);
-
-        if (appsData !== null) {
-          const mapped: AdmissionApplication[] = appsData.map((d: any) => ({
-            id: d.id,
-            studentName: d.student_name,
-            dateOfBirth: d.date_of_birth,
-            gender: d.gender,
-            grade: d.grade,
-            previousSchool: d.previous_school,
-            parentName: d.parent_name,
-            parentEmail: d.parent_email,
-            parentPhone: d.parent_phone,
-            submittedDate: d.submitted_date || d.created_at?.split("T")[0] || new Date().toISOString().split("T")[0],
-            status: d.status,
-            notes: d.notes,
-          }));
-          setApplications(mapped);
-        } else {
-          setApplications([]);
+    try {
+      const profile = await getCurrentUserProfile();
+      if (profile) {
+        setActiveRole(mapUserProfileRecord(profile));
+        // If student, count their submitted yearbook entries
+        if (profile.role === "student") {
+          const { count: myCnt } = await supabase
+            .from("yearbook_alumni")
+            .select("*", { count: "exact", head: true })
+            .eq("submitted_by", profile.id);
+          setMySubmissionsCount(myCnt || 0);
         }
-
-        setClubCount(clubsCnt || 0);
-        setYearbookCount(yearbookCnt || 0);
-        setUserCount(usersCnt || 0);
-        setCampusCount(campusCnt || 0);
-        setCourseCount(coursesCnt || 0);
-        setIsLoaded(true);
-        return;
-      } catch (err) {
-        console.warn("Supabase dashboard stats query error:", err);
       }
-    }
 
-    setApplications(getStoredApplications());
-    setClubCount(getStoredClubs().length);
-    setCourseCount(getStoredCourses().length);
-    setCampusCount(getStoredCampuses().length);
-    setUserCount(getStoredUsers().length);
-    setYearbookCount(getStoredYearbook().length);
-    setIsLoaded(true);
+      const [
+        { data: appsData },
+        { count: clubsCnt },
+        { count: yearbookCnt },
+        { count: usersCnt },
+        { count: campusCnt },
+        { count: coursesCnt },
+      ] = await Promise.all([
+        supabase.from("admissions").select("*").order("created_at", { ascending: false }).limit(5),
+        supabase.from("clubs").select("*", { count: "exact", head: true }),
+        supabase.from("yearbook_alumni").select("*", { count: "exact", head: true }),
+        supabase.from("user_profiles").select("*", { count: "exact", head: true }),
+        supabase.from("campuses").select("*", { count: "exact", head: true }),
+        supabase.from("classes_courses").select("*", { count: "exact", head: true }),
+      ]);
+
+      if (appsData) {
+        setApplications(appsData.map(mapAdmissionRecord));
+      } else {
+        setApplications([]);
+      }
+
+      setClubCount(clubsCnt || 0);
+      setYearbookCount(yearbookCnt || 0);
+      setUserCount(usersCnt || 0);
+      setCampusCount(campusCnt || 0);
+      setCourseCount(coursesCnt || 0);
+    } catch (err) {
+      console.warn("Supabase dashboard stats query error:", err);
+    } finally {
+      setIsLoaded(true);
+    }
   };
 
   useEffect(() => {
     loadLiveStats();
-
-    const handleUpdate = () => {
-      loadLiveStats();
-    };
-
-    window.addEventListener("his_applications_updated", handleUpdate);
-    window.addEventListener("his_clubs_updated", handleUpdate);
-    window.addEventListener("his_courses_updated", handleUpdate);
-    window.addEventListener("his_campuses_updated", handleUpdate);
-    window.addEventListener("his_users_updated", handleUpdate);
-    window.addEventListener("his_yearbook_updated", handleUpdate);
-    window.addEventListener("his_role_updated", handleUpdate);
-
-    return () => {
-      window.removeEventListener("his_applications_updated", handleUpdate);
-      window.removeEventListener("his_clubs_updated", handleUpdate);
-      window.removeEventListener("his_courses_updated", handleUpdate);
-      window.removeEventListener("his_campuses_updated", handleUpdate);
-      window.removeEventListener("his_users_updated", handleUpdate);
-      window.removeEventListener("his_yearbook_updated", handleUpdate);
-      window.removeEventListener("his_role_updated", handleUpdate);
-    };
   }, []);
 
   const isPrincipal = (activeRole?.role ?? "principal") === "principal";
@@ -119,9 +81,6 @@ export default function AdminDashboardPage() {
   const isStudent = (activeRole?.role ?? "") === "student";
 
   const pendingCount = applications.filter((a) => a.status === "Pending").length;
-  const myYearbookSubmissions = getStoredYearbook().filter(
-    (y) => y.submittedBy === activeRole?.id
-  );
 
   const statusBadgeClasses: Record<string, string> = {
     Pending: "bg-amber-100 text-amber-800 border border-amber-200",
@@ -201,7 +160,7 @@ export default function AdminDashboardPage() {
             </div>
             <div>
               <p className="text-xs font-bold uppercase tracking-wider text-slate-400">My Submissions</p>
-              <p className="text-2xl font-black text-[#09234B]">{myYearbookSubmissions.length} Profiles</p>
+              <p className="text-2xl font-black text-[#09234B]">{mySubmissionsCount} Profiles</p>
             </div>
           </div>
 

@@ -4,15 +4,13 @@ import { useState, useEffect } from "react";
 import {
   CourseItem,
   BulletinNotice,
-  getStoredCourses,
-  saveStoredCourses,
-  getStoredBulletins,
-  saveStoredBulletins,
-  getActiveAdminRole,
+  mapCourseRecord,
+  mapBulletinRecord,
   UserProfile,
   FALLBACK_GUEST_USER,
+  mapUserProfileRecord,
 } from "../adminStore";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
+import { fetchCourses, createCourse, updateCourse, deleteCourse, fetchBulletins, createBulletin, deleteBulletin, getCurrentUserProfile } from "@/lib/supabase/actions";
 
 export default function AdminClassesPage() {
   const [activeTab, setActiveTab] = useState<"courses" | "announcements">("courses");
@@ -58,77 +56,21 @@ export default function AdminClassesPage() {
   };
 
   const loadData = async () => {
-    setCurrentUser(getActiveAdminRole());
-
-    if (isSupabaseConfigured) {
-      try {
-        const [
-          { data: dbCourses, error: cErr },
-          { data: dbBulletins, error: bErr },
-        ] = await Promise.all([
-          supabase.from("classes_courses").select("*").eq("is_active", true).order("grade", { ascending: false }),
-          supabase.from("bulletin_notices").select("*").order("id", { ascending: false }),
-        ]);
-
-        if (!cErr && dbCourses) {
-          const mappedCourses: CourseItem[] = dbCourses.map((c: any) => ({
-            id: c.id,
-            name: c.name,
-            code: c.code,
-            grade: c.grade,
-            category: c.category,
-            time: c.time,
-            instructor: c.instructor,
-            room: c.room || "Campus Room",
-          }));
-          setCourses(mappedCourses);
-          saveStoredCourses(mappedCourses);
-        } else {
-          setCourses([]);
-        }
-
-        if (!bErr && dbBulletins) {
-          const mappedBulletins: BulletinNotice[] = dbBulletins.map((b: any) => ({
-            id: Number(b.id),
-            title: b.title,
-            date: b.date,
-            type: b.type,
-            content: b.content,
-          }));
-          setAnnouncements(mappedBulletins);
-          saveStoredBulletins(mappedBulletins);
-        } else {
-          setAnnouncements([]);
-        }
-
-        setIsLoaded(true);
-        return;
-      } catch (err) {
-        console.warn("Supabase classes/bulletins fetch note:", err);
-      }
+    try {
+      const profile = await getCurrentUserProfile();
+      if (profile) setCurrentUser(mapUserProfileRecord(profile));
+      const [coursesData, bulletinsData] = await Promise.all([fetchCourses(), fetchBulletins()]);
+      setCourses(coursesData.map(mapCourseRecord));
+      setAnnouncements(bulletinsData.map(mapBulletinRecord));
+    } catch (err) {
+      console.warn("Failed to load classes/bulletins:", err);
+    } finally {
+      setIsLoaded(true);
     }
-
-    setCourses(getStoredCourses());
-    setAnnouncements(getStoredBulletins());
-    setIsLoaded(true);
   };
 
   useEffect(() => {
     loadData();
-
-    const handleCoursesUpdate = () => setCourses(getStoredCourses());
-    const handleBulletinsUpdate = () => setAnnouncements(getStoredBulletins());
-    const handleRoleUpdate = () => setCurrentUser(getActiveAdminRole());
-
-    window.addEventListener("his_courses_updated", handleCoursesUpdate);
-    window.addEventListener("his_bulletins_updated", handleBulletinsUpdate);
-    window.addEventListener("his_role_updated", handleRoleUpdate);
-
-    return () => {
-      window.removeEventListener("his_courses_updated", handleCoursesUpdate);
-      window.removeEventListener("his_bulletins_updated", handleBulletinsUpdate);
-      window.removeEventListener("his_role_updated", handleRoleUpdate);
-    };
   }, []);
 
   // Filtered lists
@@ -151,166 +93,83 @@ export default function AdminClassesPage() {
   const handleCreateCourse = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!courseForm.name.trim() || !courseForm.code.trim()) return;
-
     const newId = `course-${Date.now()}`;
-    const newRecord: CourseItem = {
-      id: newId,
-      name: courseForm.name,
-      code: courseForm.code,
-      grade: courseForm.grade,
-      category: courseForm.category,
-      time: courseForm.time || "Mon, Wed, Fri • 10:00 AM",
-      instructor: courseForm.instructor || "Faculty Lead",
-      room: courseForm.room || "Room 101",
-    };
-
-    const updated = [newRecord, ...courses];
-    setCourses(updated);
-    saveStoredCourses(updated);
-
-    if (isSupabaseConfigured) {
-      try {
-        await supabase.from("classes_courses").insert([
-          {
-            id: newRecord.id,
-            name: newRecord.name,
-            code: newRecord.code,
-            grade: newRecord.grade,
-            category: newRecord.category,
-            time: newRecord.time,
-            instructor: newRecord.instructor,
-            room: newRecord.room,
-            is_active: true,
-          },
-        ]);
-      } catch (err) {
-        console.warn("Supabase course insert error:", err);
-      }
+    try {
+      const created = await createCourse({
+        id: newId,
+        name: courseForm.name,
+        code: courseForm.code,
+        grade: courseForm.grade,
+        category: courseForm.category,
+        time: courseForm.time || "Mon, Wed, Fri • 10:00 AM",
+        instructor: courseForm.instructor || "Faculty Lead",
+        room: courseForm.room || "Room 101",
+        is_active: true,
+      });
+      setCourses((prev) => [mapCourseRecord(created), ...prev]);
+      setIsAddCourseModalOpen(false);
+      setCourseForm({ name: "", code: "", grade: "Pearson IAL", category: "STEM", time: "", instructor: "", room: "" });
+      showToast(`Course "${courseForm.name}" added successfully.`);
+    } catch (err: any) {
+      showToast(`Error: ${err.message || "Failed to add course."}`);
     }
-
-    setIsAddCourseModalOpen(false);
-    setCourseForm({
-      name: "",
-      code: "",
-      grade: "Pearson IAL",
-      category: "STEM",
-      time: "",
-      instructor: "",
-      room: "",
-    });
-    showToast(`Course "${newRecord.name}" added successfully.`);
   };
 
   const handleSaveEditCourse = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingCourse) return;
-
-    const updated = courses.map((c) => (c.id === editingCourse.id ? editingCourse : c));
-    setCourses(updated);
-    saveStoredCourses(updated);
-
-    if (isSupabaseConfigured) {
-      try {
-        await supabase
-          .from("classes_courses")
-          .update({
-            name: editingCourse.name,
-            code: editingCourse.code,
-            grade: editingCourse.grade,
-            category: editingCourse.category,
-            time: editingCourse.time,
-            instructor: editingCourse.instructor,
-            room: editingCourse.room,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", editingCourse.id);
-      } catch (err) {
-        console.warn("Supabase course update error:", err);
-      }
+    try {
+      const updated = await updateCourse(editingCourse.id, editingCourse);
+      setCourses((prev) => prev.map((c) => c.id === editingCourse.id ? mapCourseRecord(updated) : c));
+      setEditingCourse(null);
+      showToast(`Course "${editingCourse.name}" updated successfully.`);
+    } catch (err: any) {
+      showToast(`Error: ${err.message || "Failed to update course."}`);
     }
-
-    setEditingCourse(null);
-    showToast(`Course "${editingCourse.name}" updated successfully.`);
   };
 
   const handleDeleteCourse = async () => {
     if (!deletingCourse) return;
-
-    const updated = courses.filter((c) => c.id !== deletingCourse.id);
-    setCourses(updated);
-    saveStoredCourses(updated);
-
-    if (isSupabaseConfigured) {
-      try {
-        await supabase.from("classes_courses").delete().eq("id", deletingCourse.id);
-      } catch (err) {
-        console.warn("Supabase course delete error:", err);
-      }
+    try {
+      await deleteCourse(deletingCourse.id);
+      setCourses((prev) => prev.filter((c) => c.id !== deletingCourse.id));
+      showToast(`Course "${deletingCourse.name}" removed.`);
+      setDeletingCourse(null);
+    } catch (err: any) {
+      showToast(`Error: ${err.message || "Failed to delete course."}`);
     }
-
-    showToast(`Course "${deletingCourse.name}" removed.`);
-    setDeletingCourse(null);
   };
 
   // Actions - Announcements
   const handleCreateNotice = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!noticeForm.title.trim() || !noticeForm.content.trim()) return;
-
-    const newNotice: BulletinNotice = {
-      id: Date.now(),
-      title: noticeForm.title,
-      date: noticeForm.date || new Date().toISOString().split("T")[0],
-      type: noticeForm.type,
-      content: noticeForm.content,
-    };
-
-    const updated = [newNotice, ...announcements];
-    setAnnouncements(updated);
-    saveStoredBulletins(updated);
-
-    if (isSupabaseConfigured) {
-      try {
-        await supabase.from("bulletin_notices").insert([
-          {
-            title: newNotice.title,
-            date: newNotice.date,
-            type: newNotice.type,
-            content: newNotice.content,
-          },
-        ]);
-      } catch (err) {
-        console.warn("Supabase bulletin insert error:", err);
-      }
+    try {
+      const created = await createBulletin({
+        title: noticeForm.title,
+        date: noticeForm.date || new Date().toISOString().split("T")[0],
+        type: noticeForm.type,
+        content: noticeForm.content,
+      });
+      setAnnouncements((prev) => [mapBulletinRecord(created), ...prev]);
+      setIsAddNoticeModalOpen(false);
+      setNoticeForm({ title: "", date: new Date().toISOString().split("T")[0], type: "Official Notice", content: "" });
+      showToast("Announcement published.");
+    } catch (err: any) {
+      showToast(`Error: ${err.message || "Failed to create announcement."}`);
     }
-
-    setIsAddNoticeModalOpen(false);
-    setNoticeForm({
-      title: "",
-      date: new Date().toISOString().split("T")[0],
-      type: "Official Notice",
-      content: "",
-    });
-    showToast("Announcement published.");
   };
 
   const handleDeleteNotice = async () => {
     if (!deletingNotice) return;
-
-    const updated = announcements.filter((a) => a.id !== deletingNotice.id);
-    setAnnouncements(updated);
-    saveStoredBulletins(updated);
-
-    if (isSupabaseConfigured) {
-      try {
-        await supabase.from("bulletin_notices").delete().eq("id", deletingNotice.id);
-      } catch (err) {
-        console.warn("Supabase bulletin delete error:", err);
-      }
+    try {
+      await deleteBulletin(deletingNotice.id);
+      setAnnouncements((prev) => prev.filter((a) => a.id !== deletingNotice.id));
+      showToast("Announcement removed.");
+      setDeletingNotice(null);
+    } catch (err: any) {
+      showToast(`Error: ${err.message || "Failed to delete announcement."}`);
     }
-
-    showToast("Announcement removed.");
-    setDeletingNotice(null);
   };
 
   return (

@@ -3,11 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  FALLBACK_GUEST_USER,
-  getActiveAdminRole,
-  UserProfile,
-} from "../../admin/adminStore";
+import { FALLBACK_GUEST_USER, UserProfile, mapUserProfileRecord } from "../../admin/adminStore";
 import { supabase } from "@/lib/supabase/client";
 
 export default function AdminHeader() {
@@ -16,19 +12,32 @@ export default function AdminHeader() {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   const userMenuRef = useRef<HTMLDivElement>(null);
   const notifMenuRef = useRef<HTMLDivElement>(null);
 
+  // Load current user from Supabase on mount
   useEffect(() => {
-    setActiveRole(getActiveAdminRole());
+    async function loadCurrentUser() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
 
-    const handleRoleUpdate = () => {
-      setActiveRole(getActiveAdminRole());
-    };
+        const { data: profile } = await supabase
+          .from("user_profiles")
+          .select("id, email, full_name, role, title, campus_id, grade, status, created_at")
+          .eq("id", user.id)
+          .single();
 
-    window.addEventListener("his_role_updated", handleRoleUpdate);
-    return () => window.removeEventListener("his_role_updated", handleRoleUpdate);
+        if (profile) {
+          setActiveRole(mapUserProfileRecord(profile));
+        }
+      } catch (err) {
+        console.warn("AdminHeader: failed to load user profile", err);
+      }
+    }
+    loadCurrentUser();
   }, []);
 
   // Close dropdowns on outside click
@@ -46,18 +55,19 @@ export default function AdminHeader() {
   }, []);
 
   const handleSignOut = async () => {
+    setIsSigningOut(true);
+    setUserDropdownOpen(false);
     try {
-      if (supabase) {
-        await supabase.auth.signOut();
-      }
+      await supabase.auth.signOut();
     } catch (err) {
-      console.warn("Sign out err:", err);
+      console.warn("Sign out error:", err);
     }
     router.push("/admin/login");
+    router.refresh();
   };
 
-  const isPrincipal = (activeRole?.role ?? "principal") === "principal";
-  const isStaff = (activeRole?.role ?? "") === "staff_admin";
+  const isPrincipal = activeRole?.role === "principal";
+  const isStaff = activeRole?.role === "staff_admin";
 
   const notifications = [
     {
@@ -263,10 +273,11 @@ export default function AdminHeader() {
                 <button
                   type="button"
                   onClick={handleSignOut}
-                  className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition-all text-xs font-bold uppercase tracking-wider"
+                  disabled={isSigningOut}
+                  className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition-all text-xs font-bold uppercase tracking-wider disabled:opacity-60"
                 >
                   <span className="material-symbols-outlined text-sm">logout</span>
-                  <span>Sign Out</span>
+                  <span>{isSigningOut ? "Signing out..." : "Sign Out"}</span>
                 </button>
               </div>
             </div>

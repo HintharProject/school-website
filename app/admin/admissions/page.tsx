@@ -4,13 +4,12 @@ import { useState, useEffect } from "react";
 import {
   AdmissionApplication,
   ApplicationStatus,
-  getStoredApplications,
-  saveStoredApplications,
-  getActiveAdminRole,
+  mapAdmissionRecord,
   UserProfile,
   FALLBACK_GUEST_USER,
+  mapUserProfileRecord,
 } from "../adminStore";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
+import { fetchAdmissions, createAdmission, updateAdmission, deleteAdmission, getCurrentUserProfile } from "@/lib/supabase/actions";
 
 const statusBadgeClasses: Record<ApplicationStatus, string> = {
   Pending: "bg-amber-100 text-amber-800 border border-amber-200",
@@ -55,61 +54,20 @@ export default function AdminAdmissionsPage() {
   };
 
   const loadData = async () => {
-    setCurrentUser(getActiveAdminRole());
-
-    if (isSupabaseConfigured) {
-      try {
-        const { data, error } = await supabase
-          .from("admissions")
-          .select("*")
-          .order("created_at", { ascending: false });
-
-        if (!error && data) {
-          const mapped: AdmissionApplication[] = data.map((d: any) => ({
-            id: d.id,
-            studentName: d.student_name,
-            dateOfBirth: d.date_of_birth,
-            gender: d.gender,
-            grade: d.grade,
-            previousSchool: d.previous_school,
-            parentName: d.parent_name,
-            parentEmail: d.parent_email,
-            parentPhone: d.parent_phone,
-            submittedDate: d.submitted_date || d.created_at?.split("T")[0] || new Date().toISOString().split("T")[0],
-            status: d.status as ApplicationStatus,
-            assessmentDate: d.assessment_date,
-            notes: d.notes,
-          }));
-          setApplications(mapped);
-          saveStoredApplications(mapped);
-          setIsLoaded(true);
-          return;
-        }
-      } catch (err) {
-        console.warn("Supabase admissions fetch error, using local fallback:", err);
-      }
+    try {
+      const profile = await getCurrentUserProfile();
+      if (profile) setCurrentUser(mapUserProfileRecord(profile));
+      const data = await fetchAdmissions();
+      setApplications(data.map(mapAdmissionRecord));
+    } catch (err) {
+      console.warn("Failed to load admissions:", err);
+    } finally {
+      setIsLoaded(true);
     }
-
-    setApplications(getStoredApplications());
-    setIsLoaded(true);
   };
 
   useEffect(() => {
     loadData();
-
-    const handleStorageUpdate = () => {
-      setApplications(getStoredApplications());
-    };
-    const handleRoleUpdate = () => {
-      setCurrentUser(getActiveAdminRole());
-    };
-
-    window.addEventListener("his_applications_updated", handleStorageUpdate);
-    window.addEventListener("his_role_updated", handleRoleUpdate);
-    return () => {
-      window.removeEventListener("his_applications_updated", handleStorageUpdate);
-      window.removeEventListener("his_role_updated", handleRoleUpdate);
-    };
   }, []);
 
   if (currentUser?.role === "student") {
@@ -150,258 +108,93 @@ export default function AdminAdmissionsPage() {
 
   // Action Handlers
   const handleUpdateStatus = async (id: string, newStatus: ApplicationStatus) => {
-    const targetApp = applications.find((a) => a.id === id);
-    const updated = applications.map((a) =>
-      a.id === id ? { ...a, status: newStatus } : a
-    );
-    setApplications(updated);
-    saveStoredApplications(updated);
-
-    if (selectedApp && selectedApp.id === id) {
-      setSelectedApp({ ...selectedApp, status: newStatus });
+    try {
+      await updateAdmission(id, { status: newStatus });
+      setApplications((prev) => prev.map((a) => a.id === id ? { ...a, status: newStatus } : a));
+      if (selectedApp?.id === id) setSelectedApp((s) => s ? { ...s, status: newStatus } : s);
+      showToast(`Application ${id} status updated to: ${newStatus}`);
+    } catch (err: any) {
+      showToast(`Error: ${err.message || "Failed to update status."}`);
     }
-
-    if (isSupabaseConfigured) {
-      try {
-        await supabase
-          .from("admissions")
-          .update({ status: newStatus, updated_at: new Date().toISOString() })
-          .eq("id", id);
-
-        if (targetApp && targetApp.parentEmail) {
-          fetch("/api/email/notify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              type: newStatus === "Assessment Scheduled" ? "assessment_scheduled" : "admission_status_updated",
-              recipientEmail: targetApp.parentEmail,
-              recipientName: targetApp.parentName || "Parent / Guardian",
-              studentName: targetApp.studentName,
-              applicationId: targetApp.id,
-              grade: targetApp.grade,
-              status: newStatus,
-              assessmentDate: targetApp.assessmentDate,
-              notes: targetApp.notes,
-            }),
-          }).catch((e) => console.warn("Email notify error:", e));
-        }
-      } catch (err) {
-        console.warn("Supabase status update error:", err);
-      }
-    }
-
-    showToast(`Application ${id} status updated to: ${newStatus}`);
   };
 
   const handleSaveNotes = async (id: string, notes: string, assessmentDate?: string) => {
-    const targetApp = applications.find((a) => a.id === id);
-    const updated = applications.map((a) =>
-      a.id === id ? { ...a, notes, assessmentDate: assessmentDate !== undefined ? assessmentDate : a.assessmentDate } : a
-    );
-    setApplications(updated);
-    saveStoredApplications(updated);
-
-    if (selectedApp && selectedApp.id === id) {
-      setSelectedApp({
-        ...selectedApp,
-        notes,
-        assessmentDate: assessmentDate !== undefined ? assessmentDate : selectedApp.assessmentDate,
-      });
+    try {
+      await updateAdmission(id, { notes, assessment_date: assessmentDate || null });
+      setApplications((prev) => prev.map((a) => a.id === id ? { ...a, notes, assessmentDate: assessmentDate ?? a.assessmentDate } : a));
+      if (selectedApp?.id === id) setSelectedApp((s) => s ? { ...s, notes, assessmentDate: assessmentDate ?? s.assessmentDate } : s);
+      showToast("Assessment details and remarks saved successfully.");
+    } catch (err: any) {
+      showToast(`Error: ${err.message || "Failed to save notes."}`);
     }
-
-    if (isSupabaseConfigured) {
-      try {
-        await supabase
-          .from("admissions")
-          .update({
-            notes,
-            assessment_date: assessmentDate !== undefined ? assessmentDate : targetApp?.assessmentDate || null,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", id);
-
-        if (assessmentDate && targetApp && targetApp.parentEmail) {
-          fetch("/api/email/notify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              type: "assessment_scheduled",
-              recipientEmail: targetApp.parentEmail,
-              recipientName: targetApp.parentName || "Parent / Guardian",
-              studentName: targetApp.studentName,
-              applicationId: targetApp.id,
-              grade: targetApp.grade,
-              assessmentDate: assessmentDate,
-              notes: notes,
-            }),
-          }).catch((e) => console.warn("Email notify error:", e));
-        }
-      } catch (err) {
-        console.warn("Supabase notes update error:", err);
-      }
-    }
-
-    showToast("Assessment details and remarks saved successfully.");
   };
 
   const handleCreateApplication = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newForm.studentName || !newForm.parentEmail || !newForm.parentPhone) return;
-
     const randomNum = Math.floor(1000 + Math.random() * 9000);
-    const newRecord: AdmissionApplication = {
-      id: `HIS-2026-${randomNum}`,
-      studentName: newForm.studentName,
-      dateOfBirth: newForm.dateOfBirth || undefined,
-      gender: newForm.gender,
-      grade: newForm.grade,
-      previousSchool: newForm.previousSchool || undefined,
-      parentName: newForm.parentName || undefined,
-      parentEmail: newForm.parentEmail,
-      parentPhone: newForm.parentPhone,
-      submittedDate: new Date().toISOString().split("T")[0],
-      status: "Pending",
-      notes: newForm.notes || undefined,
-    };
-
-    const updated = [newRecord, ...applications];
-    setApplications(updated);
-    saveStoredApplications(updated);
-
-    if (isSupabaseConfigured) {
-      try {
-        await supabase.from("admissions").insert([
-          {
-            id: newRecord.id,
-            student_name: newRecord.studentName,
-            date_of_birth: newRecord.dateOfBirth || null,
-            gender: newRecord.gender,
-            grade: newRecord.grade,
-            previous_school: newRecord.previousSchool || null,
-            parent_name: newRecord.parentName || null,
-            parent_email: newRecord.parentEmail,
-            parent_phone: newRecord.parentPhone,
-            submitted_date: newRecord.submittedDate,
-            status: newRecord.status,
-            notes: newRecord.notes || null,
-          },
-        ]);
-
-        fetch("/api/email/notify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            type: "admission_submitted",
-            recipientEmail: newRecord.parentEmail,
-            recipientName: newRecord.parentName || "Parent / Guardian",
-            studentName: newRecord.studentName,
-            applicationId: newRecord.id,
-            grade: newRecord.grade,
-            status: newRecord.status,
-          }),
-        }).catch((e) => console.warn("Email notify error:", e));
-      } catch (err) {
-        console.warn("Supabase admission insert error:", err);
-      }
+    try {
+      const created = await createAdmission({
+        id: `HIS-2026-${randomNum}`,
+        student_name: newForm.studentName,
+        date_of_birth: newForm.dateOfBirth || null,
+        gender: newForm.gender,
+        grade: newForm.grade,
+        previous_school: newForm.previousSchool || null,
+        parent_name: newForm.parentName || null,
+        parent_email: newForm.parentEmail,
+        parent_phone: newForm.parentPhone,
+        submitted_date: new Date().toISOString().split("T")[0],
+        status: "Pending",
+        notes: newForm.notes || null,
+      });
+      setApplications((prev) => [mapAdmissionRecord(created), ...prev]);
+      setNewForm({ studentName: "", dateOfBirth: "", gender: "Male", grade: "Pearson IGCSE (Year 10)", previousSchool: "", parentName: "", parentEmail: "", parentPhone: "", notes: "" });
+      setIsAddModalOpen(false);
+      showToast(`Candidate ${newForm.studentName} registered (HIS-2026-${randomNum}).`);
+    } catch (err: any) {
+      showToast(`Error: ${err.message || "Failed to create application."}`);
     }
-
-    setNewForm({
-      studentName: "",
-      dateOfBirth: "",
-      gender: "Male",
-      grade: "Pearson IGCSE (Year 10)",
-      previousSchool: "",
-      parentName: "",
-      parentEmail: "",
-      parentPhone: "",
-      notes: "",
-    });
-    setIsAddModalOpen(false);
-    showToast(`Candidate ${newRecord.studentName} registered (${newRecord.id}).`);
   };
 
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingApp) return;
-
-    const updated = applications.map((a) =>
-      a.id === editingApp.id ? editingApp : a
-    );
-    setApplications(updated);
-    saveStoredApplications(updated);
-
-    if (isSupabaseConfigured) {
-      try {
-        await supabase
-          .from("admissions")
-          .update({
-            student_name: editingApp.studentName,
-            date_of_birth: editingApp.dateOfBirth || null,
-            gender: editingApp.gender || null,
-            grade: editingApp.grade,
-            previous_school: editingApp.previousSchool || null,
-            parent_name: editingApp.parentName || null,
-            parent_email: editingApp.parentEmail,
-            parent_phone: editingApp.parentPhone,
-            status: editingApp.status,
-            assessment_date: editingApp.assessmentDate || null,
-            notes: editingApp.notes || null,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", editingApp.id);
-
-        if (editingApp.parentEmail) {
-          fetch("/api/email/notify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              type: editingApp.status === "Assessment Scheduled" ? "assessment_scheduled" : "admission_status_updated",
-              recipientEmail: editingApp.parentEmail,
-              recipientName: editingApp.parentName || "Parent / Guardian",
-              studentName: editingApp.studentName,
-              applicationId: editingApp.id,
-              grade: editingApp.grade,
-              assessmentDate: editingApp.assessmentDate,
-              status: editingApp.status,
-              notes: editingApp.notes,
-            }),
-          }).catch((e) => console.warn("Email notify error:", e));
-        }
-      } catch (err) {
-        console.warn("Supabase edit error:", err);
-      }
+    try {
+      await updateAdmission(editingApp.id, {
+        student_name: editingApp.studentName,
+        date_of_birth: editingApp.dateOfBirth || null,
+        gender: editingApp.gender || null,
+        grade: editingApp.grade,
+        previous_school: editingApp.previousSchool || null,
+        parent_name: editingApp.parentName || null,
+        parent_email: editingApp.parentEmail,
+        parent_phone: editingApp.parentPhone,
+        status: editingApp.status,
+        assessment_date: editingApp.assessmentDate || null,
+        notes: editingApp.notes || null,
+      });
+      setApplications((prev) => prev.map((a) => a.id === editingApp.id ? editingApp : a));
+      if (selectedApp?.id === editingApp.id) setSelectedApp(editingApp);
+      setEditingApp(null);
+      showToast(`Application ${editingApp.id} updated successfully.`);
+    } catch (err: any) {
+      showToast(`Error: ${err.message || "Failed to update application."}`);
     }
-
-    if (selectedApp && selectedApp.id === editingApp.id) {
-      setSelectedApp(editingApp);
-    }
-
-    setEditingApp(null);
-    showToast(`Application ${editingApp.id} updated successfully.`);
   };
 
   const handleConfirmDelete = async () => {
     if (!deletingApp) return;
-
-    const updated = applications.filter((a) => a.id !== deletingApp.id);
-    setApplications(updated);
-    saveStoredApplications(updated);
-
-    if (isSupabaseConfigured) {
-      try {
-        await supabase.from("admissions").delete().eq("id", deletingApp.id);
-      } catch (err) {
-        console.warn("Supabase delete error:", err);
-      }
+    try {
+      await deleteAdmission(deletingApp.id);
+      setApplications((prev) => prev.filter((a) => a.id !== deletingApp.id));
+      if (selectedApp?.id === deletingApp.id) setSelectedApp(null);
+      const removedId = deletingApp.id;
+      setDeletingApp(null);
+      showToast(`Application ${removedId} removed from registry.`);
+    } catch (err: any) {
+      showToast(`Error: ${err.message || "Failed to delete application."}`);
     }
-
-    if (selectedApp && selectedApp.id === deletingApp.id) {
-      setSelectedApp(null);
-    }
-
-    const removedId = deletingApp.id;
-    setDeletingApp(null);
-    showToast(`Application ${removedId} removed from registry.`);
   };
 
   return (
