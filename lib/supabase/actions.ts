@@ -98,7 +98,7 @@ export async function fetchAdmissions() {
   return (data || []) as AdmissionRecord[];
 }
 
-export async function createAdmission(record: Omit<AdmissionRecord, "id" | "created_at" | "updated_at">) {
+export async function createAdmission(record: Omit<AdmissionRecord, "created_at" | "updated_at">) {
   const { data, error } = await supabase
     .from("admissions")
     .insert([record])

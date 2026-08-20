@@ -120,7 +120,7 @@ export default function AdminAdmissionsPage() {
 
   const handleSaveNotes = async (id: string, notes: string, assessmentDate?: string) => {
     try {
-      await updateAdmission(id, { notes, assessment_date: assessmentDate || null });
+      await updateAdmission(id, { notes, assessment_date: assessmentDate || undefined });
       setApplications((prev) => prev.map((a) => a.id === id ? { ...a, notes, assessmentDate: assessmentDate ?? a.assessmentDate } : a));
       if (selectedApp?.id === id) setSelectedApp((s) => s ? { ...s, notes, assessmentDate: assessmentDate ?? s.assessmentDate } : s);
       showToast("Assessment details and remarks saved successfully.");
@@ -137,16 +137,16 @@ export default function AdminAdmissionsPage() {
       const created = await createAdmission({
         id: `HIS-2026-${randomNum}`,
         student_name: newForm.studentName,
-        date_of_birth: newForm.dateOfBirth || null,
-        gender: newForm.gender,
+        date_of_birth: newForm.dateOfBirth || undefined,
+        gender: (newForm.gender as "Male" | "Female" | "Other") || undefined,
         grade: newForm.grade,
-        previous_school: newForm.previousSchool || null,
-        parent_name: newForm.parentName || null,
+        previous_school: newForm.previousSchool || undefined,
+        parent_name: newForm.parentName || undefined,
         parent_email: newForm.parentEmail,
         parent_phone: newForm.parentPhone,
         submitted_date: new Date().toISOString().split("T")[0],
         status: "Pending",
-        notes: newForm.notes || null,
+        notes: newForm.notes || undefined,
       });
       setApplications((prev) => [mapAdmissionRecord(created), ...prev]);
       setNewForm({ studentName: "", dateOfBirth: "", gender: "Male", grade: "Pearson IGCSE (Year 10)", previousSchool: "", parentName: "", parentEmail: "", parentPhone: "", notes: "" });
@@ -163,16 +163,16 @@ export default function AdminAdmissionsPage() {
     try {
       await updateAdmission(editingApp.id, {
         student_name: editingApp.studentName,
-        date_of_birth: editingApp.dateOfBirth || null,
-        gender: editingApp.gender || null,
+        date_of_birth: editingApp.dateOfBirth || undefined,
+        gender: (editingApp.gender as "Male" | "Female" | "Other") || undefined,
         grade: editingApp.grade,
-        previous_school: editingApp.previousSchool || null,
-        parent_name: editingApp.parentName || null,
+        previous_school: editingApp.previousSchool || undefined,
+        parent_name: editingApp.parentName || undefined,
         parent_email: editingApp.parentEmail,
         parent_phone: editingApp.parentPhone,
         status: editingApp.status,
-        assessment_date: editingApp.assessmentDate || null,
-        notes: editingApp.notes || null,
+        assessment_date: editingApp.assessmentDate || undefined,
+        notes: editingApp.notes || undefined,
       });
       setApplications((prev) => prev.map((a) => a.id === editingApp.id ? editingApp : a));
       if (selectedApp?.id === editingApp.id) setSelectedApp(editingApp);
