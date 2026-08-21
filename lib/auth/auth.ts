@@ -14,10 +14,11 @@ export async function getAuth(explicitDb?: D1Database) {
     database: drizzleAdapter(db, {
       provider: "sqlite",
       schema: {
-        user: schema.users,
-        session: schema.sessions,
-        account: schema.accounts,
-        verification: schema.verifications,
+        ...schema,
+        user: schema.user,
+        session: schema.session,
+        account: schema.account,
+        verification: schema.verification,
       },
     }),
     emailAndPassword: {
@@ -61,8 +62,22 @@ export async function getAuth(explicitDb?: D1Database) {
         maxAge: 5 * 60,
       },
     },
+    trustedOrigins: [
+      "http://localhost:3000",
+      "http://localhost:8787",
+      "http://localhost:3001",
+      "http://127.0.0.1:3000",
+      "http://127.0.0.1:8787",
+      "http://127.0.0.1:3001",
+      "https://hinthar.thawyezaw.workers.dev",
+      process.env.NEXT_PUBLIC_APP_URL || "",
+      process.env.BETTER_AUTH_URL || "",
+    ].filter(Boolean),
     advanced: {
-      useSecureCookies: process.env.NODE_ENV === "production",
+      useSecureCookies:
+        process.env.NODE_ENV === "production" &&
+        !process.env.BETTER_AUTH_URL?.includes("localhost") &&
+        !process.env.BETTER_AUTH_URL?.includes("127.0.0.1"),
       cookiePrefix: "hinthar",
     },
   });

@@ -67,6 +67,7 @@ export const accounts = sqliteTable(
     id: text("id").primaryKey(),
     accountId: text("account_id").notNull(),
     providerId: text("provider_id").notNull(),
+    issuer: text("issuer").notNull().default("local:credential"),
     userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
@@ -87,6 +88,7 @@ export const accounts = sqliteTable(
   (table) => [
     index("idx_account_user").on(table.userId),
     index("idx_account_provider").on(table.providerId, table.accountId),
+    index("idx_account_issuer").on(table.issuer),
   ]
 );
 
@@ -405,11 +407,41 @@ export const auditLogs = sqliteTable(
 export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
   accounts: many(accounts),
+  invitations: many(invitations),
   clubs: many(clubs),
   activities: many(activities),
   yearbookEntries: many(yearbookAlumni),
   uploadedAssets: many(fileAssets),
 }));
+
+export const userRelations = usersRelations;
+
+export const sessionsRelations = relations(sessions, ({ one }) => ({
+  user: one(users, {
+    fields: [sessions.userId],
+    references: [users.id],
+  }),
+}));
+
+export const sessionRelations = sessionsRelations;
+
+export const accountsRelations = relations(accounts, ({ one }) => ({
+  user: one(users, {
+    fields: [accounts.userId],
+    references: [users.id],
+  }),
+}));
+
+export const accountRelations = accountsRelations;
+
+export const invitationsRelations = relations(invitations, ({ one }) => ({
+  inviter: one(users, {
+    fields: [invitations.invitedBy],
+    references: [users.id],
+  }),
+}));
+
+export const invitationRelations = invitationsRelations;
 
 export const clubsRelations = relations(clubs, ({ one, many }) => ({
   author: one(users, {
@@ -436,6 +468,13 @@ export const yearbookAlumniRelations = relations(yearbookAlumni, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+// Singular aliases for Better Auth compatibility
+export const user = users;
+export const session = sessions;
+export const account = accounts;
+export const verification = verifications;
+export const invitation = invitations;
 
 // ==============================================================================
 // 4. TYPES

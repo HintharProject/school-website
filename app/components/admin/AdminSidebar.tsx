@@ -53,7 +53,7 @@ export default function AdminSidebar() {
       {/* Brand Header */}
       <div className="h-20 flex items-center px-6 border-b border-white/10 gap-3">
         <div className="relative w-10 h-10 rounded-full bg-white p-0.5 ring-2 ring-[#FFC700] shadow-sm shrink-0">
-          <Image src="/images/mainLogo.png" alt="Hinthar Logo" fill className="object-contain" />
+          <Image src="/images/mainLogo.png" alt="Hinthar Logo" fill sizes="40px" className="object-contain" />
         </div>
         <div className="flex flex-col min-w-0">
           <span className="font-black text-sm text-white tracking-tight leading-tight truncate">

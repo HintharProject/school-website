@@ -1,6 +1,6 @@
 /**
  * Cloudflare D1 Local Seed & Bootstrap Helper
- * Usage: npx wrangler d1 execute hinthar-db --local --file=supabase/seed-d1.sql
+ * Usage: npx wrangler d1 execute hinthar-db --local --file=scripts/seed.sql
  */
 
 console.log("To seed your Cloudflare D1 database:");

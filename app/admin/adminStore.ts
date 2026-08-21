@@ -359,13 +359,13 @@ export interface UserProfile {
 
 export const FALLBACK_GUEST_USER: UserProfile = {
   id: "admin-init",
-  email: "thawyezaw@gmail.com",
-  fullName: "TYZ",
+  email: "admin@hinthar.education",
+  fullName: "School Administrator",
   role: "admin",
   roleLabel: "Administrator",
   title: "School Administrator",
-  campusId: "ywarma-campus",
-  initials: "TY",
+  campusId: "both-campuses",
+  initials: "SA",
   badgeColor: "bg-[#FFC700] text-[#09234B]",
   status: "active",
   createdAt: "2026-08-01",
