@@ -42,7 +42,7 @@ interface ImageUploadPickerProps {
   label?: string;
   value: string;
   onChange: (url: string) => void;
-  folder?: "campuses" | "yearbook" | "clubs" | "avatars" | "general";
+  folder?: "campuses" | "yearbook" | "clubs" | "activities" | "avatars" | "general";
   aspectRatio?: "banner" | "portrait" | "square";
   helperText?: string;
   defaultPresetsCategory?: "campus" | "scholar" | "club" | "avatar";
@@ -94,7 +94,7 @@ export default function ImageUploadPicker({
         body: formData,
       });
 
-      const data = await res.json();
+      const data = (await res.json()) as any;
 
       if (data.success && data.url) {
         onChange(data.url);
@@ -233,7 +233,7 @@ export default function ImageUploadPicker({
           {isUploading ? (
             <div className="py-4 flex flex-col items-center justify-center gap-2">
               <div className="w-8 h-8 border-3 border-[#0E3B7D] border-t-transparent rounded-full animate-spin" />
-              <p className="font-bold text-[#0E3B7D] text-xs">Uploading to Supabase Storage...</p>
+              <p className="font-bold text-[#0E3B7D] text-xs">Uploading to Cloudflare R2 Storage...</p>
             </div>
           ) : (
             <div className="py-2 flex flex-col items-center justify-center gap-2.5 w-full">

@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import Navbar from "../components/Navbar";
 import FooterSection from "../components/sections/FooterSection";
+import ChatbotWidget from "../components/ChatbotWidget";
+import { getActivities } from "@/lib/actions/activities";
 
 interface SchoolEvent {
   id: number;
@@ -21,95 +23,6 @@ interface SchoolEvent {
   featured?: boolean;
 }
 
-const schoolEvents: SchoolEvent[] = [
-  {
-    id: 1,
-    title: "Annual STEM & Robotics Innovation Fair 2026",
-    category: "science",
-    date: "September 18, 2026",
-    month: "SEP",
-    day: "18",
-    time: "09:00 AM – 03:30 PM",
-    location: "Main Auditorium & Innovation Labs",
-    description:
-      "Showcasing student-engineered AI models, IoT environmental sensors, physics experiments, and autonomous robot obstacle runs.",
-    image: "/images/engineering.avif",
-    status: "Active Registration",
-    featured: true,
-  },
-  {
-    id: 2,
-    title: "Pearson Edexcel IGCSE & IAL Mock Exam Series",
-    category: "academic",
-    date: "October 05, 2026",
-    month: "OCT",
-    day: "05",
-    time: "08:30 AM – 01:00 PM",
-    location: "Exam Hall A & B (Hlaing Campus)",
-    description:
-      "Comprehensive British Council & Pearson standard trial examinations with full examiner mark schemes and personalized feedback sessions.",
-    image: "/images/g4.jpg",
-    status: "Upcoming",
-    featured: true,
-  },
-  {
-    id: 3,
-    title: "Inter-House Badminton & Table Tennis Tournament",
-    category: "sports",
-    date: "November 12, 2026",
-    month: "NOV",
-    day: "12",
-    time: "01:00 PM – 05:00 PM",
-    location: "Hinthar Sports Complex",
-    description:
-      "Annual house championship featuring singles, doubles, and faculty-student exhibition matches to build camaraderie and sportsmanship.",
-    image: "/images/g7.jpg",
-    status: "Upcoming",
-  },
-  {
-    id: 4,
-    title: "Global Perspectives & Model United Nations (MUN)",
-    category: "cultural",
-    date: "November 25, 2026",
-    month: "NOV",
-    day: "25",
-    time: "10:00 AM – 04:00 PM",
-    location: "Conference Hall",
-    description:
-      "Student delegates debate geopolitical solutions, climate resilience, and economic sustainability in a formal diplomatic simulation.",
-    image: "/images/business.jpg",
-    status: "Upcoming",
-  },
-  {
-    id: 5,
-    title: "International Cultural Diversity Festival",
-    category: "cultural",
-    date: "December 15, 2026",
-    month: "DEC",
-    day: "15",
-    time: "09:00 AM – 04:00 PM",
-    location: "Campus Courtyard",
-    description:
-      "Celebrating world cultures with traditional culinary booths, traditional music performances, traditional costume parades, and art displays.",
-    image: "/images/g6.jpg",
-    status: "Upcoming",
-  },
-  {
-    id: 6,
-    title: "Class of 2026 Graduation & Academic Awards Ceremony",
-    category: "academic",
-    date: "July 20, 2026",
-    month: "JUL",
-    day: "20",
-    time: "10:00 AM – 02:00 PM",
-    location: "Grand Ballroom & Live Stream",
-    description:
-      "Honoring our Pearson Edexcel IGCSE and International A-Level graduates with distinction medals and university scholarship recognition.",
-    image: "/images/graduation.jpg",
-    status: "Past Highlight",
-  },
-];
-
 const galleryMoments = [
   { image: "/images/g1.jpg", caption: "Primary Science Discovery Day", tag: "Primary" },
   { image: "/images/g2.jpg", caption: "Physics Optics & Mechanics Workshop", tag: "IGCSE Lab" },
@@ -120,16 +33,53 @@ const galleryMoments = [
 ];
 
 export default function ActivitiesView() {
+  const [events, setEvents] = useState<SchoolEvent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [rsvpModalEvent, setRsvpModalEvent] = useState<SchoolEvent | null>(null);
   const [rsvpSubmitted, setRsvpSubmitted] = useState(false);
   const [rsvpName, setRsvpName] = useState("");
   const [rsvpEmail, setRsvpEmail] = useState("");
 
+  useEffect(() => {
+    async function loadEvents() {
+      try {
+        setIsLoading(true);
+        const data = await getActivities();
+        if (data && data.length > 0) {
+          const published = data.filter((a: any) => a.reviewStatus === "published" || !a.reviewStatus);
+          const mapped: SchoolEvent[] = published.map((a: any) => ({
+            id: Number(a.id),
+            title: a.title,
+            category: a.category,
+            date: a.date,
+            month: a.month || "SEP",
+            day: a.day || "18",
+            time: a.time,
+            location: a.location,
+            description: a.description,
+            image: a.image || "/images/engineering.avif",
+            status: a.status,
+            featured: Boolean(a.featured),
+          }));
+          setEvents(mapped);
+        }
+      } catch (err) {
+        console.warn("Activities load note:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadEvents();
+  }, []);
+
   const filteredEvents =
     activeCategory === "all"
-      ? schoolEvents
-      : schoolEvents.filter((e) => e.category === activeCategory);
+      ? events
+      : events.filter((e) => e.category === activeCategory);
+
+  const featuredEvents = events.filter((e) => e.featured);
 
   const handleRsvpSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -175,10 +125,10 @@ export default function ActivitiesView() {
             <button
               key={tab.id}
               onClick={() => setActiveCategory(tab.id)}
-              className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
+              className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
                 activeCategory === tab.id
                   ? "bg-[#0E3B7D] text-white shadow-md scale-105"
-                  : "bg-white text-slate-600 hover:text-[#0E3B7D] border border-slate-200 shadow-sm"
+                  : "bg-white text-slate-600 border border-slate-200 hover:border-slate-300 hover:bg-slate-50"
               }`}
             >
               {tab.label}
@@ -186,218 +136,223 @@ export default function ActivitiesView() {
           ))}
         </div>
 
+        {/* Featured Showcase */}
+        {featuredEvents.length > 0 && activeCategory === "all" && (
+          <div className="mb-12">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="material-symbols-outlined text-[#FFC700] text-xl font-bold">stars</span>
+              <h2 className="text-lg font-black text-[#09234B] uppercase tracking-wider">
+                Featured Highlights
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {featuredEvents.slice(0, 2).map((ev) => (
+                <div
+                  key={ev.id}
+                  className="bg-white rounded-3xl overflow-hidden border border-slate-200/80 shadow-md hover:shadow-xl transition-all duration-300 flex flex-col justify-between group"
+                >
+                  <div className="relative h-56 w-full bg-slate-900 overflow-hidden">
+                    <Image
+                      src={ev.image}
+                      alt={ev.title}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-90"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                    <div className="absolute top-4 left-4 flex gap-2">
+                      <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-[#FFC700] text-[#09234B]">
+                        {ev.status}
+                      </span>
+                    </div>
+                    <div className="absolute bottom-4 left-4 right-4 text-white">
+                      <p className="text-xs text-[#FFC700] font-bold">{ev.date} • {ev.time}</p>
+                      <h3 className="text-xl font-black">{ev.title}</h3>
+                    </div>
+                  </div>
+
+                  <div className="p-6 space-y-3">
+                    <p className="text-xs text-slate-600 line-clamp-3 leading-relaxed">
+                      {ev.description}
+                    </p>
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                      <span className="text-xs text-slate-500 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-sm text-[#0E3B7D]">location_on</span>
+                        <span>{ev.location}</span>
+                      </span>
+                      <button
+                        onClick={() => setRsvpModalEvent(ev)}
+                        className="px-4 py-1.5 bg-[#0E3B7D] hover:bg-[#164E9A] text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+                      >
+                        Register / RSVP
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Events Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
-          {filteredEvents.map((evt) => (
+          {filteredEvents.map((ev) => (
             <div
-              key={evt.id}
-              className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col group"
+              key={ev.id}
+              className="bg-white rounded-3xl overflow-hidden border border-slate-200/80 shadow-xs hover:shadow-lg transition-all duration-300 flex flex-col justify-between"
             >
-              {/* Image & Date Badge */}
-              <div className="h-48 relative overflow-hidden">
-                <Image
-                  src={evt.image}
-                  alt={evt.title}
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-700"
-                  sizes="(max-width: 768px) 100vw, 33vw"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#09234B]/80 via-transparent to-black/20" />
-
-                {/* Date Badge */}
-                <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-md rounded-xl p-2 text-center shadow-md min-w-[50px] border border-slate-200">
-                  <span className="block text-[10px] font-black text-[#0E3B7D] uppercase tracking-wider leading-none">
-                    {evt.month}
-                  </span>
-                  <span className="block text-xl font-black text-[#09234B] leading-tight">
-                    {evt.day}
-                  </span>
+              <div>
+                <div className="relative h-44 w-full bg-slate-900 overflow-hidden">
+                  <Image
+                    src={ev.image}
+                    alt={ev.title}
+                    fill
+                    className="object-cover opacity-90"
+                  />
+                  <div className="absolute top-3 left-3">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#09234B]/80 text-[#FFC700] backdrop-blur-sm">
+                      {ev.category}
+                    </span>
+                  </div>
                 </div>
 
-                {/* Status Badge */}
-                <div className="absolute top-3 right-3">
-                  <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider backdrop-blur-md bg-[#09234B]/85 text-[#FFC700] border border-[#FFC700]/30 shadow-sm">
-                    {evt.status}
-                  </span>
+                <div className="p-5 space-y-2.5">
+                  <div className="flex items-center gap-2 text-xs font-bold text-[#0E3B7D]">
+                    <span className="material-symbols-outlined text-sm">event</span>
+                    <span>{ev.date}</span>
+                  </div>
+                  <h3 className="text-base font-black text-[#09234B]">{ev.title}</h3>
+                  <p className="text-xs text-slate-600 line-clamp-3 leading-relaxed">
+                    {ev.description}
+                  </p>
                 </div>
               </div>
 
-              {/* Body */}
-              <div className="p-6 flex-1 flex flex-col">
-                <h3 className="text-lg font-black text-[#09234B] mb-2 group-hover:text-[#0E3B7D] transition-colors line-clamp-2">
-                  {evt.title}
-                </h3>
-                <p className="text-xs sm:text-sm text-slate-600 mb-4 leading-relaxed font-normal flex-1">
-                  {evt.description}
-                </p>
-
-                {/* Location & Time Info */}
-                <div className="space-y-1.5 text-xs text-slate-500 border-t border-slate-100 pt-3 mb-5">
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[#0E3B7D] text-sm">schedule</span>
-                    <span>{evt.time}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[#0E3B7D] text-sm">location_on</span>
-                    <span className="truncate">{evt.location}</span>
-                  </div>
-                </div>
-
-                {/* Card Button */}
+              <div className="p-4 px-5 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-[11px] text-slate-500 font-medium truncate max-w-[150px]">
+                  {ev.location}
+                </span>
                 <button
-                  type="button"
-                  onClick={() => setRsvpModalEvent(evt)}
-                  className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl bg-[#E8F0FE] hover:bg-[#0E3B7D] hover:text-white text-[#0E3B7D] text-xs font-black tracking-wider uppercase transition-all"
+                  onClick={() => setRsvpModalEvent(ev)}
+                  className="px-3 py-1.5 rounded-lg bg-[#E8F0FE] hover:bg-[#0E3B7D] text-[#0E3B7D] hover:text-white font-bold text-xs transition-all cursor-pointer"
                 >
-                  <span>Attend / Register</span>
-                  <span className="material-symbols-outlined text-sm font-bold">event_available</span>
+                  RSVP
                 </button>
               </div>
             </div>
           ))}
         </div>
 
-        {/* Gallery / Campus Moments Showcase */}
-        <div className="mb-16">
+        {/* Photo Gallery Moments */}
+        <section className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
           <div className="text-center max-w-xl mx-auto mb-8">
-            <h2 className="text-2xl sm:text-3xl font-black text-[#09234B] tracking-tight">
-              Life at <span className="text-[#0E3B7D]">Hinthar School</span>
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-600 font-normal mt-1">
-              Snapshots of student discoveries, lab experiments, cultural festivities, and academic achievements.
+            <h2 className="text-2xl font-black text-[#09234B]">Campus Life Gallery</h2>
+            <p className="text-xs text-slate-500 mt-1">
+              Snapshots of student inquiry, laboratory experiments, debates, and community milestones across Hinthar campuses.
             </p>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {galleryMoments.map((item, i) => (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {galleryMoments.map((mom, idx) => (
               <div
-                key={i}
-                className="group relative aspect-[4/3] rounded-2xl overflow-hidden border border-slate-200 shadow-sm"
+                key={idx}
+                className="group relative h-48 rounded-2xl overflow-hidden bg-slate-900"
               >
                 <Image
-                  src={item.image}
-                  alt={item.caption}
+                  src={mom.image}
+                  alt={mom.caption}
                   fill
-                  className="object-cover group-hover:scale-110 transition-transform duration-700"
-                  sizes="(max-width: 768px) 50vw, 33vw"
+                  className="object-cover group-hover:scale-110 transition-transform duration-500"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#09234B]/90 via-[#09234B]/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4 text-white">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-[#FFC700] mb-1">
-                    {item.tag}
-                  </span>
-                  <p className="text-xs font-bold leading-snug">{item.caption}</p>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-end">
+                  <span className="text-[10px] font-black uppercase text-[#FFC700]">{mom.tag}</span>
+                  <p className="text-xs text-white font-bold">{mom.caption}</p>
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        </section>
 
-        {/* Notice Board Banner */}
-        <div className="p-6 md:p-8 bg-gradient-to-r from-[#09234B] via-[#0E3B7D] to-[#164E9A] rounded-3xl text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 border border-[#FFC700]/30">
-          <div className="space-y-2 text-center md:text-left">
-            <span className="px-3 py-1 bg-[#FFC700] text-[#09234B] text-[10px] font-black uppercase tracking-wider rounded-md">
-              Official Bulletin
-            </span>
-            <h3 className="text-xl md:text-2xl font-black tracking-tight">
-              Want to organize a club or student activity?
-            </h3>
-            <p className="text-xs md:text-sm text-slate-200 max-w-xl font-light">
-              Student Council &amp; Faculty Activity Committee applications for 2026–2027 are currently open for all Secondary &amp; A-Level students.
-            </p>
-          </div>
-          <Link
-            href="/clubs"
-            className="px-6 py-3 rounded-full bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] text-xs font-black tracking-wider uppercase shadow-md transition-colors shrink-0"
-          >
-            Explore Student Clubs
-          </Link>
-        </div>
-      </main>
-
-      {/* RSVP Modal */}
-      {rsvpModalEvent && (
-        <div
-          className="fixed inset-0 z-[120] bg-[#09234B]/70 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setRsvpModalEvent(null);
-          }}
-        >
-          <div className="bg-white max-w-md w-full rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-200 relative">
-            <button
-              onClick={() => setRsvpModalEvent(null)}
-              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-700 transition-colors"
-              aria-label="Close Modal"
-            >
-              <span className="material-symbols-outlined text-lg">close</span>
-            </button>
-
-            {!rsvpSubmitted ? (
-              <form onSubmit={handleRsvpSubmit} className="space-y-4">
+        {/* RSVP Modal */}
+        {rsvpModalEvent && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-4 shadow-2xl">
+              <div className="flex justify-between items-start">
                 <div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-[#0E3B7D]">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#0E3B7D]">
                     Event Registration
                   </span>
-                  <h3 className="text-lg font-black text-[#09234B] mt-1">
-                    {rsvpModalEvent.title}
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-1">
-                    📅 {rsvpModalEvent.date} &bull; 📍 {rsvpModalEvent.location}
-                  </p>
+                  <h3 className="text-xl font-black text-[#09234B]">{rsvpModalEvent.title}</h3>
                 </div>
-
-                <div className="space-y-1.5 pt-2">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Full Name *
-                  </label>
-                  <input
-                    required
-                    type="text"
-                    value={rsvpName}
-                    onChange={(e) => setRsvpName(e.target.value)}
-                    placeholder="Enter your name"
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Email / Contact *
-                  </label>
-                  <input
-                    required
-                    type="email"
-                    value={rsvpEmail}
-                    onChange={(e) => setRsvpEmail(e.target.value)}
-                    placeholder="Enter your email"
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
-                  />
-                </div>
-
-                <div className="pt-2">
-                  <button
-                    type="submit"
-                    className="w-full py-3 rounded-xl bg-[#0E3B7D] hover:bg-[#164E9A] text-white text-xs font-black uppercase tracking-wider shadow-md hover:scale-105 active:scale-95 transition-all"
-                  >
-                    Confirm RSVP &amp; Send Pass
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <div className="text-center py-6 space-y-3">
-                <span className="material-symbols-outlined text-4xl text-emerald-600 font-bold">check_circle</span>
-                <h4 className="text-lg font-black text-[#09234B]">
-                  RSVP Confirmed!
-                </h4>
-                <p className="text-xs text-slate-600">
-                  We look forward to seeing you at the event. Confirmation pass sent to <strong>{rsvpEmail}</strong>.
-                </p>
+                <button
+                  onClick={() => setRsvpModalEvent(null)}
+                  className="text-slate-400 hover:text-slate-700"
+                >
+                  <span className="material-symbols-outlined">close</span>
+                </button>
               </div>
-            )}
+
+              {rsvpSubmitted ? (
+                <div className="p-4 bg-emerald-50 text-emerald-800 rounded-2xl text-center space-y-2 border border-emerald-200">
+                  <span className="material-symbols-outlined text-3xl text-emerald-600">check_circle</span>
+                  <p className="text-xs font-bold">Registration Confirmed!</p>
+                  <p className="text-[11px] text-emerald-700">We have logged your RSVP slot for {rsvpModalEvent.date}.</p>
+                </div>
+              ) : (
+                <form onSubmit={handleRsvpSubmit} className="space-y-3 text-xs">
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Your Full Name</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Lin Myat Thu"
+                      value={rsvpName}
+                      onChange={(e) => setRsvpName(e.target.value)}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Email Address</label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="name@gmail.com"
+                      value={rsvpEmail}
+                      onChange={(e) => setRsvpEmail(e.target.value)}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                    />
+                  </div>
+
+                  <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-100 text-[11px] text-slate-600 space-y-1">
+                    <p><strong>Date &amp; Time:</strong> {rsvpModalEvent.date} ({rsvpModalEvent.time})</p>
+                    <p><strong>Venue:</strong> {rsvpModalEvent.location}</p>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setRsvpModalEvent(null)}
+                      className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2 rounded-xl bg-[#0E3B7D] text-white font-bold"
+                    >
+                      Confirm RSVP
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </main>
 
       <FooterSection />
+      <ChatbotWidget />
     </div>
   );
 }

@@ -1,0 +1,142 @@
+"use server";
+
+import { getDb, clubs, NewClub } from "@/lib/db";
+import { eq, desc } from "drizzle-orm";
+import { requireAdmin, requireStudentOrAdmin, logAudit } from "@/lib/auth/rbac";
+import { z } from "zod";
+import { revalidatePath } from "next/cache";
+
+const clubSchema = z.object({
+  name: z.string().min(2).max(200),
+  category: z.enum([
+    "STEM & Tech",
+    "Academic & Debate",
+    "STEM & Science",
+    "Creative Arts",
+    "Sports & Fitness",
+  ]),
+  icon: z.string().default("groups"),
+  members: z.string().default("25+ Scholars"),
+  meetingTime: z.string().min(2),
+  leadership: z.string().min(2),
+  description: z.string().min(5),
+  image: z.string().default("/images/g2.jpg"),
+  campus: z.string().default("both-campuses"),
+  isActive: z.boolean().default(true),
+});
+
+export async function getClubs() {
+  const db = await getDb();
+  return db
+    .select()
+    .from(clubs)
+    .orderBy(desc(clubs.id));
+}
+
+export async function createClubAction(data: unknown) {
+  const user = await requireStudentOrAdmin();
+  const validated = clubSchema.parse(data);
+  const db = await getDb();
+
+  const isAutoPublished = user.role === "admin";
+  const status = isAutoPublished ? "published" : "pending_review";
+
+  const insertData: NewClub = {
+    ...validated,
+    status,
+    submittedBy: user.id,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  const result = await db.insert(clubs).values(insertData).returning({ id: clubs.id });
+
+  await logAudit({
+    actor: user,
+    action: user.role === "admin" ? "ADMIN_CREATED_CLUB" : "STUDENT_PROPOSED_CLUB",
+    resource: "clubs",
+    resourceId: String(result[0]?.id),
+    details: { name: validated.name, status },
+  });
+
+  revalidatePath("/clubs");
+  revalidatePath("/admin/clubs");
+  return { success: true, id: result[0]?.id, status };
+}
+
+export async function updateClubAction(id: number, data: unknown) {
+  const user = await requireStudentOrAdmin();
+  const validated = clubSchema.partial().parse(data);
+  const db = await getDb();
+
+  // If student, verify ownership or preserve review status
+  if (user.role === "student") {
+    const existing = await db.select().from(clubs).where(eq(clubs.id, id)).limit(1);
+    if (!existing.length || existing[0].submittedBy !== user.id) {
+      throw new Error("FORBIDDEN: You can only edit your own club proposals.");
+    }
+  }
+
+  await db
+    .update(clubs)
+    .set({
+      ...validated,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(clubs.id, id));
+
+  await logAudit({
+    actor: user,
+    action: user.role === "admin" ? "ADMIN_UPDATED_CLUB" : "STUDENT_UPDATED_CLUB",
+    resource: "clubs",
+    resourceId: String(id),
+    details: validated,
+  });
+
+  revalidatePath("/clubs");
+  revalidatePath("/admin/clubs");
+  return { success: true };
+}
+
+export async function setClubStatusAction(id: number, status: "published" | "pending_review" | "archived") {
+  const user = await requireAdmin();
+  const db = await getDb();
+
+  await db
+    .update(clubs)
+    .set({
+      status,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(clubs.id, id));
+
+  await logAudit({
+    actor: user,
+    action: `ADMIN_SET_CLUB_STATUS_${status.toUpperCase()}`,
+    resource: "clubs",
+    resourceId: String(id),
+    details: { status },
+  });
+
+  revalidatePath("/clubs");
+  revalidatePath("/admin/clubs");
+  return { success: true };
+}
+
+export async function deleteClubAction(id: number) {
+  const user = await requireAdmin();
+  const db = await getDb();
+
+  await db.delete(clubs).where(eq(clubs.id, id));
+
+  await logAudit({
+    actor: user,
+    action: "ADMIN_DELETED_CLUB",
+    resource: "clubs",
+    resourceId: String(id),
+  });
+
+  revalidatePath("/clubs");
+  revalidatePath("/admin/clubs");
+  return { success: true };
+}

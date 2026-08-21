@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Navbar from "../components/Navbar";
 import FooterSection from "../components/sections/FooterSection";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
+import { submitPublicAdmissionAction } from "@/lib/actions/admissions";
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
@@ -137,28 +137,34 @@ export default function AdmissionForm() {
       notes: `Selected track: ${formData.academicStream.toUpperCase()} | Subjects: ${formData.selectedSubjects.join(", ")} | Mode: ${formData.studyMode}`,
     };
 
-    // Save to Supabase & Dispatch Email Notification
-    if (isSupabaseConfigured) {
-      try {
-        await supabase.from("admissions").insert([newRecord]);
-
-        // Send confirmation email
-        fetch("/api/email/notify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            type: "admission_submitted",
-            recipientEmail: formData.parentEmail,
-            recipientName: formData.parentName || "Parent / Guardian",
-            studentName: formData.studentName,
-            applicationId: randomCode,
-            grade: gradeLabel,
-            status: "Pending",
-          }),
-        }).catch((e) => console.warn("Email confirmation notification error:", e));
-      } catch (err) {
-        console.warn("Supabase admission insert error:", err);
+    // Save to Cloudflare D1 via submitPublicAdmissionAction
+    try {
+      const result = await submitPublicAdmissionAction({
+        studentName: formData.studentName,
+        dateOfBirth: formData.dob || null,
+        gender: formData.gender as "Male" | "Female" | "Other",
+        nationality: formData.nationality,
+        grade: gradeLabel,
+        programLevel: formData.programLevel,
+        academicStream: formData.academicStream,
+        selectedSubjects: formData.selectedSubjects,
+        intendedStartTerm: formData.intendedStartTerm,
+        studyMode: formData.studyMode,
+        previousSchool: formData.currentSchool || null,
+        parentName: formData.parentName || null,
+        relationship: formData.relationship,
+        parentEmail: formData.parentEmail,
+        parentPhone: formData.parentPhone,
+        address: formData.address || null,
+        emergencyContact: formData.emergencyContact || null,
+        medicalNotes: formData.medicalNotes || null,
+        howHeard: formData.howHeard || "School Website",
+      });
+      if (result.applicationId) {
+        setSubmittedId(result.applicationId);
       }
+    } catch (err) {
+      console.warn("Admission submission note:", err);
     }
 
     setCurrentStep(5);

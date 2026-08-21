@@ -5,54 +5,35 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
 import { UserProfile, FALLBACK_GUEST_USER, mapUserProfileRecord } from "../../admin/adminStore";
-import { supabase } from "@/lib/supabase/client";
-import { getCurrentUserProfile } from "@/lib/supabase/actions";
+import { authClient } from "@/lib/auth/auth-client";
 
 export default function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [activeRole, setActiveRole] = useState<UserProfile>(FALLBACK_GUEST_USER);
 
-  useEffect(() => {
-    async function loadUser() {
-      try {
-        const profile = await getCurrentUserProfile();
-        if (profile) {
-          setActiveRole(mapUserProfileRecord(profile));
-        }
-      } catch (err) {
-        console.warn("Sidebar: failed to load user profile", err);
-      }
-    }
-    loadUser();
-  }, []);
+  const { data: session } = authClient.useSession();
 
-  const isPrincipal = (activeRole?.role ?? "principal") === "principal";
-  const isStaff = (activeRole?.role ?? "") === "staff_admin";
+  useEffect(() => {
+    if (session?.user) {
+      setActiveRole(mapUserProfileRecord(session.user));
+    }
+  }, [session]);
+
+  const isAdmin = (activeRole?.role ?? "admin") === "admin";
   const isStudent = (activeRole?.role ?? "") === "student";
 
   // Dynamic Navigation Items based on Access Level
   const getNavItems = () => {
-    if (isPrincipal) {
+    if (isAdmin) {
       return [
-        { label: "Principal Dashboard", href: "/admin", icon: "dashboard" },
+        { label: "Admin Dashboard", href: "/admin", icon: "dashboard" },
         { label: "User Accounts", href: "/admin/users", icon: "manage_accounts" },
         { label: "Campuses (4)", href: "/admin/campuses", icon: "location_city" },
         { label: "Admissions Review", href: "/admin/admissions", icon: "school" },
         { label: "Yearbook & Honors", href: "/admin/yearbook", icon: "auto_stories" },
         { label: "Classes & Syllabi", href: "/admin/classes", icon: "menu_book" },
-        { label: "Student Clubs", href: "/admin/clubs", icon: "groups" },
-      ];
-    }
-
-    if (isStaff) {
-      return [
-        { label: "Staff Dashboard", href: "/admin", icon: "dashboard" },
-        { label: "Student Accounts", href: "/admin/users", icon: "badge" },
-        { label: "Admissions Review", href: "/admin/admissions", icon: "school" },
-        { label: "Yearbook & Honors", href: "/admin/yearbook", icon: "auto_stories" },
-        { label: "Classes & Syllabi", href: "/admin/classes", icon: "menu_book" },
-        { label: "Student Clubs", href: "/admin/clubs", icon: "groups" },
+        { label: "Clubs & Activities", href: "/admin/clubs", icon: "groups" },
       ];
     }
 
@@ -60,6 +41,7 @@ export default function AdminSidebar() {
     return [
       { label: "Contributor Hub", href: "/admin", icon: "dashboard" },
       { label: "Yearbook Entry", href: "/admin/yearbook", icon: "auto_stories" },
+      { label: "Classes & Timetables", href: "/admin/classes", icon: "menu_book" },
       { label: "Clubs & Activities", href: "/admin/clubs", icon: "groups" },
     ];
   };
@@ -78,7 +60,7 @@ export default function AdminSidebar() {
             Hinthar Portal
           </span>
           <span className="text-[10px] font-bold text-[#FFC700] uppercase tracking-wider">
-            {isPrincipal ? "Principal Authority" : isStaff ? "Faculty & Staff" : "Student Contributor"}
+            {isAdmin ? "School Administrator" : "Student Contributor"}
           </span>
         </div>
       </div>
@@ -140,12 +122,12 @@ export default function AdminSidebar() {
           <div
             className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs shrink-0 ${activeRole?.badgeColor || "bg-[#FFC700] text-[#09234B]"}`}
           >
-            {activeRole?.initials || "KM"}
+            {activeRole?.initials || "TY"}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-white truncate">{activeRole?.fullName || "Dr. Kaung Myat Htut"}</p>
+            <p className="text-xs font-bold text-white truncate">{activeRole?.fullName || "Administrator"}</p>
             <p className="text-[10px] text-[#FFC700] font-semibold truncate">
-              {activeRole?.roleLabel || "Principal Authority"}
+              {activeRole?.roleLabel || "Administrator"}
             </p>
           </div>
         </div>
@@ -154,7 +136,7 @@ export default function AdminSidebar() {
           type="button"
           onClick={async () => {
             try {
-              await supabase.auth.signOut();
+              await authClient.signOut();
             } catch (err) {
               console.warn("Sidebar sign out error:", err);
             }

@@ -1,5 +1,4 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createServerClient } from "@supabase/ssr";
 
 function applySecurityHeaders(res: NextResponse) {
   res.headers.set("X-Frame-Options", "SAMEORIGIN");
@@ -15,52 +14,26 @@ export async function middleware(request: NextRequest) {
   const isAuthRoute = pathname === "/admin/login" || pathname === "/admin/update-password";
   const isApiAdminRoute = pathname.startsWith("/api/admin");
 
-  const supabaseUrl =
-    process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    "https://ytmylxemqrsjxdvrthxx.supabase.co";
-  const supabaseAnonKey =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-    "";
+  // Check for Better Auth session cookie
+  const sessionCookie =
+    request.cookies.get("hinthar.session_token")?.value ||
+    request.cookies.get("__Secure-hinthar.session_token")?.value ||
+    request.cookies.get("better-auth.session_token")?.value ||
+    request.cookies.get("session_token")?.value;
 
-  let supabaseResponse = NextResponse.next({ request });
-  let user = null;
+  const isAuthenticated = Boolean(sessionCookie && sessionCookie.length > 5);
 
-  if (supabaseAnonKey && supabaseAnonKey.length > 10) {
-    try {
-      const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value }) =>
-              request.cookies.set(name, value)
-            );
-            supabaseResponse = NextResponse.next({ request });
-            cookiesToSet.forEach(({ name, value, options }) =>
-              supabaseResponse.cookies.set(name, value, options)
-            );
-          },
-        },
-      });
-
-      const { data } = await supabase.auth.getUser();
-      user = data?.user || null;
-    } catch {
-      user = null;
-    }
-  }
-
-  // Only Supabase auth.getUser() grants access — no cookie or localStorage fallback
-  const isAuthenticated = Boolean(user);
+  const response = NextResponse.next({ request });
 
   // Protect /api/admin/* endpoints
   if (isApiAdminRoute && !isAuthenticated) {
-    // Exclude init-principal if caller has administrative header
-    if (pathname === "/api/admin/init-principal") {
-      return applySecurityHeaders(supabaseResponse);
+    // Exclude bootstrap endpoint if caller has administrative header
+    // Allow bootstrap route to pass directly to its route handler
+    if (pathname === "/api/admin/bootstrap") {
+      return applySecurityHeaders(NextResponse.next());
     }
+
+    // Protect all other /api/admin/* endpoints
     return applySecurityHeaders(
       NextResponse.json({ error: "Unauthorized: Administrative session required" }, { status: 401 })
     );
@@ -70,7 +43,6 @@ export async function middleware(request: NextRequest) {
   if (isAdminRoute && !isAuthRoute && !isAuthenticated) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/admin/login";
-    // Sanitize redirect target to relative path only
     const safeRedirect = pathname.startsWith("/") && !pathname.startsWith("//") ? pathname : "/admin";
     loginUrl.searchParams.set("redirect", safeRedirect);
     return applySecurityHeaders(NextResponse.redirect(loginUrl));
@@ -78,13 +50,17 @@ export async function middleware(request: NextRequest) {
 
   // If already authenticated and hitting login, redirect to admin dashboard
   if (pathname === "/admin/login" && isAuthenticated) {
-    const adminUrl = request.nextUrl.clone();
-    adminUrl.pathname = "/admin";
-    adminUrl.search = "";
-    return applySecurityHeaders(NextResponse.redirect(adminUrl));
+    // If there is an invite token in query, allow user to stay on login / accept invite
+    const hasInvite = request.nextUrl.searchParams.has("inviteToken");
+    if (!hasInvite) {
+      const adminUrl = request.nextUrl.clone();
+      adminUrl.pathname = "/admin";
+      adminUrl.search = "";
+      return applySecurityHeaders(NextResponse.redirect(adminUrl));
+    }
   }
 
-  return applySecurityHeaders(supabaseResponse);
+  return applySecurityHeaders(response);
 }
 
 export const config = {
@@ -96,6 +72,7 @@ export const config = {
      * - favicon.ico, images, fonts
      * - public files
      */
-    "/((?!_next/static|_next/image|favicon.ico|images|fonts|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|images|fonts|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif)$).*)",
   ],
 };
+
