@@ -1,25 +1,55 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "hinthar",
-  "main": ".open-next/worker.js",
-  "compatibility_date": "2026-08-17",
-  "compatibility_flags": [
-    "nodejs_compat"
-  ],
-  "assets": {
-    "directory": ".open-next/assets",
-    "binding": "ASSETS"
-  },
-  "services": [
-    {
-      "binding": "WORKER_SELF_REFERENCE",
-      "service": "hinthar"
-    }
-  ],
-  "images": {
-    "binding": "IMAGES"
-  },
-  "observability": {
-    "enabled": true
-  }
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "hinthar",
+	"main": ".open-next/worker.js",
+	"compatibility_date": "2026-08-17",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"assets": {
+		"directory": ".open-next/assets",
+		"binding": "ASSETS"
+	},
+	"vars": {
+		"BETTER_AUTH_URL": "https://hinthar.thawyezaw.workers.dev",
+		"INITIAL_ADMIN_EMAIL": "thawyezaw@gmail.com",
+		"INITIAL_ADMIN_NAME": "ThawYeZaw"
+	},
+	"services": [
+		{
+			"binding": "WORKER_SELF_REFERENCE",
+			"service": "hinthar"
+		}
+	],
+	"images": {
+		"binding": "IMAGES"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "hinthar-db",
+			"database_id": "ac7a8278-fbd7-49e9-bf1b-a20a11707f96",
+			"migrations_dir": "drizzle"
+		},
+		{
+			"binding": "hinthar_db",
+			"database_name": "hinthar-db",
+			"database_id": "ac7a8278-fbd7-49e9-bf1b-a20a11707f96",
+			"remote": true
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "R2",
+			"bucket_name": "hinthar-assets"
+		},
+		{
+			"bucket_name": "hinthar-assets",
+			"binding": "hinthar_assets",
+			"remote": true
+		}
+	],
+	"observability": {
+		"enabled": true
+	}
 }

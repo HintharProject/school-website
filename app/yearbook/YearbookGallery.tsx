@@ -5,8 +5,9 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "../components/Navbar";
 import FooterSection from "../components/sections/FooterSection";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
+import ChatbotWidget from "../components/ChatbotWidget";
 import { formatCampusBadge } from "../admin/adminStore";
+import { getYearbook } from "@/lib/actions/yearbook";
 
 interface YearbookEntry {
   id: number;
@@ -47,27 +48,20 @@ export default function YearbookGallery() {
 
   useEffect(() => {
     async function loadYearbook() {
-      if (!isSupabaseConfigured) {
-        setIsLoading(false);
-        return;
-      }
       try {
         setIsLoading(true);
-        const { data, error } = await supabase
-          .from("yearbook_alumni")
-          .select("*")
-          .eq("status", "published")
-          .order("category", { ascending: false });
+        const data = await getYearbook();
 
-        if (!error && data) {
-          const mapped: YearbookEntry[] = data.map((d: any) => ({
+        if (data && data.length > 0) {
+          const published = data.filter((d: any) => d.status === "published" || !d.status);
+          const mapped: YearbookEntry[] = published.map((d: any) => ({
             id: Number(d.id),
             name: d.name,
             category: d.category,
             categoryLabel: d.category === "Class of 2026" ? "Pearson IAL Scholar" : "Alumni Success",
             role: d.role,
-            destination: d.destination,
-            subjects: d.subjects,
+            destination: d.destination ?? undefined,
+            subjects: d.subjects ?? undefined,
             quote: d.quote,
             image: d.image || "/images/g5.jpg",
             badge: d.badge || "Alumni",
@@ -76,7 +70,7 @@ export default function YearbookGallery() {
           setEntries(mapped);
         }
       } catch (err) {
-        console.warn("Supabase yearbook fetch error:", err);
+        console.warn("Yearbook fetch note:", err);
       } finally {
         setIsLoading(false);
       }
@@ -119,175 +113,150 @@ export default function YearbookGallery() {
           <div className="inline-flex items-center gap-2 bg-[#E8F0FE] px-4 py-1.5 rounded-full mb-4 border border-[#0E3B7D]/20">
             <span className="material-symbols-outlined text-[#0E3B7D] text-sm font-bold">auto_stories</span>
             <span className="text-xs font-extrabold text-[#0E3B7D] uppercase tracking-wider">
-              Student Legacy &amp; Destinations
+              Hinthar Alumni Chronicle
             </span>
           </div>
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-[#09234B] mb-3 tracking-tight">
-            Yearbook &amp; <span className="text-[#0E3B7D]">Alumni Gallery</span>
+            Yearbook &amp; <span className="text-[#0E3B7D]">Hall of Honors</span>
           </h1>
           <p className="text-sm md:text-base text-slate-600 font-normal">
-            Celebrating the achievements, distinctions, and international university pathways of our graduating cohorts across Yangon and Mawlamyine campuses.
+            Celebrating our Pearson Edexcel High Achievers, World Medalists, and graduates advancing to prestigious universities across the United Kingdom, Singapore, Australia, and worldwide.
           </p>
         </div>
 
-        {/* Search & Filter Bar */}
-        <div className="mb-10 space-y-4">
-          <div className="relative max-w-md mx-auto">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <span className="material-symbols-outlined text-slate-400 text-base">search</span>
+        {/* Filters */}
+        <div className="space-y-4 mb-10">
+          {/* Categories */}
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setActiveCategory(cat)}
+                className={`px-4 py-2 rounded-full text-xs font-extrabold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                  activeCategory === cat
+                    ? "bg-[#0E3B7D] text-white shadow-sm"
+                    : "bg-white text-slate-600 border border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          {/* Campus Selector & Search */}
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs max-w-4xl mx-auto">
+            <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
+              {campusFilters.map((cf) => (
+                <button
+                  key={cf.id}
+                  onClick={() => setActiveCampus(cf.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    activeCampus === cf.id
+                      ? "bg-[#FFC700] text-[#09234B] font-black"
+                      : "text-slate-600 hover:text-[#0E3B7D]"
+                  }`}
+                >
+                  {cf.label}
+                </button>
+              ))}
             </div>
-            <input
-              type="text"
-              placeholder="Search by student name, university, or distinction..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-11 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm focus:ring-2 focus:ring-[#0E3B7D] outline-none transition-all text-xs sm:text-sm text-slate-900 placeholder:text-slate-400"
-            />
-          </div>
 
-          {/* Cohort Category Pills */}
-          <div className="flex flex-wrap justify-center gap-2">
-            {categories.map((category) => (
-              <button
-                key={category}
-                onClick={() => setActiveCategory(category)}
-                className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all shadow-sm ${
-                  activeCategory === category
-                    ? "bg-[#0E3B7D] text-white shadow-md scale-105"
-                    : "bg-white text-slate-600 hover:text-[#0E3B7D] border border-slate-200"
-                }`}
-              >
-                {category}
-              </button>
-            ))}
-          </div>
-
-          {/* Campus Location Filter */}
-          <div className="flex flex-wrap justify-center items-center gap-2 pt-1">
-            <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
-              <span className="material-symbols-outlined text-xs text-[#0E3B7D]">pin_drop</span>
-              <span>Campus:</span>
-            </span>
-            {campusFilters.map((loc) => (
-              <button
-                key={loc.id}
-                onClick={() => setActiveCampus(loc.id)}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                  activeCampus === loc.id
-                    ? "bg-[#FFC700] text-[#09234B] font-black shadow-sm"
-                    : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
-                }`}
-              >
-                {loc.label}
-              </button>
-            ))}
+            <div className="relative w-full sm:w-72">
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
+                search
+              </span>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search alumni name, university, award..."
+                className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Gallery Grid */}
-        {filteredEntries.length === 0 && !isLoading && (
-          <div className="text-center py-20 bg-white rounded-3xl border border-slate-200 p-8 shadow-xs max-w-xl mx-auto">
-            <span className="material-symbols-outlined text-5xl text-slate-300 mb-2">auto_stories</span>
-            <h3 className="text-base font-bold text-[#09234B]">No yearbook entries found</h3>
-            <p className="text-xs text-slate-500 mt-1">
-              Published alumni scholar profiles and distinctions from the database will appear here.
-            </p>
-          </div>
-        )}
-
-        <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          <AnimatePresence>
-            {filteredEntries.map((entry) => {
-              const campusBadge = formatCampusBadge(entry.campus);
+        {/* Yearbook Gallery Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <AnimatePresence mode="popLayout">
+            {filteredEntries.map((scholar) => {
+              const campusInfo = formatCampusBadge(scholar.campus);
 
               return (
                 <motion.div
-                  key={entry.id}
+                  key={scholar.id}
                   layout
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.25 }}
-                  className="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-200 hover:shadow-xl transition-all group flex flex-col justify-between"
+                  transition={{ duration: 0.3 }}
+                  className="bg-white rounded-3xl overflow-hidden border border-slate-200/80 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between group"
                 >
                   <div>
-                    {/* Photo with Badge */}
-                    <div className="h-56 relative overflow-hidden bg-slate-900">
+                    <div className="relative h-64 w-full bg-slate-900 overflow-hidden">
                       <Image
-                        src={entry.image || "/images/g5.jpg"}
-                        alt={entry.name}
+                        src={scholar.image}
+                        alt={scholar.name}
                         fill
-                        className="object-cover transition-transform duration-700 group-hover:scale-105"
-                        sizes="(max-width: 768px) 100vw, 33vw"
+                        className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-90"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#09234B]/85 via-black/20 to-black/10" />
-
-                      <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap">
-                        <span className="bg-white/95 backdrop-blur-md px-2.5 py-0.5 rounded-md text-[10px] font-black text-[#0E3B7D] shadow-sm border border-slate-200">
-                          {entry.category}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                      <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#09234B]/80 text-[#FFC700] backdrop-blur-sm">
+                          {scholar.category}
                         </span>
-                        <span
-                          className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${campusBadge.badgeClass}`}
-                        >
-                          {campusBadge.label}
-                        </span>
+                        {scholar.badge && (
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-600/90 text-white backdrop-blur-sm">
+                            {scholar.badge}
+                          </span>
+                        )}
                       </div>
 
-                      {entry.badge && (
-                        <div className="absolute top-3 right-3 bg-[#FFC700] text-[#09234B] px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider shadow-sm border border-[#FFC700]">
-                          {entry.badge}
-                        </div>
-                      )}
-
                       <div className="absolute bottom-3 left-4 right-4 text-white">
-                        <h3 className="text-lg font-black leading-tight drop-shadow-sm">{entry.name}</h3>
-                        <p className="text-xs text-[#FFC700] font-bold">{entry.role}</p>
+                        <h3 className="text-xl font-black">{scholar.name}</h3>
+                        <p className="text-xs text-[#FFC700] font-semibold">{scholar.role}</p>
                       </div>
                     </div>
 
-                    {/* Body Content */}
-                    <div className="p-5 space-y-3">
-                      {entry.destination && (
-                        <div className="flex items-start gap-2 text-xs font-bold text-[#0E3B7D] bg-[#E8F0FE] p-2.5 rounded-xl border border-[#0E3B7D]/15">
-                          <span className="material-symbols-outlined text-[#0E3B7D] text-base shrink-0 mt-0.5">school</span>
-                          <span>{entry.destination}</span>
+                    <div className="p-6 space-y-3">
+                      {scholar.destination && (
+                        <div className="p-2.5 bg-blue-50/70 rounded-xl border border-blue-100 text-xs">
+                          <span className="font-bold text-[#0E3B7D] block text-[10px] uppercase tracking-wider">
+                            University Destination
+                          </span>
+                          <span className="text-slate-800 font-semibold">{scholar.destination}</span>
                         </div>
                       )}
 
-                      {entry.subjects && (
-                        <p className="text-[11px] text-slate-600 font-medium">
-                          <strong className="text-slate-800">Curriculum Track:</strong> {entry.subjects}
-                        </p>
+                      {scholar.subjects && (
+                        <div className="text-xs text-slate-500">
+                          <strong className="text-slate-700">Subject Distinctions:</strong> {scholar.subjects}
+                        </div>
                       )}
 
-                      <p className="text-xs text-slate-600 font-normal italic leading-relaxed border-l-2 border-[#FFC700] pl-3 py-0.5">
-                        &quot;{entry.quote}&quot;
+                      <p className="text-xs text-slate-600 italic leading-relaxed pt-1">
+                        &ldquo;{scholar.quote}&rdquo;
                       </p>
                     </div>
                   </div>
 
-                  <div className="p-5 pt-0 border-t border-slate-100 mt-2 text-[11px] text-slate-500 flex items-center justify-between">
-                    <span>Hinthar International School</span>
-                    <span className="material-symbols-outlined text-[#FFC700] text-sm font-bold">verified</span>
+                  <div className="p-4 px-6 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${campusInfo.badgeClass}`}>
+                      {campusInfo.label}
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-400 font-mono">
+                      HIS Scholar #{scholar.id}
+                    </span>
                   </div>
                 </motion.div>
               );
             })}
           </AnimatePresence>
-        </motion.div>
-
-        {filteredEntries.length === 0 && (
-          <div className="text-center py-16 bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
-            <span className="material-symbols-outlined text-5xl text-slate-300 mb-3">auto_stories</span>
-            <h3 className="text-base font-bold text-[#09234B] mb-1">No entries published yet</h3>
-            <p className="text-xs text-slate-500 max-w-sm mx-auto">
-              Yearbook honors and university placements will appear here once published.
-            </p>
-          </div>
-        )}
+        </div>
       </main>
 
       <FooterSection />
+      <ChatbotWidget />
     </div>
   );
 }

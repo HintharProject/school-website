@@ -1,4 +1,4 @@
-import { CampusRecord } from "../supabase/types";
+import { CampusRecord } from "@/app/admin/adminStore";
 
 export const DEFAULT_CAMPUSES: CampusRecord[] = [
   {
@@ -9,8 +9,8 @@ export const DEFAULT_CAMPUSES: CampusRecord[] = [
     address: "No. 23B, Ywar Ma Kyaung Lane, Hlaing Township, Yangon, Myanmar (11051)",
     phone: "+95 9 894 332200 / +95 9 894 332211",
     email: "ywarma.admissions@hinthar.education",
-    office_hours: "Mon–Sat: 08:30 AM – 05:00 PM",
-    grades_served: "Year 7–9 · Pearson IGCSE · Pearson IAL",
+    officeHours: "Mon–Sat: 08:30 AM – 05:00 PM",
+    gradesServed: "Year 7–9 · Pearson IGCSE · Pearson IAL",
     facilities: [
       "Pearson Official Examination Center",
       "Turing High-Performance Computer Lab",
@@ -18,8 +18,8 @@ export const DEFAULT_CAMPUSES: CampusRecord[] = [
       "British Council Testing Suite",
       "Academic Auditorium & British Library"
     ],
-    image_url: "/images/heroImg.png",
-    is_active: true,
+    imageUrl: "/images/heroImg.png",
+    isActive: true,
   },
   {
     id: "shwe-padauk-campus",
@@ -29,8 +29,8 @@ export const DEFAULT_CAMPUSES: CampusRecord[] = [
     address: "Shwe Padauk Road, Yangon, Myanmar",
     phone: "+95 9 894 332222",
     email: "shwepadauk@hinthar.education",
-    office_hours: "Mon–Sat: 08:30 AM – 05:00 PM",
-    grades_served: "Pearson IGCSE & Pearson IAL (STEM Specialized)",
+    officeHours: "Mon–Sat: 08:30 AM – 05:00 PM",
+    gradesServed: "Pearson IGCSE & Pearson IAL (STEM Specialized)",
     facilities: [
       "AI, IoT & Robotics Studio",
       "Advanced Molecular Chemistry Lab",
@@ -38,8 +38,8 @@ export const DEFAULT_CAMPUSES: CampusRecord[] = [
       "Collaborative Study Pods & Seminar Hall",
       "Student Innovation & Recreation Hub"
     ],
-    image_url: "/images/specialisations/stemSpecialisation.png",
-    is_active: true,
+    imageUrl: "/images/specialisations/stemSpecialisation.png",
+    isActive: true,
   },
   {
     id: "shwe-pone-nyet-campus",
@@ -49,8 +49,8 @@ export const DEFAULT_CAMPUSES: CampusRecord[] = [
     address: "Shwe Pone Nyet Street, Yangon, Myanmar",
     phone: "+95 9 894 332233",
     email: "shweponenyet@hinthar.education",
-    office_hours: "Mon–Sat: 08:30 AM – 05:00 PM",
-    grades_served: "Lower Secondary (Year 7–9) & Foundation Arts",
+    officeHours: "Mon–Sat: 08:30 AM – 05:00 PM",
+    gradesServed: "Lower Secondary (Year 7–9) & Foundation Arts",
     facilities: [
       "Digital Media & Graphic Arts Lab",
       "Music & Performing Arts Studio",
@@ -58,8 +58,8 @@ export const DEFAULT_CAMPUSES: CampusRecord[] = [
       "English Language Immersion Lounge",
       "Junior Science Inquiry Lab"
     ],
-    image_url: "/images/specialisations/creativeSpecialisation.png",
-    is_active: true,
+    imageUrl: "/images/specialisations/creativeSpecialisation.png",
+    isActive: true,
   },
   {
     id: "mawlamyine-campus",
@@ -69,8 +69,8 @@ export const DEFAULT_CAMPUSES: CampusRecord[] = [
     address: "Main Strand Road, Mawlamyine, Mon State, Myanmar",
     phone: "+95 9 894 332288 / +95 32 202 888",
     email: "mawlamyine@hinthar.education",
-    office_hours: "Mon–Sat: 08:30 AM – 05:00 PM",
-    grades_served: "Year 7–9 · Pearson IGCSE · Pearson IAL",
+    officeHours: "Mon–Sat: 08:30 AM – 05:00 PM",
+    gradesServed: "Year 7–9 · Pearson IGCSE · Pearson IAL",
     facilities: [
       "Full-Scale Physics, Chem & Bio Labs",
       "Modern Computer Lab & High-Speed Fiber",
@@ -78,7 +78,7 @@ export const DEFAULT_CAMPUSES: CampusRecord[] = [
       "Multi-Purpose Outdoor Sports Arena",
       "Student Residence & Pastoral Support"
     ],
-    image_url: "/images/specialisations/businessSpecialisation.png",
-    is_active: true,
+    imageUrl: "/images/specialisations/businessSpecialisation.png",
+    isActive: true,
   },
 ];

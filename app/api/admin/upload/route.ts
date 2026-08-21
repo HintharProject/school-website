@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase/admin";
-import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { getServerSession } from "@/lib/auth/rbac";
+import { getDb, fileAssets } from "@/lib/db";
 
-export const runtime = "nodejs";
-
-const BUCKET_NAME = "school-assets";
 const MAX_FILE_SIZE = 8 * 1024 * 1024; // 8MB
 
 const ALLOWED_MIME_TYPES = [
@@ -15,51 +12,15 @@ const ALLOWED_MIME_TYPES = [
   "image/avif",
   "image/gif",
   "image/svg+xml",
+  "application/pdf",
 ];
-
-async function verifyAdminAuth() {
-  if (!isSupabaseConfigured) {
-    return { isAuthorized: true };
-  }
-
-  const serverSupabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-    error,
-  } = await serverSupabase.auth.getUser();
-
-  if (!user || error) {
-    return { isAuthorized: false };
-  }
-
-  // Check user role in database
-  const { data: profile } = await supabaseAdmin
-    .from("user_profiles")
-    .select("role, status")
-    .eq("id", user.id)
-    .single();
-
-  const role = profile?.role || user.app_metadata?.role;
-  const status = profile?.status || "active";
-
-  if (status !== "active") {
-    return { isAuthorized: false };
-  }
-
-  // Principal, Staff, and Student Contributors are authorized to upload school assets
-  if (role === "principal" || role === "staff_admin" || role === "student") {
-    return { isAuthorized: true, userId: user.id };
-  }
-
-  return { isAuthorized: false };
-}
 
 export async function POST(req: NextRequest) {
   try {
-    const { isAuthorized } = await verifyAdminAuth();
-    if (!isAuthorized) {
+    const { user } = await getServerSession();
+    if (!user || user.status !== "active") {
       return NextResponse.json(
-        { success: false, error: "Unauthorized: Faculty or Principal administrative credentials required to upload assets." },
+        { success: false, error: "Unauthorized: Active school account required to upload assets." },
         { status: 401 }
       );
     }
@@ -75,11 +36,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!ALLOWED_MIME_TYPES.includes(file.type.toLowerCase())) {
+    const mimeType = file.type.toLowerCase();
+    if (!ALLOWED_MIME_TYPES.includes(mimeType)) {
       return NextResponse.json(
         {
           success: false,
-          error: `Invalid file type: ${file.type}. Allowed formats: PNG, JPG, JPEG, WebP, AVIF, GIF, SVG.`,
+          error: `Invalid file type (${mimeType}). Allowed formats: JPG, PNG, WebP, AVIF, GIF, SVG, PDF.`,
         },
         { status: 400 }
       );
@@ -93,74 +55,68 @@ export async function POST(req: NextRequest) {
     }
 
     const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    // Sanitize filename and create unique storage path
     const timestamp = Date.now();
     const sanitizedName = file.name
       .toLowerCase()
       .replace(/[^a-z0-9.]/g, "-")
       .replace(/-+/g, "-");
     const cleanFolder = folder.replace(/[^a-z0-9_-]/gi, "");
-    const filePath = `${cleanFolder}/${timestamp}-${sanitizedName}`;
+    const objectKey = `${cleanFolder}/${timestamp}-${sanitizedName}`;
 
-    // Attempt 1: Upload to Supabase Storage
+    let publicUrl = `/api/assets/${objectKey}`;
+
+    // 1. Attempt Cloudflare R2 Upload
     try {
-      if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-        // Ensure bucket exists or create it
-        const { data: buckets } = await supabaseAdmin.storage.listBuckets();
-        const bucketExists = buckets?.some((b) => b.name === BUCKET_NAME);
+      const { getCloudflareContext } = await import("@opennextjs/cloudflare");
+      const ctx = await getCloudflareContext({ async: true });
+      const r2 = (ctx?.env as any)?.R2 as R2Bucket | undefined;
 
-        if (!bucketExists) {
-          await supabaseAdmin.storage.createBucket(BUCKET_NAME, {
-            public: true,
-            fileSizeLimit: MAX_FILE_SIZE,
-            allowedMimeTypes: ALLOWED_MIME_TYPES,
-          });
-        }
-
-        const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
-          .from(BUCKET_NAME)
-          .upload(filePath, buffer, {
+      if (r2) {
+        await r2.put(objectKey, arrayBuffer, {
+          httpMetadata: {
             contentType: file.type,
-            upsert: true,
-          });
-
-        if (!uploadError && uploadData) {
-          const { data: publicUrlData } = supabaseAdmin.storage
-            .from(BUCKET_NAME)
-            .getPublicUrl(filePath);
-
-          return NextResponse.json({
-            success: true,
-            url: publicUrlData.publicUrl,
-            path: filePath,
-            storage: "supabase",
-            name: file.name,
-            size: file.size,
-          });
-        } else if (uploadError) {
-          console.warn("Supabase storage upload note, using local fallback:", uploadError.message);
-        }
+          },
+        });
+      } else if (typeof globalThis !== "undefined" && (globalThis as any).R2) {
+        await (globalThis as any).R2.put(objectKey, arrayBuffer, {
+          httpMetadata: { contentType: file.type },
+        });
       }
-    } catch (storageErr) {
-      console.warn("Supabase storage exception, using local fallback:", storageErr);
+    } catch {
+      // If R2 binding is not available in local dev, fallback to base64 data URI
+      const base64 = Buffer.from(arrayBuffer).toString("base64");
+      publicUrl = `data:${file.type};base64,${base64}`;
     }
 
-    // Fallback: Generate Base64 Data URI for offline/local resilience
-    const base64Url = `data:${file.type};base64,${buffer.toString("base64")}`;
+    // 2. Track metadata in Cloudflare D1 file_assets
+    try {
+      const db = await getDb();
+      await db.insert(fileAssets).values({
+        id: `file_${timestamp}_${Math.random().toString(36).slice(2, 7)}`,
+        objectKey,
+        filename: file.name,
+        mimeType: file.type,
+        size: file.size,
+        folder: cleanFolder,
+        publicUrl,
+        uploadedBy: user.id,
+        createdAt: new Date().toISOString(),
+      });
+    } catch (dbErr) {
+      console.warn("file_assets metadata record note:", dbErr);
+    }
 
     return NextResponse.json({
       success: true,
-      url: base64Url,
-      storage: "local_fallback",
-      name: file.name,
+      url: publicUrl,
+      objectKey,
+      filename: file.name,
       size: file.size,
     });
-  } catch (error: any) {
-    console.error("Upload API route error:", error);
+  } catch (err: any) {
+    console.error("Upload API error:", err);
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to process image upload." },
+      { success: false, error: err.message || "Failed to process asset upload." },
       { status: 500 }
     );
   }

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FALLBACK_GUEST_USER, UserProfile, mapUserProfileRecord } from "../../admin/adminStore";
-import { supabase } from "@/lib/supabase/client";
+import { authClient } from "@/lib/auth/auth-client";
 
 export default function AdminHeader() {
   const router = useRouter();
@@ -17,28 +17,13 @@ export default function AdminHeader() {
   const userMenuRef = useRef<HTMLDivElement>(null);
   const notifMenuRef = useRef<HTMLDivElement>(null);
 
-  // Load current user from Supabase on mount
+  const { data: session } = authClient.useSession();
+
   useEffect(() => {
-    async function loadCurrentUser() {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const { data: profile } = await supabase
-          .from("user_profiles")
-          .select("id, email, full_name, role, title, campus_id, grade, status, created_at")
-          .eq("id", user.id)
-          .single();
-
-        if (profile) {
-          setActiveRole(mapUserProfileRecord(profile));
-        }
-      } catch (err) {
-        console.warn("AdminHeader: failed to load user profile", err);
-      }
+    if (session?.user) {
+      setActiveRole(mapUserProfileRecord(session.user));
     }
-    loadCurrentUser();
-  }, []);
+  }, [session]);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -58,7 +43,7 @@ export default function AdminHeader() {
     setIsSigningOut(true);
     setUserDropdownOpen(false);
     try {
-      await supabase.auth.signOut();
+      await authClient.signOut();
     } catch (err) {
       console.warn("Sign out error:", err);
     }
@@ -66,8 +51,7 @@ export default function AdminHeader() {
     router.refresh();
   };
 
-  const isPrincipal = activeRole?.role === "principal";
-  const isStaff = activeRole?.role === "staff_admin";
+  const isAdmin = activeRole?.role === "admin";
 
   const notifications = [
     {
@@ -201,14 +185,14 @@ export default function AdminHeader() {
             <div
               className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs shadow-xs ${activeRole?.badgeColor || "bg-[#FFC700] text-[#09234B]"}`}
             >
-              {activeRole?.initials || "KM"}
+              {activeRole?.initials || "TY"}
             </div>
             <div className="hidden sm:block">
               <div className="flex items-center gap-1.5">
-                <p className="text-xs font-black text-[#09234B] leading-none">{activeRole?.fullName || "Dr. Kaung Myat Htut"}</p>
+                <p className="text-xs font-black text-[#09234B] leading-none">{activeRole?.fullName || "Administrator"}</p>
               </div>
               <p className="text-[10px] text-slate-500 font-medium leading-none mt-1 truncate max-w-[140px]">
-                {activeRole?.roleLabel || "School Principal"}
+                {activeRole?.roleLabel || "Administrator"}
               </p>
             </div>
             <span className="material-symbols-outlined text-slate-400 text-base">expand_more</span>
@@ -221,20 +205,20 @@ export default function AdminHeader() {
                 <div
                   className={`w-9 h-9 rounded-lg flex items-center justify-center font-black text-xs shrink-0 ${activeRole?.badgeColor || "bg-[#FFC700] text-[#09234B]"}`}
                 >
-                  {activeRole?.initials || "KM"}
+                  {activeRole?.initials || "TY"}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-black text-[#09234B] truncate">{activeRole?.fullName || "Dr. Kaung Myat Htut"}</p>
-                  <p className="text-[10px] text-slate-500 truncate">{activeRole?.email || "kaungmyat.htut@gmail.com"}</p>
+                  <p className="text-xs font-black text-[#09234B] truncate">{activeRole?.fullName || "Administrator"}</p>
+                  <p className="text-[10px] text-slate-500 truncate">{activeRole?.email || "admin@hinthar.education"}</p>
                   <span className="inline-block mt-0.5 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-[#FFC700] text-[#09234B]">
-                    {activeRole?.roleLabel || "School Principal"}
+                    {activeRole?.roleLabel || "Administrator"}
                   </span>
                 </div>
               </div>
 
               {/* Action Links */}
               <div className="space-y-1 text-xs font-bold text-slate-700">
-                {isPrincipal && (
+                {isAdmin && (
                   <Link
                     href="/admin/users"
                     onClick={() => setUserDropdownOpen(false)}
@@ -246,14 +230,14 @@ export default function AdminHeader() {
                 )}
 
                 <Link
-                  href={isPrincipal || isStaff ? "/admin/admissions" : "/admin/yearbook"}
+                  href={isAdmin ? "/admin/admissions" : "/admin/yearbook"}
                   onClick={() => setUserDropdownOpen(false)}
                   className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-slate-50 text-slate-700 hover:text-[#0E3B7D] transition-colors"
                 >
                   <span className="material-symbols-outlined text-base text-[#0E3B7D]">
-                    {isPrincipal || isStaff ? "school" : "auto_stories"}
+                    {isAdmin ? "school" : "auto_stories"}
                   </span>
-                  <span>{isPrincipal || isStaff ? "Admissions Pipeline" : "Yearbook Submissions"}</span>
+                  <span>{isAdmin ? "Admissions Pipeline" : "Yearbook Submissions"}</span>
                 </Link>
 
                 <Link
@@ -274,7 +258,7 @@ export default function AdminHeader() {
                   type="button"
                   onClick={handleSignOut}
                   disabled={isSigningOut}
-                  className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition-all text-xs font-bold uppercase tracking-wider disabled:opacity-60"
+                  className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition-all text-xs font-bold uppercase tracking-wider disabled:opacity-60 cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-sm">logout</span>
                   <span>{isSigningOut ? "Signing out..." : "Sign Out"}</span>

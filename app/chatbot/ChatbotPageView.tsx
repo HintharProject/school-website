@@ -115,7 +115,7 @@ export default function ChatbotPageView() {
       });
 
       if (res.ok) {
-        const data = await res.json();
+        const data = (await res.json()) as any;
         const aiMessage: Message = {
           id: Date.now() + 1,
           role: "ai",

@@ -99,7 +99,7 @@ export default function ChatbotWidget() {
       });
 
       if (res.ok) {
-        const data = await res.json();
+        const data = (await res.json()) as any;
         const aiMsg: Message = {
           id: Date.now() + 1,
           role: "ai",

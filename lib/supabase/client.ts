@@ -1,24 +1,14 @@
-import { createBrowserClient } from "@supabase/ssr";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://ytmylxemqrsjxdvrthxx.supabase.co";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-
-export const isSupabaseConfigured = Boolean(
-  supabaseAnonKey &&
-  supabaseAnonKey !== "your_supabase_anon_key_here" &&
-  supabaseAnonKey.length > 10
-);
-
-let browserClientInstance: ReturnType<typeof createBrowserClient> | null = null;
-
-export function getSupabaseBrowserClient() {
-  if (!browserClientInstance) {
-    browserClientInstance = createBrowserClient(
-      supabaseUrl,
-      supabaseAnonKey || "mock-anon-key-placeholder"
-    );
-  }
-  return browserClientInstance;
-}
-
-export const supabase = getSupabaseBrowserClient();
+// Legacy Supabase client placeholder - migrated to Cloudflare D1 and Better Auth
+export const isSupabaseConfigured = false;
+export const supabase = {
+  auth: {
+    getUser: async () => ({ data: { user: null }, error: null }),
+    signOut: async () => ({ error: null }),
+  },
+  from: () => ({
+    select: () => ({ eq: () => ({ single: async () => ({ data: null, error: null }) }) }),
+    insert: async () => ({ data: null, error: null }),
+    update: () => ({ eq: async () => ({ data: null, error: null }) }),
+    delete: () => ({ eq: async () => ({ data: null, error: null }) }),
+  }),
+};

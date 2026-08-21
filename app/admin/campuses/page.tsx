@@ -2,14 +2,20 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { CampusRecord } from "@/lib/supabase/types";
 import {
+  CampusRecord,
+  mapCampusRecord,
   FALLBACK_GUEST_USER,
   UserProfile,
   mapUserProfileRecord,
 } from "../adminStore";
-import { supabase } from "@/lib/supabase/client";
-import { fetchCampuses, createCampus, updateCampus, deleteCampus, getCurrentUserProfile } from "@/lib/supabase/actions";
+import { authClient } from "@/lib/auth/auth-client";
+import {
+  getCampuses,
+  createCampusAction,
+  updateCampusAction,
+  deleteCampusAction,
+} from "@/lib/actions/campuses";
 import ImageUploadPicker from "@/app/components/admin/ImageUploadPicker";
 
 export default function AdminCampusesPage() {
@@ -34,12 +40,20 @@ export default function AdminCampusesPage() {
     address: "",
     phone: "",
     email: "",
-    office_hours: "Mon–Sat: 08:30 AM – 05:00 PM",
-    grades_served: "Year 7–9 · Pearson IGCSE · Pearson IAL",
+    officeHours: "Mon–Sat: 08:30 AM – 05:00 PM",
+    gradesServed: "Year 7–9 · Pearson IGCSE · Pearson IAL",
     facilities: ["Pearson Exam Center", "Science Labs", "Computer Lab"],
-    image_url: "/images/heroImg.png",
-    is_active: true,
+    imageUrl: "/images/heroImg.png",
+    isActive: true,
   });
+
+  const { data: session } = authClient.useSession();
+
+  useEffect(() => {
+    if (session?.user) {
+      setCurrentUser(mapUserProfileRecord(session.user));
+    }
+  }, [session]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -48,10 +62,8 @@ export default function AdminCampusesPage() {
 
   const loadData = async () => {
     try {
-      const profile = await getCurrentUserProfile();
-      if (profile) setCurrentUser(mapUserProfileRecord(profile));
-      const data = await fetchCampuses();
-      setCampuses(data);
+      const data = await getCampuses();
+      setCampuses(data.map(mapCampusRecord));
     } catch (err) {
       console.warn("Failed to load campuses:", err);
     } finally {
@@ -70,7 +82,7 @@ export default function AdminCampusesPage() {
       c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.tagline.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.grades_served.toLowerCase().includes(searchQuery.toLowerCase());
+      c.gradesServed.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCity && matchesSearch;
   });
 
@@ -79,8 +91,10 @@ export default function AdminCampusesPage() {
     e.preventDefault();
     if (!editingCampus) return;
     try {
-      const updated = await updateCampus(editingCampus.id, editingCampus);
-      setCampuses((prev) => prev.map((c) => c.id === editingCampus.id ? updated : c));
+      await updateCampusAction(editingCampus.id, editingCampus);
+      setCampuses((prev) =>
+        prev.map((c) => (c.id === editingCampus.id ? editingCampus : c))
+      );
       setEditingCampus(null);
       showToast(`Campus "${editingCampus.name}" updated successfully!`);
     } catch (err: any) {
@@ -101,17 +115,17 @@ export default function AdminCampusesPage() {
       address: formState.address || "",
       phone: formState.phone || "+95 9 894 332200",
       email: formState.email || "admissions@hinthar.education",
-      office_hours: formState.office_hours || "Mon–Sat: 08:30 AM – 05:00 PM",
-      grades_served: formState.grades_served || "Year 7–9 · Pearson IGCSE · Pearson IAL",
+      officeHours: formState.officeHours || "Mon–Sat: 08:30 AM – 05:00 PM",
+      gradesServed: formState.gradesServed || "Year 7–9 · Pearson IGCSE · Pearson IAL",
       facilities: formState.facilities || ["Pearson Exam Center", "Science Lab"],
-      image_url: formState.image_url || "/images/heroImg.png",
-      is_active: formState.is_active ?? true,
+      imageUrl: formState.imageUrl || "/images/heroImg.png",
+      isActive: formState.isActive ?? true,
     };
     try {
-      const created = await createCampus(newRecord);
-      setCampuses((prev) => [created, ...prev]);
+      await createCampusAction(newRecord);
+      setCampuses((prev) => [newRecord, ...prev]);
       setIsAddModalOpen(false);
-      showToast(`Campus "${created.name}" added successfully!`);
+      showToast(`Campus "${newRecord.name}" added successfully!`);
     } catch (err: any) {
       showToast(`Error: ${err.message || "Failed to add campus."}`);
     }
@@ -121,7 +135,7 @@ export default function AdminCampusesPage() {
   const handleDeleteCampus = async () => {
     if (!deletingCampus) return;
     try {
-      await deleteCampus(deletingCampus.id);
+      await deleteCampusAction(deletingCampus.id);
       setCampuses((prev) => prev.filter((c) => c.id !== deletingCampus.id));
       setDeletingCampus(null);
       showToast("Campus deleted.");
@@ -138,7 +152,7 @@ export default function AdminCampusesPage() {
         </div>
         <h2 className="text-xl font-black text-slate-800">Campus Master Records</h2>
         <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-          Master configuration of School Campuses and examination center accreditations is restricted to the School Principal &amp; Staff Administrators.
+          Master configuration of School Campuses and examination center accreditations is restricted to the School Administrators.
         </p>
       </div>
     );
@@ -171,7 +185,7 @@ export default function AdminCampusesPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] font-extrabold text-xs uppercase tracking-wider shadow-sm transition-all active:scale-95"
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] font-extrabold text-xs uppercase tracking-wider shadow-sm transition-all active:scale-95 cursor-pointer"
           >
             <span className="material-symbols-outlined text-base">add_location_alt</span>
             <span>Add New Campus</span>
@@ -179,172 +193,148 @@ export default function AdminCampusesPage() {
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-blue-50 text-[#0E3B7D] flex items-center justify-center">
-            <span className="material-symbols-outlined text-2xl">location_city</span>
+      {/* Filter Bar */}
+      <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-white p-4 rounded-2xl border border-slate-200">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">City:</span>
+          <div className="inline-flex rounded-xl bg-slate-100 p-1">
+            {(["All", "Yangon", "Mawlamyine"] as const).map((city) => (
+              <button
+                key={city}
+                onClick={() => setSelectedCity(city)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  selectedCity === city
+                    ? "bg-[#0E3B7D] text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                {city}
+              </button>
+            ))}
           </div>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Network</p>
-            <p className="text-2xl font-black text-[#0E3B7D]">{campuses.length} Campuses</p>
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-amber-50 text-[#FFC700] flex items-center justify-center">
-            <span className="material-symbols-outlined text-2xl">apartment</span>
-          </div>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Yangon Region</p>
-            <p className="text-2xl font-black text-[#09234B]">
-              {campuses.filter((c) => c.city === "Yangon").length} Campuses
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-            <span className="material-symbols-outlined text-2xl">hub</span>
-          </div>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Mon State (Regional)</p>
-            <p className="text-2xl font-black text-emerald-700">
-              {campuses.filter((c) => c.city === "Mawlamyine").length} Campus
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-2xl border border-slate-200">
-        <div className="flex items-center gap-2">
-          {(["All", "Yangon", "Mawlamyine"] as const).map((city) => (
-            <button
-              key={city}
-              onClick={() => setSelectedCity(city)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all ${
-                selectedCity === city
-                  ? "bg-[#0E3B7D] text-white shadow-sm"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}
-            >
-              {city}
-            </button>
-          ))}
         </div>
 
         <div className="relative w-full sm:w-72">
-          <span className="material-symbols-outlined absolute left-3 top-2.5 text-slate-400 text-sm">
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
             search
           </span>
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search campus or address..."
-            className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+            placeholder="Search campus name, address, track..."
+            className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
           />
         </div>
       </div>
 
-      {/* Campuses Cards List */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Campuses Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {filteredCampuses.map((campus) => (
           <div
             key={campus.id}
-            className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+            className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between"
           >
             <div>
-              {/* Header Image */}
-              <div className="relative h-44 w-full bg-slate-900 overflow-hidden">
+              {/* Card Image Banner */}
+              <div className="relative h-48 w-full bg-slate-900">
                 <Image
-                  src={campus.image_url || "/images/heroImg.png"}
+                  src={campus.imageUrl || "/images/heroImg.png"}
                   alt={campus.name}
                   fill
-                  className="object-cover opacity-85"
-                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  className="object-cover opacity-90"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-                <div className="absolute top-3 left-3 flex gap-2">
-                  <span className="px-3 py-0.5 rounded-full bg-[#FFC700] text-[#09234B] text-[11px] font-black uppercase">
-                    {campus.city}
+                <div className="absolute top-4 left-4 flex gap-2">
+                  <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-[#09234B]/80 text-[#FFC700] backdrop-blur-sm border border-[#FFC700]/30">
+                    {campus.city} Campus
                   </span>
                   <span
-                    className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                      campus.is_active ? "bg-emerald-500 text-white" : "bg-red-500 text-white"
+                    className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider backdrop-blur-sm ${
+                      campus.isActive
+                        ? "bg-emerald-600/80 text-white"
+                        : "bg-red-600/80 text-white"
                     }`}
                   >
-                    {campus.is_active ? "Active" : "Inactive"}
+                    {campus.isActive ? "Active Branch" : "Inactive"}
                   </span>
-                </div>
-                <div className="absolute bottom-3 left-4 right-4 text-white">
-                  <h3 className="text-xl font-black">{campus.name}</h3>
-                  <p className="text-xs text-slate-200 truncate">{campus.tagline}</p>
                 </div>
               </div>
 
-              {/* Body */}
-              <div className="p-5 space-y-3 text-xs text-slate-600">
-                <div className="flex items-start gap-2">
-                  <span className="material-symbols-outlined text-sm text-[#0E3B7D] shrink-0">pin_drop</span>
-                  <span className="font-medium text-slate-800">{campus.address}</span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-sm text-[#0E3B7D]">call</span>
-                    <span className="truncate">{campus.phone}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-sm text-[#0E3B7D]">mail</span>
-                    <span className="truncate">{campus.email}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1.5 bg-slate-50 p-2 rounded-lg border border-slate-200">
-                  <span className="material-symbols-outlined text-sm text-[#0E3B7D]">school</span>
-                  <span className="font-semibold text-slate-700">{campus.grades_served}</span>
-                </div>
-
+              {/* Card Content */}
+              <div className="p-6 space-y-4">
                 <div>
-                  <p className="text-[10px] font-bold uppercase text-slate-400 mb-1">Key Facilities</p>
-                  <div className="flex flex-wrap gap-1">
-                    {campus.facilities.map((fac, idx) => (
-                      <span key={idx} className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-semibold">
-                        {fac}
+                  <h3 className="text-xl font-black text-[#09234B]">{campus.name}</h3>
+                  <p className="text-xs font-semibold text-[#0E3B7D] mt-0.5">{campus.tagline}</p>
+                </div>
+
+                <div className="space-y-2 text-xs text-slate-600">
+                  <div className="flex items-start gap-2">
+                    <span className="material-symbols-outlined text-base text-slate-400 shrink-0 mt-0.5">
+                      location_on
+                    </span>
+                    <span>{campus.address}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-base text-slate-400 shrink-0">
+                      call
+                    </span>
+                    <span>{campus.phone}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-base text-slate-400 shrink-0">
+                      mail
+                    </span>
+                    <span>{campus.email}</span>
+                  </div>
+                </div>
+
+                {/* Grades */}
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-xs">
+                  <span className="font-bold text-[#09234B] block mb-0.5">Curriculum &amp; Grades:</span>
+                  <span className="text-slate-600">{campus.gradesServed}</span>
+                </div>
+
+                {/* Facilities Pills */}
+                <div>
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
+                    Campus Facilities ({campus.facilities?.length || 0})
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {campus.facilities?.slice(0, 4).map((f, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2.5 py-1 rounded-lg bg-blue-50 text-[#0E3B7D] text-[11px] font-bold"
+                      >
+                        {f}
                       </span>
                     ))}
+                    {(campus.facilities?.length || 0) > 4 && (
+                      <span className="px-2 py-1 rounded-lg bg-slate-100 text-slate-600 text-[11px] font-bold">
+                        +{(campus.facilities?.length || 0) - 4} more
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-              <a
-                href="/campuses"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs font-bold text-[#0E3B7D] hover:underline flex items-center gap-1"
-              >
-                <span>View Public Page</span>
-                <span className="material-symbols-outlined text-xs">open_in_new</span>
-              </a>
-
+            {/* Actions Bar */}
+            <div className="p-4 px-6 bg-slate-50/70 border-t border-slate-100 flex items-center justify-between">
+              <span className="text-[10px] text-slate-400 font-mono font-bold">ID: {campus.id}</span>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setEditingCampus({ ...campus })}
-                  className="px-3 py-1.5 rounded-lg bg-blue-50 text-[#0E3B7D] hover:bg-blue-100 font-bold text-xs flex items-center gap-1 transition-colors"
+                  onClick={() => setEditingCampus(campus)}
+                  className="px-3 py-1.5 rounded-lg bg-[#E8F0FE] hover:bg-[#0E3B7D] text-[#0E3B7D] hover:text-white font-bold text-xs transition-all flex items-center gap-1 cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-sm">edit</span>
                   <span>Edit</span>
                 </button>
                 <button
                   onClick={() => setDeletingCampus(campus)}
-                  className="px-2.5 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 font-bold text-xs transition-colors"
+                  className="px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-600 text-red-600 hover:text-white font-bold text-xs transition-all flex items-center gap-1 cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-sm">delete</span>
+                  <span>Delete</span>
                 </button>
               </div>
             </div>
@@ -352,40 +342,38 @@ export default function AdminCampusesPage() {
         ))}
       </div>
 
-      {/* ── Edit Campus Modal ────────────────────────────────────── */}
+      {/* EDIT CAMPUS MODAL */}
       {editingCampus && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
-            <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-200">
-              <h2 className="text-xl font-black text-[#0E3B7D]">Edit Campus Information</h2>
-              <button onClick={() => setEditingCampus(null)} className="text-slate-400 hover:text-slate-700">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl p-6 sm:p-8 space-y-6">
+            <div className="flex justify-between items-center pb-4 border-b border-slate-100">
+              <h2 className="text-xl font-black text-[#09234B]">Edit Campus: {editingCampus.name}</h2>
+              <button
+                onClick={() => setEditingCampus(null)}
+                className="text-slate-400 hover:text-slate-700"
+              >
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
 
             <form onSubmit={handleSaveEdit} className="space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">Campus Name</label>
                   <input
                     type="text"
+                    required
                     value={editingCampus.name}
                     onChange={(e) => setEditingCampus({ ...editingCampus, name: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#0E3B7D] outline-none"
-                    required
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
                   />
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">City / Region</label>
+                  <label className="font-bold text-slate-700 block mb-1">City Region</label>
                   <select
                     value={editingCampus.city}
-                    onChange={(e) =>
-                      setEditingCampus({
-                        ...editingCampus,
-                        city: e.target.value as "Yangon" | "Mawlamyine",
-                      })
-                    }
-                    className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#0E3B7D] outline-none"
+                    onChange={(e) => setEditingCampus({ ...editingCampus, city: e.target.value as "Yangon" | "Mawlamyine" })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
                   >
                     <option value="Yangon">Yangon</option>
                     <option value="Mawlamyine">Mawlamyine</option>
@@ -394,122 +382,96 @@ export default function AdminCampusesPage() {
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Tagline / Headline</label>
+                <label className="font-bold text-slate-700 block mb-1">Tagline / Subtitle</label>
                 <input
                   type="text"
+                  required
                   value={editingCampus.tagline}
                   onChange={(e) => setEditingCampus({ ...editingCampus, tagline: e.target.value })}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#0E3B7D] outline-none"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
                 />
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Full Campus Address</label>
+                <label className="font-bold text-slate-700 block mb-1">Full Physical Address</label>
                 <textarea
                   rows={2}
+                  required
                   value={editingCampus.address}
                   onChange={(e) => setEditingCampus({ ...editingCampus, address: e.target.value })}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#0E3B7D] outline-none"
-                  required
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Phone Contact (Tel)</label>
+                  <label className="font-bold text-slate-700 block mb-1">Contact Phone</label>
                   <input
-                    type="tel"
+                    type="text"
+                    required
                     value={editingCampus.phone}
                     onChange={(e) => setEditingCampus({ ...editingCampus, phone: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#0E3B7D] outline-none"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
                   />
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Admissions Email</label>
+                  <label className="font-bold text-slate-700 block mb-1">Contact Email</label>
                   <input
                     type="email"
+                    required
                     value={editingCampus.email}
                     onChange={(e) => setEditingCampus({ ...editingCampus, email: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#0E3B7D] outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Visiting Hours</label>
-                  <input
-                    type="text"
-                    value={editingCampus.office_hours}
-                    onChange={(e) => setEditingCampus({ ...editingCampus, office_hours: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#0E3B7D] outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Grades Served</label>
-                  <input
-                    type="text"
-                    value={editingCampus.grades_served}
-                    onChange={(e) => setEditingCampus({ ...editingCampus, grades_served: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#0E3B7D] outline-none"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">
-                  Facilities (comma-separated)
-                </label>
+                <label className="font-bold text-slate-700 block mb-1">Grades Served</label>
                 <input
                   type="text"
-                  value={editingCampus.facilities.join(", ")}
-                  onChange={(e) =>
-                    setEditingCampus({
-                      ...editingCampus,
-                      facilities: e.target.value.split(",").map((s) => s.trim()).filter(Boolean),
-                    })
-                  }
-                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#0E3B7D] outline-none"
+                  required
+                  value={editingCampus.gradesServed}
+                  onChange={(e) => setEditingCampus({ ...editingCampus, gradesServed: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
                 />
               </div>
 
-              {/* Campus Image Upload & Picker */}
-              <div className="pt-1">
+              {/* Image Picker */}
+              <div>
                 <ImageUploadPicker
-                  label="Campus Photo / Cover Banner"
-                  value={editingCampus.image_url || ""}
-                  onChange={(url) => setEditingCampus({ ...editingCampus, image_url: url })}
+                  label="Campus Showcase Photo"
+                  value={editingCampus.imageUrl}
+                  onChange={(url) => setEditingCampus({ ...editingCampus, imageUrl: url })}
                   folder="campuses"
-                  aspectRatio="banner"
                   defaultPresetsCategory="campus"
-                  helperText="Upload campus exterior/interior photo or choose from the school asset library."
                 />
               </div>
 
               <div className="flex items-center gap-2 pt-2">
                 <input
                   type="checkbox"
-                  id="activeCheck"
-                  checked={editingCampus.is_active}
-                  onChange={(e) => setEditingCampus({ ...editingCampus, is_active: e.target.checked })}
-                  className="w-4 h-4 text-[#0E3B7D] rounded border-slate-300"
+                  id="editIsActive"
+                  checked={editingCampus.isActive}
+                  onChange={(e) => setEditingCampus({ ...editingCampus, isActive: e.target.checked })}
+                  className="rounded text-[#0E3B7D]"
                 />
-                <label htmlFor="activeCheck" className="font-bold text-slate-700">
+                <label htmlFor="editIsActive" className="font-bold text-slate-700">
                   Campus is Active &amp; Accepting Students
                 </label>
               </div>
 
-              <div className="pt-4 flex justify-end gap-3 border-t border-slate-200">
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setEditingCampus(null)}
-                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 font-bold text-slate-700"
+                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] font-extrabold"
+                  className="px-5 py-2 rounded-xl bg-[#0E3B7D] text-white font-bold hover:bg-[#164E9A]"
                 >
                   Save Changes
                 </button>
@@ -519,41 +481,39 @@ export default function AdminCampusesPage() {
         </div>
       )}
 
-      {/* ── Add Campus Modal ──────────────────────────────────────── */}
+      {/* ADD CAMPUS MODAL */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
-            <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-200">
-              <h2 className="text-xl font-black text-[#0E3B7D]">Add New Campus Branch</h2>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-slate-700">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl p-6 sm:p-8 space-y-6">
+            <div className="flex justify-between items-center pb-4 border-b border-slate-100">
+              <h2 className="text-xl font-black text-[#09234B]">Add New School Campus</h2>
+              <button
+                onClick={() => setIsAddModalOpen(false)}
+                className="text-slate-400 hover:text-slate-700"
+              >
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
 
             <form onSubmit={handleCreateCampus} className="space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">Campus Name</label>
                   <input
                     type="text"
-                    placeholder="e.g. Yankin Junior Campus"
+                    required
+                    placeholder="e.g. North Yangon Campus"
                     value={formState.name}
                     onChange={(e) => setFormState({ ...formState, name: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#0E3B7D] outline-none"
-                    required
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
                   />
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">City</label>
+                  <label className="font-bold text-slate-700 block mb-1">City Region</label>
                   <select
                     value={formState.city}
-                    onChange={(e) =>
-                      setFormState({
-                        ...formState,
-                        city: e.target.value as "Yangon" | "Mawlamyine",
-                      })
-                    }
-                    className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#0E3B7D] outline-none"
+                    onChange={(e) => setFormState({ ...formState, city: e.target.value as "Yangon" | "Mawlamyine" })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
                   >
                     <option value="Yangon">Yangon</option>
                     <option value="Mawlamyine">Mawlamyine</option>
@@ -562,73 +522,88 @@ export default function AdminCampusesPage() {
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Tagline</label>
+                <label className="font-bold text-slate-700 block mb-1">Tagline / Facility Focus</label>
                 <input
                   type="text"
-                  placeholder="e.g. Modern Primary & Junior STEM Wing"
+                  required
+                  placeholder="e.g. Senior Secondary & Pearson Examination Hall"
                   value={formState.tagline}
                   onChange={(e) => setFormState({ ...formState, tagline: e.target.value })}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#0E3B7D] outline-none"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
                 />
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Address</label>
+                <label className="font-bold text-slate-700 block mb-1">Full Physical Address</label>
                 <textarea
                   rows={2}
-                  placeholder="Street name, Township, City"
+                  required
+                  placeholder="Street, Township, City"
                   value={formState.address}
                   onChange={(e) => setFormState({ ...formState, address: e.target.value })}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#0E3B7D] outline-none"
-                  required
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Phone (Tel)</label>
+                  <label className="font-bold text-slate-700 block mb-1">Contact Phone</label>
                   <input
-                    type="tel"
+                    type="text"
+                    required
+                    placeholder="+95 9..."
                     value={formState.phone}
                     onChange={(e) => setFormState({ ...formState, phone: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#0E3B7D] outline-none"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
                   />
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Email</label>
+                  <label className="font-bold text-slate-700 block mb-1">Contact Email</label>
                   <input
                     type="email"
+                    required
+                    placeholder="campus@hinthar.education"
                     value={formState.email}
                     onChange={(e) => setFormState({ ...formState, email: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#0E3B7D] outline-none"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
                   />
                 </div>
               </div>
 
-              {/* Campus Image Upload & Picker */}
-              <div className="pt-1">
-                <ImageUploadPicker
-                  label="Campus Photo / Cover Banner"
-                  value={formState.image_url || "/images/heroImg.png"}
-                  onChange={(url) => setFormState({ ...formState, image_url: url })}
-                  folder="campuses"
-                  aspectRatio="banner"
-                  defaultPresetsCategory="campus"
-                  helperText="Upload campus exterior/interior photo or choose from library."
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Grades Served</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Year 7–9 · Pearson IGCSE · Pearson IAL"
+                  value={formState.gradesServed}
+                  onChange={(e) => setFormState({ ...formState, gradesServed: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
                 />
               </div>
 
-              <div className="pt-4 flex justify-end gap-3 border-t border-slate-200">
+              {/* Image Picker */}
+              <div>
+                <ImageUploadPicker
+                  label="Campus Showcase Photo"
+                  value={formState.imageUrl || "/images/heroImg.png"}
+                  onChange={(url) => setFormState({ ...formState, imageUrl: url })}
+                  folder="campuses"
+                  defaultPresetsCategory="campus"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 font-bold text-slate-700"
+                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] font-extrabold"
+                  className="px-5 py-2 rounded-xl bg-[#0E3B7D] text-white font-bold hover:bg-[#164E9A]"
                 >
                   Create Campus
                 </button>
@@ -638,29 +613,31 @@ export default function AdminCampusesPage() {
         </div>
       )}
 
-      {/* ── Delete Confirmation Modal ─────────────────────────────── */}
+      {/* DELETE CONFIRMATION MODAL */}
       {deletingCampus && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 text-center">
-            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-3">
-              <span className="material-symbols-outlined">warning</span>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-xl bg-red-100 text-red-600 flex items-center justify-center">
+              <span className="material-symbols-outlined text-2xl">warning</span>
             </div>
-            <h3 className="text-lg font-black text-slate-900">Delete Campus</h3>
-            <p className="text-xs text-slate-600 mt-1 mb-5">
-              Are you sure you want to remove <strong>{deletingCampus.name}</strong>?
+            <h3 className="text-lg font-black text-[#09234B]">Delete Campus?</h3>
+            <p className="text-xs text-slate-600">
+              Are you sure you want to delete <strong>{deletingCampus.name}</strong>? This action cannot be undone.
             </p>
-            <div className="flex gap-3 justify-center">
+            <div className="flex justify-end gap-3 pt-2">
               <button
+                type="button"
                 onClick={() => setDeletingCampus(null)}
-                className="px-4 py-2 rounded-xl bg-slate-100 font-bold text-xs text-slate-700"
+                className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleDeleteCampus}
-                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 font-black text-xs text-white"
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-sm"
               >
-                Yes, Delete
+                Confirm Delete
               </button>
             </div>
           </div>

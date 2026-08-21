@@ -1,27 +1,19 @@
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseUrl =
-  process.env.NEXT_PUBLIC_SUPABASE_URL ||
-  "https://ytmylxemqrsjxdvrthxx.supabase.co";
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-
-if (!serviceRoleKey && process.env.NODE_ENV === "production") {
-  console.warn("WARNING: SUPABASE_SERVICE_ROLE_KEY is not defined in the server environment.");
-}
-
-/**
- * Server-only Supabase admin client with service_role privileges.
- * NEVER expose this to the browser or include in client-side code.
- * Use only in Next.js backend API routes (app/api/** /route.ts).
- */
-export const supabaseAdmin = createClient(
-  supabaseUrl,
-  serviceRoleKey || "missing-service-role-key",
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
+// Legacy Supabase admin client placeholder - migrated to Cloudflare D1 and Better Auth
+export const supabaseAdmin = {
+  auth: {
+    admin: {
+      listUsers: async () => ({ data: { users: [] }, error: null }),
+      createUser: async () => ({ data: { user: null }, error: null }),
+      updateUserById: async () => ({ error: null }),
+      deleteUser: async () => ({ error: null }),
+      inviteUserByEmail: async () => ({ data: { user: null }, error: null }),
+      generateLink: async () => ({ data: { properties: { action_link: null } }, error: null }),
     },
-  }
-);
-
+  },
+  from: () => ({
+    select: () => ({ eq: () => ({ single: async () => ({ data: null, error: null }) }), order: async () => ({ data: [], error: null }) }),
+    upsert: async () => ({ error: null }),
+    update: () => ({ eq: async () => ({ error: null }) }),
+    delete: () => ({ eq: async () => ({ error: null }) }),
+  }),
+};

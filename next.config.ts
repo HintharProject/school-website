@@ -36,7 +36,11 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "ytmylxemqrsjxdvrthxx.supabase.co",
+        hostname: "*.r2.dev",
+      },
+      {
+        protocol: "https",
+        hostname: "hinthar.education",
       },
       {
         protocol: "https",
