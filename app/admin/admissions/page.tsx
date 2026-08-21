@@ -13,6 +13,7 @@ import { authClient } from "@/lib/auth/auth-client";
 import {
   getAdmissions,
   updateAdmissionStatusAction,
+  updateAdmissionDetailsAction,
   deleteAdmissionAction,
   submitPublicAdmissionAction,
 } from "@/lib/actions/admissions";
@@ -155,6 +156,24 @@ export default function AdminAdmissionsPage() {
       showToast("Assessment details and remarks saved successfully.");
     } catch (err: any) {
       showToast(`Error: ${err.message || "Failed to save notes."}`);
+    }
+  };
+
+  const handleSaveAdmissionEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingApp) return;
+    try {
+      await updateAdmissionDetailsAction(editingApp.id, editingApp);
+      setApplications((prev) =>
+        prev.map((a) => (a.id === editingApp.id ? editingApp : a))
+      );
+      if (selectedApp?.id === editingApp.id) {
+        setSelectedApp(editingApp);
+      }
+      setEditingApp(null);
+      showToast(`Application ${editingApp.id} (${editingApp.studentName}) updated successfully!`);
+    } catch (err: any) {
+      showToast(`Error: ${err.message || "Failed to save application updates."}`);
     }
   };
 
@@ -379,9 +398,16 @@ export default function AdminAdmissionsPage() {
                       <div className="inline-flex items-center gap-1.5">
                         <button
                           onClick={() => setSelectedApp(app)}
-                          className="px-3 py-1.5 rounded-lg bg-[#E8F0FE] text-[#0E3B7D] hover:bg-[#0E3B7D] hover:text-white font-bold text-[11px] transition-all cursor-pointer"
+                          className="px-2.5 py-1.5 rounded-lg bg-[#E8F0FE] text-[#0E3B7D] hover:bg-[#0E3B7D] hover:text-white font-bold text-[11px] transition-all cursor-pointer"
                         >
                           Review
+                        </button>
+                        <button
+                          onClick={() => setEditingApp({ ...app })}
+                          className="px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold text-[11px] transition-all cursor-pointer flex items-center gap-1"
+                        >
+                          <span className="material-symbols-outlined text-xs">edit</span>
+                          <span>Edit</span>
                         </button>
                         <button
                           onClick={() => setDeletingApp(app)}
@@ -407,14 +433,26 @@ export default function AdminAdmissionsPage() {
               <div>
                 <span className="text-xs font-mono font-bold text-[#0E3B7D]">{selectedApp.id}</span>
                 <h2 className="text-xl font-black text-[#09234B]">{selectedApp.studentName}</h2>
-                <p className="text-xs text-slate-500">{selectedApp.grade}</p>
+                <p className="text-xs text-slate-500">{selectedApp.grade} • {selectedApp.academicStream || "General Stream"}</p>
               </div>
-              <button
-                onClick={() => setSelectedApp(null)}
-                className="text-slate-400 hover:text-slate-700"
-              >
-                <span className="material-symbols-outlined">close</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setEditingApp({ ...selectedApp });
+                    setSelectedApp(null);
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-[#0E3B7D] text-white hover:bg-[#164E9A] text-xs font-bold flex items-center gap-1 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">edit_document</span>
+                  <span>Edit Details</span>
+                </button>
+                <button
+                  onClick={() => setSelectedApp(null)}
+                  className="text-slate-400 hover:text-slate-700"
+                >
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4 text-xs">
@@ -500,6 +538,311 @@ export default function AdminAdmissionsPage() {
                 Decline
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT ADMISSION APPLICATION MODAL */}
+      {editingApp && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl p-6 sm:p-8 space-y-6">
+            <div className="flex justify-between items-center pb-4 border-b border-slate-100">
+              <div>
+                <span className="text-xs font-mono font-bold text-[#0E3B7D]">{editingApp.id}</span>
+                <h2 className="text-xl font-black text-[#09234B]">Edit Admission Application</h2>
+              </div>
+              <button
+                onClick={() => setEditingApp(null)}
+                className="text-slate-400 hover:text-slate-700"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveAdmissionEdit} className="space-y-5 text-xs">
+              {/* SECTION 1: ACADEMIC PATHWAY & CURRICULUM */}
+              <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-3">
+                <div className="flex items-center gap-1.5 text-[#0E3B7D] font-black uppercase text-[11px] tracking-wider">
+                  <span className="material-symbols-outlined text-base">school</span>
+                  <span>Academic Curriculum &amp; Pathway</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Curriculum Grade Level</label>
+                    <select
+                      value={editingApp.grade}
+                      onChange={(e) => setEditingApp({ ...editingApp, grade: e.target.value })}
+                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
+                    >
+                      <option value="Lower Secondary (Year 7–9)">Lower Secondary (Year 7–9)</option>
+                      <option value="Pearson IGCSE (Year 10)">Pearson IGCSE (Year 10)</option>
+                      <option value="Pearson IGCSE (Year 11)">Pearson IGCSE (Year 11)</option>
+                      <option value="Pearson IAL (Year 12)">Pearson IAL (Year 12)</option>
+                      <option value="Pearson IAL (Year 13)">Pearson IAL (Year 13)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Academic Stream</label>
+                    <select
+                      value={editingApp.academicStream || "General Academic"}
+                      onChange={(e) => setEditingApp({ ...editingApp, academicStream: e.target.value })}
+                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
+                    >
+                      <option value="Science / STEM & Pre-Med">Science / STEM &amp; Pre-Med</option>
+                      <option value="Engineering & Computing">Engineering &amp; Computing</option>
+                      <option value="Business, Economics & Finance">Business, Economics &amp; Finance</option>
+                      <option value="Creative Arts & Digital Media">Creative Arts &amp; Digital Media</option>
+                      <option value="General Academic">General Academic</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Intended Start Term</label>
+                    <select
+                      value={editingApp.intendedStartTerm || "Term 1 (August 2026)"}
+                      onChange={(e) => setEditingApp({ ...editingApp, intendedStartTerm: e.target.value })}
+                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
+                    >
+                      <option value="Term 1 (August 2026)">Term 1 (August 2026)</option>
+                      <option value="Term 2 (January 2027)">Term 2 (January 2027)</option>
+                      <option value="Term 3 (April 2027)">Term 3 (April 2027)</option>
+                      <option value="Immediate Mid-Term Transfer">Immediate Mid-Term Transfer</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Study Mode</label>
+                    <select
+                      value={editingApp.studyMode || "Full-Time On-Campus"}
+                      onChange={(e) => setEditingApp({ ...editingApp, studyMode: e.target.value })}
+                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
+                    >
+                      <option value="Full-Time On-Campus">Full-Time On-Campus</option>
+                      <option value="Hybrid / Flexible Learning">Hybrid / Flexible Learning</option>
+                      <option value="Pearson Examination Series Candidate">Pearson Examination Series Candidate</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 2: CANDIDATE STUDENT PROFILE */}
+              <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-3">
+                <div className="flex items-center gap-1.5 text-[#0E3B7D] font-black uppercase text-[11px] tracking-wider">
+                  <span className="material-symbols-outlined text-base">person</span>
+                  <span>Student Profile</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Student Full Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={editingApp.studentName}
+                      onChange={(e) => setEditingApp({ ...editingApp, studentName: e.target.value })}
+                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Date of Birth</label>
+                    <input
+                      type="date"
+                      value={editingApp.dateOfBirth || ""}
+                      onChange={(e) => setEditingApp({ ...editingApp, dateOfBirth: e.target.value })}
+                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Gender</label>
+                    <select
+                      value={editingApp.gender || "Male"}
+                      onChange={(e) => setEditingApp({ ...editingApp, gender: e.target.value as any })}
+                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
+                    >
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Nationality</label>
+                    <input
+                      type="text"
+                      value={editingApp.nationality || "Myanmar"}
+                      onChange={(e) => setEditingApp({ ...editingApp, nationality: e.target.value })}
+                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="font-bold text-slate-700 block mb-1">Previous School Attended</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Yangon International Academy"
+                      value={editingApp.previousSchool || ""}
+                      onChange={(e) => setEditingApp({ ...editingApp, previousSchool: e.target.value })}
+                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="font-bold text-slate-700 block mb-1">Medical &amp; Dietary Notes</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Asthma, Peanut allergy, None"
+                      value={editingApp.medicalNotes || ""}
+                      onChange={(e) => setEditingApp({ ...editingApp, medicalNotes: e.target.value })}
+                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 3: PARENT & GUARDIAN CONTACTS */}
+              <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-3">
+                <div className="flex items-center gap-1.5 text-[#0E3B7D] font-black uppercase text-[11px] tracking-wider">
+                  <span className="material-symbols-outlined text-base">contacts</span>
+                  <span>Parent &amp; Guardian Contacts</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Parent / Guardian Name</label>
+                    <input
+                      type="text"
+                      value={editingApp.parentName || ""}
+                      onChange={(e) => setEditingApp({ ...editingApp, parentName: e.target.value })}
+                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Relationship</label>
+                    <select
+                      value={editingApp.relationship || "Parent"}
+                      onChange={(e) => setEditingApp({ ...editingApp, relationship: e.target.value })}
+                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
+                    >
+                      <option value="Father">Father</option>
+                      <option value="Mother">Mother</option>
+                      <option value="Guardian">Guardian</option>
+                      <option value="Parent">Parent</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Parent Email</label>
+                    <input
+                      type="email"
+                      required
+                      value={editingApp.parentEmail}
+                      onChange={(e) => setEditingApp({ ...editingApp, parentEmail: e.target.value })}
+                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Parent Phone Number</label>
+                    <input
+                      type="text"
+                      required
+                      value={editingApp.parentPhone}
+                      onChange={(e) => setEditingApp({ ...editingApp, parentPhone: e.target.value })}
+                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Emergency Contact</label>
+                    <input
+                      type="text"
+                      placeholder="+95 9..."
+                      value={editingApp.emergencyContact || ""}
+                      onChange={(e) => setEditingApp({ ...editingApp, emergencyContact: e.target.value })}
+                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Residential Address</label>
+                    <input
+                      type="text"
+                      placeholder="Township, City"
+                      value={editingApp.address || ""}
+                      onChange={(e) => setEditingApp({ ...editingApp, address: e.target.value })}
+                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 4: ADMINISTRATIVE STATUS & REMARKS */}
+              <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-3">
+                <div className="flex items-center gap-1.5 text-[#0E3B7D] font-black uppercase text-[11px] tracking-wider">
+                  <span className="material-symbols-outlined text-base">verified</span>
+                  <span>Administrative Status &amp; Assessment</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Application Workflow Status</label>
+                    <select
+                      value={editingApp.status}
+                      onChange={(e) => setEditingApp({ ...editingApp, status: e.target.value as any })}
+                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-bold"
+                    >
+                      <option value="Pending">Pending</option>
+                      <option value="Assessment Scheduled">Assessment Scheduled</option>
+                      <option value="Approved">Approved</option>
+                      <option value="Declined">Declined</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Scheduled Assessment Date</label>
+                    <input
+                      type="datetime-local"
+                      value={editingApp.assessmentDate || ""}
+                      onChange={(e) => setEditingApp({ ...editingApp, assessmentDate: e.target.value })}
+                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="font-bold text-slate-700 block mb-1">Admissions Officer Remarks &amp; Notes</label>
+                    <textarea
+                      rows={2}
+                      placeholder="Diagnostic marks, interview notes, fee payment references..."
+                      value={editingApp.notes || ""}
+                      onChange={(e) => setEditingApp({ ...editingApp, notes: e.target.value })}
+                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingApp(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 rounded-xl bg-[#0E3B7D] text-white font-bold hover:bg-[#164E9A] shadow-md transition-all cursor-pointer"
+                >
+                  Save Application Updates
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -5,6 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FALLBACK_GUEST_USER, UserProfile, mapUserProfileRecord } from "../../admin/adminStore";
 import { authClient } from "@/lib/auth/auth-client";
+import {
+  getAdminNotificationsAction,
+  AdminNotificationItem,
+} from "@/lib/actions/notifications";
 
 export default function AdminHeader() {
   const router = useRouter();
@@ -13,6 +17,9 @@ export default function AdminHeader() {
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [notifications, setNotifications] = useState<AdminNotificationItem[]>([]);
+  const [totalPendingCount, setTotalPendingCount] = useState(0);
+  const [isLoadingNotifs, setIsLoadingNotifs] = useState(false);
 
   const userMenuRef = useRef<HTMLDivElement>(null);
   const notifMenuRef = useRef<HTMLDivElement>(null);
@@ -24,6 +31,23 @@ export default function AdminHeader() {
       setActiveRole(mapUserProfileRecord(session.user));
     }
   }, [session]);
+
+  const fetchNotifications = async () => {
+    try {
+      setIsLoadingNotifs(true);
+      const res = await getAdminNotificationsAction();
+      setNotifications(res.notifications);
+      setTotalPendingCount(res.totalPendingCount);
+    } catch (err) {
+      console.warn("Fetch notifications note:", err);
+    } finally {
+      setIsLoadingNotifs(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -52,36 +76,6 @@ export default function AdminHeader() {
   };
 
   const isAdmin = activeRole?.role === "admin";
-
-  const notifications = [
-    {
-      id: 1,
-      title: "New Admission Application",
-      desc: "Aung Kaung Myat applied for Pearson IAL (Year 12)",
-      time: "15m ago",
-      icon: "assignment_ind",
-      unread: true,
-      href: "/admin/admissions",
-    },
-    {
-      id: 2,
-      title: "Yearbook Entry Submitted",
-      desc: "Lin Myat Thu submitted Class of 2026 profile for review",
-      time: "1h ago",
-      icon: "auto_stories",
-      unread: true,
-      href: "/admin/yearbook",
-    },
-    {
-      id: 3,
-      title: "Pearson Edexcel Examination Series",
-      desc: "Registration portal opened for Oct/Nov examination series",
-      time: "3h ago",
-      icon: "campaign",
-      unread: false,
-      href: "/admin/classes",
-    },
-  ];
 
   return (
     <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-6 sm:px-8 sticky top-0 z-30 shadow-xs">
@@ -117,43 +111,69 @@ export default function AdminHeader() {
         {/* Notifications Popover */}
         <div className="relative" ref={notifMenuRef}>
           <button
-            onClick={() => setNotifDropdownOpen(!notifDropdownOpen)}
-            className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-600 hover:bg-slate-100 transition-colors relative border border-slate-200"
+            onClick={() => {
+              const next = !notifDropdownOpen;
+              setNotifDropdownOpen(next);
+              if (next) fetchNotifications();
+            }}
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-600 hover:bg-slate-100 transition-colors relative border border-slate-200 cursor-pointer"
             aria-label="Notifications"
           >
             <span className="material-symbols-outlined text-lg">notifications</span>
-            <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white animate-pulse" />
+            {totalPendingCount > 0 ? (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-red-500 text-white font-black text-[10px] rounded-full flex items-center justify-center ring-2 ring-white animate-pulse">
+                {totalPendingCount}
+              </span>
+            ) : null}
           </button>
 
           {notifDropdownOpen && (
-            <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-slate-200 p-4 z-50">
+            <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-slate-200 p-4 z-50 animate-in fade-in zoom-in-95 duration-150">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div>
                   <h4 className="text-xs font-black text-[#09234B] uppercase tracking-wider">
                     School Notifications
                   </h4>
-                  <p className="text-[11px] text-slate-400">Admissions, yearbook submissions &amp; notices</p>
+                  <p className="text-[11px] text-slate-400">Admissions, yearbook submissions &amp; proposals</p>
                 </div>
-                <span className="text-[10px] font-bold bg-[#E8F0FE] text-[#0E3B7D] px-2 py-0.5 rounded-md">
-                  2 Pending
+                <span
+                  className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
+                    totalPendingCount > 0
+                      ? "bg-amber-100 text-amber-800 border border-amber-200"
+                      : "bg-[#E8F0FE] text-[#0E3B7D]"
+                  }`}
+                >
+                  {totalPendingCount} Pending
                 </span>
               </div>
 
-              <div className="divide-y divide-slate-100 my-2">
+              <div className="divide-y divide-slate-100 my-2 max-h-72 overflow-y-auto">
                 {notifications.map((n) => (
                   <Link
                     key={n.id}
                     href={n.href}
                     onClick={() => setNotifDropdownOpen(false)}
-                    className="py-2.5 flex items-start gap-3 hover:bg-slate-50 p-2 rounded-xl transition-colors block"
+                    className="py-2.5 flex items-start gap-3 hover:bg-slate-50 p-2 rounded-xl transition-colors block group"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-[#E8F0FE] text-[#0E3B7D] flex items-center justify-center shrink-0">
+                    <div
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                        n.type === "admission"
+                          ? "bg-blue-100 text-[#0E3B7D]"
+                          : n.type === "yearbook"
+                          ? "bg-amber-100 text-amber-800"
+                          : n.type === "club"
+                          ? "bg-purple-100 text-purple-800"
+                          : "bg-emerald-100 text-emerald-800"
+                      }`}
+                    >
                       <span className="material-symbols-outlined text-sm">{n.icon}</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-bold text-[#09234B] truncate">{n.title}</p>
-                        <span className="text-[10px] text-slate-400">{n.time}</span>
+                      <div className="flex items-center justify-between gap-1">
+                        <p className="text-xs font-bold text-[#09234B] truncate group-hover:text-[#0E3B7D]">
+                          {n.title}
+                        </p>
+                        <span className="text-[10px] text-slate-400 shrink-0">{n.time}</span>
                       </div>
                       <p className="text-[11px] text-slate-600 line-clamp-2 leading-tight mt-0.5">
                         {n.desc}
@@ -163,13 +183,24 @@ export default function AdminHeader() {
                 ))}
               </div>
 
-              <div className="pt-2 border-t border-slate-100 text-center">
-                <Link
-                  href="/admin/admissions"
-                  onClick={() => setNotifDropdownOpen(false)}
-                  className="text-xs font-bold text-[#0E3B7D] hover:underline"
+              <div className="pt-2 border-t border-slate-100 text-center flex items-center justify-between text-xs">
+                <button
+                  type="button"
+                  onClick={fetchNotifications}
+                  disabled={isLoadingNotifs}
+                  className="text-slate-500 hover:text-slate-800 text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
                 >
-                  View All Admissions Workflow
+                  <span className={`material-symbols-outlined text-xs ${isLoadingNotifs ? "animate-spin" : ""}`}>
+                    refresh
+                  </span>
+                  <span>Refresh</span>
+                </button>
+                <Link
+                  href={isAdmin ? "/admin/admissions" : "/admin/yearbook"}
+                  onClick={() => setNotifDropdownOpen(false)}
+                  className="font-bold text-[#0E3B7D] hover:underline"
+                >
+                  {isAdmin ? "View All Admissions" : "View All Submissions"} &rarr;
                 </Link>
               </div>
             </div>

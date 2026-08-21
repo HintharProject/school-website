@@ -202,20 +202,33 @@ export default function CampusesView() {
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="pt-6 mt-6 border-t border-slate-100 flex items-center justify-between gap-3">
-                      <button
-                        onClick={() => setActiveCampusModal(campus)}
-                        className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-base text-[#0E3B7D]">info</span>
-                        <span>Full Details</span>
-                      </button>
+                    <div className="pt-6 mt-6 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setActiveCampusModal(campus)}
+                          className="px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-base text-[#0E3B7D]">info</span>
+                          <span>Details</span>
+                        </button>
+                        {campus.mapUrl && (
+                          <a
+                            href={campus.mapUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3.5 py-2.5 rounded-xl bg-[#E8F0FE] hover:bg-[#0E3B7D] text-[#0E3B7D] hover:text-white text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-base">map</span>
+                            <span>View Map</span>
+                          </a>
+                        )}
+                      </div>
 
                       <Link
                         href="/admission"
-                        className="px-5 py-2.5 rounded-xl bg-[#0E3B7D] hover:bg-[#164E9A] text-white text-xs font-black uppercase tracking-wider shadow-md hover:shadow-lg transition-all flex items-center gap-1.5"
+                        className="px-4 py-2.5 rounded-xl bg-[#0E3B7D] hover:bg-[#164E9A] text-white text-xs font-black uppercase tracking-wider shadow-md hover:shadow-lg transition-all flex items-center gap-1.5"
                       >
-                        <span>Apply to Branch</span>
+                        <span>Apply</span>
                         <span className="material-symbols-outlined text-base">arrow_forward</span>
                       </Link>
                     </div>
@@ -249,7 +262,20 @@ export default function CampusesView() {
               </div>
 
               <div className="space-y-3 text-xs text-slate-700">
-                <p><strong>Address:</strong> {activeCampusModal.address}</p>
+                <div className="flex items-start justify-between gap-2">
+                  <p><strong>Address:</strong> {activeCampusModal.address}</p>
+                  {activeCampusModal.mapUrl && (
+                    <a
+                      href={activeCampusModal.mapUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#E8F0FE] hover:bg-[#0E3B7D] text-[#0E3B7D] hover:text-white font-bold text-[11px] transition-colors shrink-0"
+                    >
+                      <span className="material-symbols-outlined text-xs">map</span>
+                      <span>Open Map</span>
+                    </a>
+                  )}
+                </div>
                 <p><strong>Office Hours:</strong> {activeCampusModal.officeHours}</p>
                 <p><strong>Phone:</strong> {activeCampusModal.phone}</p>
                 <p><strong>Email:</strong> {activeCampusModal.email}</p>

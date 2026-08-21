@@ -140,6 +140,39 @@ export async function updateAdmissionStatusAction(
   return { success: true };
 }
 
+export async function updateAdmissionDetailsAction(id: string, data: unknown) {
+  const user = await requireAdmin();
+  const validated = admissionSchema.partial().extend({
+    status: z.enum(["Pending", "Assessment Scheduled", "Approved", "Declined"]).optional(),
+    assessmentDate: z.string().optional().nullable(),
+    notes: z.string().optional().nullable(),
+  }).parse(data);
+
+  const db = await getDb();
+
+  const updateData: Partial<NewAdmission> = {
+    ...validated,
+    selectedSubjects: validated.selectedSubjects ? JSON.stringify(validated.selectedSubjects) : undefined,
+    updatedAt: new Date().toISOString(),
+  };
+
+  await db
+    .update(admissions)
+    .set(updateData)
+    .where(eq(admissions.id, id));
+
+  await logAudit({
+    actor: user,
+    action: "ADMIN_UPDATED_ADMISSION_DETAILS",
+    resource: "admissions",
+    resourceId: id,
+    details: { studentName: validated.studentName, grade: validated.grade },
+  });
+
+  revalidatePath("/admin/admissions");
+  return { success: true };
+}
+
 export async function deleteAdmissionAction(id: string) {
   const user = await requireAdmin();
   const db = await getDb();

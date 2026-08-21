@@ -11,14 +11,20 @@ export interface AdmissionApplication {
   gender?: "Male" | "Female" | "Other";
   nationality?: string;
   grade: string;
+  programLevel?: string;
   academicStream?: string;
   selectedSubjects?: string[];
+  intendedStartTerm?: string;
+  studyMode?: string;
   previousSchool?: string;
   parentName?: string;
+  relationship?: string;
   parentEmail: string;
   parentPhone: string;
   address?: string;
+  emergencyContact?: string;
   medicalNotes?: string;
+  howHeard?: string;
   submittedDate: string;
   status: ApplicationStatus;
   assessmentDate?: string;
@@ -44,14 +50,20 @@ export function mapAdmissionRecord(d: any): AdmissionApplication {
     gender: (d.gender ?? undefined) as "Male" | "Female" | "Other" | undefined,
     nationality: d.nationality ?? undefined,
     grade: d.grade || "IGCSE",
+    programLevel: d.programLevel ?? d.program_level ?? undefined,
     academicStream: d.academicStream ?? d.academic_stream ?? undefined,
     selectedSubjects: subjects,
+    intendedStartTerm: d.intendedStartTerm ?? d.intended_start_term ?? undefined,
+    studyMode: d.studyMode ?? d.study_mode ?? undefined,
     previousSchool: d.previousSchool ?? d.previous_school ?? undefined,
     parentName: d.parentName ?? d.parent_name ?? undefined,
+    relationship: d.relationship ?? undefined,
     parentEmail: d.parentEmail || d.parent_email || "",
     parentPhone: d.parentPhone || d.parent_phone || "",
     address: d.address ?? undefined,
+    emergencyContact: d.emergencyContact ?? d.emergency_contact ?? undefined,
     medicalNotes: d.medicalNotes ?? d.medical_notes ?? undefined,
+    howHeard: d.howHeard ?? d.how_heard ?? undefined,
     submittedDate: d.submittedDate || d.submitted_date || d.createdAt?.split("T")[0] || new Date().toISOString().split("T")[0],
     status: (d.status as ApplicationStatus) || "Pending",
     assessmentDate: d.assessmentDate ?? d.assessment_date ?? undefined,
@@ -239,6 +251,7 @@ export interface CampusRecord {
   gradesServed: string;
   facilities: string[];
   imageUrl: string;
+  mapUrl?: string;
   isActive: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -268,6 +281,7 @@ export function mapCampusRecord(d: any): CampusRecord {
     gradesServed: d.gradesServed || d.grades_served || "",
     facilities: facs,
     imageUrl: d.imageUrl || d.image_url || "/images/heroImg.png",
+    mapUrl: d.mapUrl || d.map_url || undefined,
     isActive: typeof d.isActive === "boolean" ? d.isActive : typeof d.is_active === "boolean" ? d.is_active : true,
     createdAt: d.createdAt || d.created_at,
     updatedAt: d.updatedAt || d.updated_at,
