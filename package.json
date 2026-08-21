@@ -16,8 +16,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply hinthar-db --local",
     "db:migrate:prod": "wrangler d1 migrations apply hinthar-db --remote",
-    "d1:seed:local": "wrangler d1 execute hinthar-db --local --file=supabase/seed-d1.sql",
-    "d1:seed:prod": "wrangler d1 execute hinthar-db --remote --file=supabase/seed-d1.sql"
+    "d1:seed:local": "wrangler d1 execute hinthar-db --local --file=scripts/seed.sql",
+    "d1:seed:prod": "wrangler d1 execute hinthar-db --remote --file=scripts/seed.sql"
   },
   "dependencies": {
     "@types/nodemailer": "^8.0.1",

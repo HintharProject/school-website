@@ -272,3 +272,14 @@ export async function deleteUserAction(id: string) {
   revalidatePath("/admin/users");
   return { success: true };
 }
+
+export async function ensureAdminReadyAction() {
+  try {
+    const { bootstrapInitialAdmin } = await import("@/lib/auth/bootstrap");
+    const res = await bootstrapInitialAdmin();
+    return res;
+  } catch (err: any) {
+    console.warn("ensureAdminReadyAction warning:", err);
+    return { success: false, message: err?.message || String(err) };
+  }
+}

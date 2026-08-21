@@ -19,7 +19,9 @@ export async function middleware(request: NextRequest) {
     request.cookies.get("hinthar.session_token")?.value ||
     request.cookies.get("__Secure-hinthar.session_token")?.value ||
     request.cookies.get("better-auth.session_token")?.value ||
-    request.cookies.get("session_token")?.value;
+    request.cookies.get("__Secure-better-auth.session_token")?.value ||
+    request.cookies.get("session_token")?.value ||
+    request.cookies.get("__Secure-session_token")?.value;
 
   const isAuthenticated = Boolean(sessionCookie && sessionCookie.length > 5);
 
@@ -27,8 +29,7 @@ export async function middleware(request: NextRequest) {
 
   // Protect /api/admin/* endpoints
   if (isApiAdminRoute && !isAuthenticated) {
-    // Exclude bootstrap endpoint if caller has administrative header
-    // Allow bootstrap route to pass directly to its route handler
+    // Exclude bootstrap endpoint so administrative initialization can proceed with token
     if (pathname === "/api/admin/bootstrap") {
       return applySecurityHeaders(NextResponse.next());
     }

@@ -1,5 +1,5 @@
 -- ==============================================================================
--- HINTHAR INTERNATIONAL SCHOOL — VERIFIED CLOUDFLARE D1 SEED DATA
+-- HINTHAR INTERNATIONAL SCHOOL — CLOUDFLARE D1 SEED DATA
 -- ==============================================================================
 
 -- 1. CAMPUSES SEED

@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authClient } from "@/lib/auth/auth-client";
-import { acceptInviteAction } from "@/lib/actions/users";
+import { acceptInviteAction, ensureAdminReadyAction } from "@/lib/actions/users";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -43,6 +43,9 @@ export default function LoginForm() {
     const enteredEmail = email.trim().toLowerCase();
 
     try {
+      // Ensure initial admin is provisioned before login
+      await ensureAdminReadyAction().catch(() => {});
+
       const { data, error } = await authClient.signIn.email({
         email: enteredEmail,
         password,
@@ -124,7 +127,7 @@ export default function LoginForm() {
           {/* Header */}
           <div className="p-8 pb-6 text-center border-b border-slate-100 bg-gradient-to-b from-slate-50/50 to-white">
             <div className="relative h-16 w-16 mx-auto mb-3 rounded-full overflow-hidden bg-white p-1 ring-2 ring-[#FFC700] shadow-sm">
-              <Image src="/images/mainLogo.png" alt="Hinthar Logo" fill className="object-contain" priority />
+              <Image src="/images/mainLogo.png" alt="Hinthar Logo" fill sizes="64px" className="object-contain" priority />
             </div>
 
             <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#E8F0FE] text-[#0E3B7D] text-[10px] font-black uppercase tracking-wider mb-2 border border-[#0E3B7D]/20">

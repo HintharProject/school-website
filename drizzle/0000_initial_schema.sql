@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS `account` (
   `id` text PRIMARY KEY NOT NULL,
   `account_id` text NOT NULL,
   `provider_id` text NOT NULL,
+  `issuer` text DEFAULT 'local:credential' NOT NULL,
   `user_id` text NOT NULL REFERENCES `user`(`id`) ON DELETE CASCADE,
   `access_token` text,
   `refresh_token` text,
@@ -50,6 +51,7 @@ CREATE TABLE IF NOT EXISTS `account` (
 );
 CREATE INDEX IF NOT EXISTS `idx_account_user` ON `account` (`user_id`);
 CREATE INDEX IF NOT EXISTS `idx_account_provider` ON `account` (`provider_id`, `account_id`);
+CREATE INDEX IF NOT EXISTS `idx_account_issuer` ON `account` (`issuer`);
 
 CREATE TABLE IF NOT EXISTS `verification` (
   `id` text PRIMARY KEY NOT NULL,
