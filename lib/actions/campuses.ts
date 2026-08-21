@@ -18,6 +18,7 @@ const campusSchema = z.object({
   gradesServed: z.string().min(2),
   facilities: z.array(z.string()).default([]),
   imageUrl: z.string().min(1),
+  mapUrl: z.string().optional().nullable(),
   isActive: z.boolean().default(true),
 });
 

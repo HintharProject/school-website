@@ -15,10 +15,10 @@ export async function getAuth(explicitDb?: D1Database) {
       provider: "sqlite",
       schema: {
         ...schema,
-        user: schema.user,
-        session: schema.session,
-        account: schema.account,
-        verification: schema.verification,
+        user: schema.users,
+        session: schema.sessions,
+        account: schema.accounts,
+        verification: schema.verifications,
       },
     }),
     emailAndPassword: {

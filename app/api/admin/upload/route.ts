@@ -77,10 +77,16 @@ export async function POST(req: NextRequest) {
             contentType: file.type,
           },
         });
+        publicUrl = `/api/assets/${objectKey}`;
       } else if (typeof globalThis !== "undefined" && (globalThis as any).R2) {
         await (globalThis as any).R2.put(objectKey, arrayBuffer, {
           httpMetadata: { contentType: file.type },
         });
+        publicUrl = `/api/assets/${objectKey}`;
+      } else {
+        // Fallback for local development when running standalone Next.js server without Miniflare R2
+        const base64 = Buffer.from(arrayBuffer).toString("base64");
+        publicUrl = `data:${file.type};base64,${base64}`;
       }
     } catch {
       // If R2 binding is not available in local dev, fallback to base64 data URI

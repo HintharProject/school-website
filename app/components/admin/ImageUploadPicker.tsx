@@ -289,6 +289,7 @@ export default function ImageUploadPicker({
                       src={preset.url}
                       alt={preset.label}
                       fill
+                      unoptimized
                       className="object-cover group-hover:scale-105 transition-transform"
                       sizes="150px"
                     />
@@ -334,35 +335,54 @@ export default function ImageUploadPicker({
 
       {/* Live Preview Display */}
       {value && (
-        <div className="mt-2 p-3 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3">
+        <div className="mt-2 p-3 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-2.5 overflow-hidden">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+              <span className="text-[11px] font-bold text-slate-800">Live Image Preview</span>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="px-2.5 py-1 rounded-lg bg-blue-50 text-[#0E3B7D] hover:bg-blue-100 font-bold text-[10px] flex items-center gap-1 transition-colors border border-blue-200 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-xs">refresh</span>
+                <span>Replace</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onChange("")}
+                className="px-2 py-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 font-bold text-[10px] flex items-center gap-1 transition-colors border border-red-200 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-xs">delete</span>
+                <span>Remove</span>
+              </button>
+            </div>
+          </div>
+
           <div
-            className={`relative ${aspectClass} rounded-xl overflow-hidden bg-slate-900 border border-slate-200 shrink-0`}
+            className={`relative w-full rounded-xl overflow-hidden bg-slate-900 border border-slate-200 ${
+              aspectRatio === "portrait"
+                ? "h-48 max-w-[180px] mx-auto"
+                : aspectRatio === "square"
+                ? "h-40 max-w-[160px] mx-auto"
+                : "h-36 sm:h-44 w-full"
+            }`}
           >
             <Image
               src={value}
               alt="Selected Preview"
               fill
+              unoptimized
               className="object-cover"
-              sizes="200px"
+              sizes="(max-width: 768px) 100vw, 400px"
             />
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 mb-1">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span className="text-[11px] font-bold text-slate-800">Live Image Preview</span>
-            </div>
-            <p className="text-[10px] text-slate-400 truncate font-mono">{value}</p>
-            <div className="mt-2 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="px-2.5 py-1 rounded-lg bg-blue-50 text-[#0E3B7D] hover:bg-blue-100 font-bold text-[10px] flex items-center gap-1 transition-colors border border-blue-200"
-              >
-                <span className="material-symbols-outlined text-xs">refresh</span>
-                <span>Replace Photo</span>
-              </button>
-            </div>
-          </div>
+
+          <p className="text-[10px] text-slate-400 truncate font-mono bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
+            {value.startsWith("data:") ? "Uploaded Image (Direct Binary)" : value}
+          </p>
         </div>
       )}
 

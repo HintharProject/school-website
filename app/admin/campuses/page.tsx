@@ -44,6 +44,7 @@ export default function AdminCampusesPage() {
     gradesServed: "Year 7–9 · Pearson IGCSE · Pearson IAL",
     facilities: ["Pearson Exam Center", "Science Labs", "Computer Lab"],
     imageUrl: "/images/heroImg.png",
+    mapUrl: "",
     isActive: true,
   });
 
@@ -119,6 +120,7 @@ export default function AdminCampusesPage() {
       gradesServed: formState.gradesServed || "Year 7–9 · Pearson IGCSE · Pearson IAL",
       facilities: formState.facilities || ["Pearson Exam Center", "Science Lab"],
       imageUrl: formState.imageUrl || "/images/heroImg.png",
+      mapUrl: formState.mapUrl || undefined,
       isActive: formState.isActive ?? true,
     };
     try {
@@ -320,7 +322,20 @@ export default function AdminCampusesPage() {
 
             {/* Actions Bar */}
             <div className="p-4 px-6 bg-slate-50/70 border-t border-slate-100 flex items-center justify-between">
-              <span className="text-[10px] text-slate-400 font-mono font-bold">ID: {campus.id}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-slate-400 font-mono font-bold">ID: {campus.id}</span>
+                {campus.mapUrl && (
+                  <a
+                    href={campus.mapUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-[#0E3B7D] hover:underline bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200"
+                  >
+                    <span className="material-symbols-outlined text-xs">map</span>
+                    <span>Map</span>
+                  </a>
+                )}
+              </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setEditingCampus(campus)}
@@ -435,6 +450,20 @@ export default function AdminCampusesPage() {
                   onChange={(e) => setEditingCampus({ ...editingCampus, gradesServed: e.target.value })}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
                 />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Google Maps Link (Optional)</label>
+                <input
+                  type="url"
+                  placeholder="https://maps.app.goo.gl/... or https://maps.google.com/..."
+                  value={editingCampus.mapUrl || ""}
+                  onChange={(e) => setEditingCampus({ ...editingCampus, mapUrl: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                />
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  When set, a &quot;View on Map&quot; button will be displayed on the public campuses page.
+                </p>
               </div>
 
               {/* Image Picker */}
@@ -580,6 +609,20 @@ export default function AdminCampusesPage() {
                   onChange={(e) => setFormState({ ...formState, gradesServed: e.target.value })}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
                 />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Google Maps Link (Optional)</label>
+                <input
+                  type="url"
+                  placeholder="https://maps.app.goo.gl/... or https://maps.google.com/..."
+                  value={formState.mapUrl || ""}
+                  onChange={(e) => setFormState({ ...formState, mapUrl: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                />
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  When set, a &quot;View on Map&quot; button will be displayed on the public campuses page.
+                </p>
               </div>
 
               {/* Image Picker */}

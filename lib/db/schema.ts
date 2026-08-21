@@ -146,6 +146,7 @@ export const campuses = sqliteTable(
     gradesServed: text("grades_served").notNull(),
     facilities: text("facilities").notNull().default("[]"), // JSON string array
     imageUrl: text("image_url").notNull(),
+    mapUrl: text("map_url"),
     isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
     createdAt: text("created_at")
       .notNull()

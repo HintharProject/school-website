@@ -231,7 +231,7 @@ export default function ChatbotPageView() {
                 Visit our campus at No. 23B, Ywar Ma Kyaung Lane, Hlaing Township, Yangon to meet our faculty and tour our laboratories.
               </p>
               <Link
-                href="/admission"
+                href="/campuses"
                 className="inline-flex items-center gap-1 px-4 py-2 bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] rounded-xl text-xs font-black uppercase tracking-wider shadow-sm transition-colors"
               >
                 <span>Book Campus Tour</span>

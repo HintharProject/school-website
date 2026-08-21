@@ -21,10 +21,6 @@ export async function bootstrapInitialAdmin() {
 
   const db = await getDb();
 
-  // Ensure account table has issuer column if created from older migration
-  try {
-    await db.run(sql`ALTER TABLE \`account\` ADD COLUMN \`issuer\` text DEFAULT 'local:credential' NOT NULL`);
-  } catch {}
 
   const auth = await getAuth();
   const hashedPassword = await hashPassword(initialPassword);
