@@ -220,8 +220,8 @@ export default function AdminClassesPage() {
     <div className="space-y-6">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#09234B] text-white px-5 py-3 rounded-2xl shadow-2xl border border-[#FFC700]/30 flex items-center gap-3 animate-fade-in text-sm font-medium">
-          <span className="material-symbols-outlined text-[#FFC700]">verified</span>
+        <div role="status" aria-live="polite" className="fixed bottom-6 right-6 z-50 bg-[#09234B] text-white px-5 py-3 rounded-2xl shadow-2xl border border-[#FFC700]/30 flex items-center gap-3 animate-fade-in text-sm font-medium">
+          <span aria-hidden="true" className="material-symbols-outlined text-[#FFC700]">verified</span>
           <span>{toastMessage}</span>
         </div>
       )}
@@ -250,7 +250,7 @@ export default function AdminClassesPage() {
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            <span className="material-symbols-outlined text-base">menu_book</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-base">menu_book</span>
             <span>Courses ({courses.length})</span>
           </button>
           <button
@@ -261,7 +261,7 @@ export default function AdminClassesPage() {
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            <span className="material-symbols-outlined text-base">campaign</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-base">campaign</span>
             <span>Bulletins ({announcements.length})</span>
           </button>
         </div>
@@ -270,7 +270,7 @@ export default function AdminClassesPage() {
       {/* Filter and Add Bar */}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-2xl border border-slate-200">
         <div className="relative w-full sm:w-80">
-          <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base">
+          <span aria-hidden="true" className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base">
             search
           </span>
           <input
@@ -289,7 +289,7 @@ export default function AdminClassesPage() {
             onClick={() => setIsAddCourseModalOpen(true)}
             className="w-full sm:w-auto px-4 py-2 bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] font-extrabold text-xs rounded-xl shadow-xs flex items-center justify-center gap-1.5 uppercase tracking-wider cursor-pointer"
           >
-            <span className="material-symbols-outlined text-base">add_circle</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-base">add_circle</span>
             <span>Add New Course</span>
           </button>
         ) : (
@@ -298,7 +298,7 @@ export default function AdminClassesPage() {
               onClick={() => setIsAddNoticeModalOpen(true)}
               className="w-full sm:w-auto px-4 py-2 bg-[#0E3B7D] hover:bg-[#164E9A] text-white font-extrabold text-xs rounded-xl shadow-xs flex items-center justify-center gap-1.5 uppercase tracking-wider cursor-pointer"
             >
-              <span className="material-symbols-outlined text-base">campaign</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-base">campaign</span>
               <span>Publish Notice</span>
             </button>
           )
@@ -346,20 +346,20 @@ export default function AdminClassesPage() {
                       <td className="p-4 text-slate-500">{c.room || "Lab"}</td>
                       <td className="p-4 pr-6 text-right">
                         <div className="inline-flex items-center gap-1.5">
-                          <button
+                          <button aria-label="Edit"
                             onClick={() => setEditingCourse(c)}
                             className="p-1.5 rounded-lg text-slate-500 hover:text-[#0E3B7D] hover:bg-blue-50 transition-colors cursor-pointer"
                             title="Edit Timetable"
                           >
-                            <span className="material-symbols-outlined text-base">edit</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-base">edit</span>
                           </button>
                           {isAdmin && (
-                            <button
+                            <button aria-label="Delete"
                               onClick={() => setDeletingCourse(c)}
                               className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
                               title="Delete Course"
                             >
-                              <span className="material-symbols-outlined text-base">delete</span>
+                              <span aria-hidden="true" className="material-symbols-outlined text-base">delete</span>
                             </button>
                           )}
                         </div>
@@ -402,11 +402,11 @@ export default function AdminClassesPage() {
 
               {isAdmin && (
                 <div className="pt-3 border-t border-slate-100 flex justify-end">
-                  <button
+                  <button aria-label="Delete"
                     onClick={() => setDeletingNotice(notice)}
                     className="px-3 py-1.5 rounded-lg text-red-600 hover:bg-red-50 text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
                   >
-                    <span className="material-symbols-outlined text-sm">delete</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-sm">delete</span>
                     <span>Remove</span>
                   </button>
                 </div>
@@ -419,7 +419,7 @@ export default function AdminClassesPage() {
       {/* ADD COURSE MODAL */}
       {isAddCourseModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-4 shadow-2xl">
+          <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-4 shadow-2xl">
             <h2 className="text-xl font-black text-[#09234B]">Add Class Course</h2>
             <form onSubmit={handleCreateCourse} className="space-y-3 text-xs">
               <div>
@@ -476,19 +476,41 @@ export default function AdminClassesPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Schedule / Time</label>
+                  <label htmlFor="course-days" className="font-bold text-slate-700 block mb-1">Class Days</label>
                   <input
+                    id="course-days"
                     type="text"
                     required
-                    placeholder="Mon, Wed, Fri • 08:30 AM"
-                    value={courseForm.time}
-                    onChange={(e) => setCourseForm({ ...courseForm, time: e.target.value })}
+                    placeholder="Mon, Wed, Fri"
+                    value={(courseForm.time.split("•")[0] || "").trim()}
+                    onChange={(e) => {
+                      const time = (courseForm.time.split("•")[1] || "").trim();
+                      setCourseForm({ ...courseForm, time: [e.target.value.trim(), time].filter(Boolean).join(" • ") });
+                    }}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
                   />
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Room / Lab</label>
+                  <label htmlFor="course-time" className="font-bold text-slate-700 block mb-1">Start Time</label>
                   <input
+                    id="course-time"
+                    type="time"
+                    required
+                    value={(courseForm.time.split("•")[1] || "").trim()}
+                    onChange={(e) => {
+                      const days = (courseForm.time.split("•")[0] || "").trim();
+                      setCourseForm({ ...courseForm, time: [days, e.target.value].filter(Boolean).join(" • ") });
+                    }}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="course-room" className="font-bold text-slate-700 block mb-1">Room / Lab</label>
+                  <input
+                    id="course-room"
                     type="text"
                     placeholder="Newton Science Lab"
                     value={courseForm.room}
@@ -533,7 +555,7 @@ export default function AdminClassesPage() {
       {/* EDIT COURSE MODAL */}
       {editingCourse && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-4 shadow-2xl">
+          <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-4 shadow-2xl">
             <h2 className="text-xl font-black text-[#09234B]">Edit Class Schedule</h2>
             <form onSubmit={handleSaveEditCourse} className="space-y-3 text-xs">
               <div>
@@ -575,18 +597,40 @@ export default function AdminClassesPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Schedule / Time</label>
+                  <label htmlFor="edit-course-days" className="font-bold text-slate-700 block mb-1">Class Days</label>
                   <input
+                    id="edit-course-days"
                     type="text"
                     required
-                    value={editingCourse.time}
-                    onChange={(e) => setEditingCourse({ ...editingCourse, time: e.target.value })}
+                    value={(editingCourse.time.split("•")[0] || "").trim()}
+                    onChange={(e) => {
+                      const time = (editingCourse.time.split("•")[1] || "").trim();
+                      setEditingCourse({ ...editingCourse, time: [e.target.value.trim(), time].filter(Boolean).join(" • ") });
+                    }}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
                   />
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Room / Lab</label>
+                  <label htmlFor="edit-course-time" className="font-bold text-slate-700 block mb-1">Start Time</label>
                   <input
+                    id="edit-course-time"
+                    type="time"
+                    required
+                    value={(editingCourse.time.split("•")[1] || "").trim()}
+                    onChange={(e) => {
+                      const days = (editingCourse.time.split("•")[0] || "").trim();
+                      setEditingCourse({ ...editingCourse, time: [days, e.target.value].filter(Boolean).join(" • ") });
+                    }}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="edit-course-room" className="font-bold text-slate-700 block mb-1">Room / Lab</label>
+                  <input
+                    id="edit-course-room"
                     type="text"
                     value={editingCourse.room || ""}
                     onChange={(e) => setEditingCourse({ ...editingCourse, room: e.target.value })}
@@ -629,7 +673,7 @@ export default function AdminClassesPage() {
       {/* ADD NOTICE MODAL */}
       {isAddNoticeModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-4 shadow-2xl">
+          <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-4 shadow-2xl">
             <h2 className="text-xl font-black text-[#09234B]">Publish Bulletin Notice</h2>
             <form onSubmit={handleCreateNotice} className="space-y-3 text-xs">
               <div>
@@ -704,7 +748,7 @@ export default function AdminClassesPage() {
       {/* DELETE NOTICES / COURSE CONFIRM */}
       {deletingNotice && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
+          <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
             <h3 className="text-base font-black text-[#09234B]">Delete Notice?</h3>
             <p className="text-xs text-slate-600">Are you sure you want to remove this bulletin announcement?</p>
             <div className="flex justify-end gap-2 pt-2">
@@ -729,7 +773,7 @@ export default function AdminClassesPage() {
 
       {deletingCourse && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
+          <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
             <h3 className="text-base font-black text-[#09234B]">Delete Course?</h3>
             <p className="text-xs text-slate-600">
               Are you sure you want to remove <strong>{deletingCourse.name}</strong> from syllabus schedules?

@@ -87,7 +87,7 @@ export default function AdminAdmissionsPage() {
     return (
       <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-sm max-w-xl mx-auto my-12">
         <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto mb-4">
-          <span className="material-symbols-outlined text-3xl">lock</span>
+          <span aria-hidden="true" className="material-symbols-outlined text-3xl">lock</span>
         </div>
         <h2 className="text-xl font-black text-slate-800">Confidential Admissions Data</h2>
         <p className="text-xs text-slate-500 mt-2 leading-relaxed">
@@ -194,8 +194,14 @@ export default function AdminAdmissionsPage() {
         studyMode: "Full-Time On-Campus",
       });
 
+      if (!res.success || !res.applicationId) {
+        showToast(`Error: ${(res as { error?: string }).error || "Failed to create application."}`);
+        return;
+      }
+
+      const applicationId: string = res.applicationId;
       const newRecord: AdmissionApplication = {
-        id: res.applicationId,
+        id: applicationId,
         studentName: newForm.studentName,
         dateOfBirth: newForm.dateOfBirth || undefined,
         gender: newForm.gender,
@@ -222,7 +228,7 @@ export default function AdminAdmissionsPage() {
         notes: "",
       });
       setIsAddModalOpen(false);
-      showToast(`Candidate ${newForm.studentName} registered (${res.applicationId}).`);
+      showToast(`Candidate ${newForm.studentName} registered (${applicationId}).`);
     } catch (err: any) {
       showToast(`Error: ${err.message || "Failed to create application."}`);
     }
@@ -246,8 +252,8 @@ export default function AdminAdmissionsPage() {
     <div className="space-y-6">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#0E3B7D] text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-[#FFC700] animate-bounce">
-          <span className="material-symbols-outlined text-[#FFC700]">check_circle</span>
+        <div role="status" aria-live="polite" className="fixed bottom-6 right-6 z-50 bg-[#0E3B7D] text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-[#FFC700] animate-fade-in">
+          <span aria-hidden="true" className="material-symbols-outlined text-[#FFC700]">check_circle</span>
           <span className="text-sm font-bold">{toastMessage}</span>
         </div>
       )}
@@ -256,7 +262,7 @@ export default function AdminAdmissionsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
         <div>
           <div className="inline-flex items-center gap-2 bg-[#E8F0FE] px-3.5 py-1 rounded-full mb-2 border border-[#0E3B7D]/20">
-            <span className="material-symbols-outlined text-[#0E3B7D] text-xs font-bold">school</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-[#0E3B7D] text-xs font-bold">school</span>
             <span className="text-[11px] font-black text-[#0E3B7D] uppercase tracking-wider">
               Admissions Workflow &amp; Candidate Pipeline
             </span>
@@ -273,7 +279,7 @@ export default function AdminAdmissionsPage() {
           onClick={() => setIsAddModalOpen(true)}
           className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] font-black text-xs uppercase tracking-wider shadow-sm transition-all active:scale-95 whitespace-nowrap cursor-pointer"
         >
-          <span className="material-symbols-outlined text-base font-bold">person_add</span>
+          <span aria-hidden="true" className="material-symbols-outlined text-base font-bold">person_add</span>
           <span>Register Candidate</span>
         </button>
       </div>
@@ -282,7 +288,7 @@ export default function AdminAdmissionsPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
           <div className="w-11 h-11 rounded-xl bg-blue-50 text-[#0E3B7D] flex items-center justify-center font-bold">
-            <span className="material-symbols-outlined text-xl">folder_shared</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-xl">folder_shared</span>
           </div>
           <div>
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Total Applications</span>
@@ -292,7 +298,7 @@ export default function AdminAdmissionsPage() {
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
           <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold">
-            <span className="material-symbols-outlined text-xl">pending_actions</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-xl">pending_actions</span>
           </div>
           <div>
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Pending Review</span>
@@ -302,7 +308,7 @@ export default function AdminAdmissionsPage() {
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
           <div className="w-11 h-11 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center font-bold">
-            <span className="material-symbols-outlined text-xl">event_available</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-xl">event_available</span>
           </div>
           <div>
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Assessments</span>
@@ -312,7 +318,7 @@ export default function AdminAdmissionsPage() {
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
           <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
-            <span className="material-symbols-outlined text-xl">verified</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-xl">verified</span>
           </div>
           <div>
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Approved / Enrolled</span>
@@ -324,7 +330,7 @@ export default function AdminAdmissionsPage() {
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-2xl border border-slate-200">
         <div className="relative w-full sm:w-80">
-          <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base">
+          <span aria-hidden="true" className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base">
             search
           </span>
           <input
@@ -402,18 +408,18 @@ export default function AdminAdmissionsPage() {
                         >
                           Review
                         </button>
-                        <button
+                        <button aria-label="Edit"
                           onClick={() => setEditingApp({ ...app })}
                           className="px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold text-[11px] transition-all cursor-pointer flex items-center gap-1"
                         >
-                          <span className="material-symbols-outlined text-xs">edit</span>
+                          <span aria-hidden="true" className="material-symbols-outlined text-xs">edit</span>
                           <span>Edit</span>
                         </button>
-                        <button
+                        <button aria-label="Delete"
                           onClick={() => setDeletingApp(app)}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
                         >
-                          <span className="material-symbols-outlined text-base">delete</span>
+                          <span aria-hidden="true" className="material-symbols-outlined text-base">delete</span>
                         </button>
                       </div>
                     </td>
@@ -428,7 +434,7 @@ export default function AdminAdmissionsPage() {
       {/* APPLICATION REVIEW MODAL */}
       {selectedApp && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl p-6 sm:p-8 space-y-6">
+          <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl p-6 sm:p-8 space-y-6">
             <div className="flex justify-between items-start pb-4 border-b border-slate-100">
               <div>
                 <span className="text-xs font-mono font-bold text-[#0E3B7D]">{selectedApp.id}</span>
@@ -443,14 +449,14 @@ export default function AdminAdmissionsPage() {
                   }}
                   className="px-3 py-1.5 rounded-xl bg-[#0E3B7D] text-white hover:bg-[#164E9A] text-xs font-bold flex items-center gap-1 cursor-pointer"
                 >
-                  <span className="material-symbols-outlined text-sm">edit_document</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-sm">edit_document</span>
                   <span>Edit Details</span>
                 </button>
                 <button
                   onClick={() => setSelectedApp(null)}
                   className="text-slate-400 hover:text-slate-700"
                 >
-                  <span className="material-symbols-outlined">close</span>
+                  <span aria-hidden="true" className="material-symbols-outlined">close</span>
                 </button>
               </div>
             </div>
@@ -509,7 +515,7 @@ export default function AdminAdmissionsPage() {
                 }}
                 className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1 cursor-pointer"
               >
-                <span className="material-symbols-outlined text-xs">save</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-xs">save</span>
                 <span>Save Notes &amp; Date</span>
               </button>
             </div>
@@ -520,7 +526,7 @@ export default function AdminAdmissionsPage() {
                 onClick={() => handleUpdateStatus(selectedApp.id, "Approved")}
                 className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <span className="material-symbols-outlined text-sm font-bold">check_circle</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-sm font-bold">check_circle</span>
                 <span>Approve &amp; Enroll</span>
               </button>
 
@@ -555,7 +561,7 @@ export default function AdminAdmissionsPage() {
                 onClick={() => setEditingApp(null)}
                 className="text-slate-400 hover:text-slate-700"
               >
-                <span className="material-symbols-outlined">close</span>
+                <span aria-hidden="true" className="material-symbols-outlined">close</span>
               </button>
             </div>
 
@@ -563,7 +569,7 @@ export default function AdminAdmissionsPage() {
               {/* SECTION 1: ACADEMIC PATHWAY & CURRICULUM */}
               <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-3">
                 <div className="flex items-center gap-1.5 text-[#0E3B7D] font-black uppercase text-[11px] tracking-wider">
-                  <span className="material-symbols-outlined text-base">school</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-base">school</span>
                   <span>Academic Curriculum &amp; Pathway</span>
                 </div>
 
@@ -630,7 +636,7 @@ export default function AdminAdmissionsPage() {
               {/* SECTION 2: CANDIDATE STUDENT PROFILE */}
               <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-3">
                 <div className="flex items-center gap-1.5 text-[#0E3B7D] font-black uppercase text-[11px] tracking-wider">
-                  <span className="material-symbols-outlined text-base">person</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-base">person</span>
                   <span>Student Profile</span>
                 </div>
 
@@ -706,7 +712,7 @@ export default function AdminAdmissionsPage() {
               {/* SECTION 3: PARENT & GUARDIAN CONTACTS */}
               <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-3">
                 <div className="flex items-center gap-1.5 text-[#0E3B7D] font-black uppercase text-[11px] tracking-wider">
-                  <span className="material-symbols-outlined text-base">contacts</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-base">contacts</span>
                   <span>Parent &amp; Guardian Contacts</span>
                 </div>
 
@@ -785,7 +791,7 @@ export default function AdminAdmissionsPage() {
               {/* SECTION 4: ADMINISTRATIVE STATUS & REMARKS */}
               <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-3">
                 <div className="flex items-center gap-1.5 text-[#0E3B7D] font-black uppercase text-[11px] tracking-wider">
-                  <span className="material-symbols-outlined text-base">verified</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-base">verified</span>
                   <span>Administrative Status &amp; Assessment</span>
                 </div>
 
@@ -850,7 +856,7 @@ export default function AdminAdmissionsPage() {
       {/* ADD CANDIDATE MODAL */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-4 shadow-2xl">
+          <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-4 shadow-2xl">
             <h2 className="text-xl font-black text-[#09234B]">Manual Candidate Registration</h2>
             <form onSubmit={handleCreateApplication} className="space-y-3 text-xs">
               <div>
@@ -942,7 +948,7 @@ export default function AdminAdmissionsPage() {
       {/* DELETE CONFIRMATION */}
       {deletingApp && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
+          <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
             <h3 className="text-base font-black text-[#09234B]">Delete Application?</h3>
             <p className="text-xs text-slate-600">
               Are you sure you want to delete application <strong>{deletingApp.id}</strong> ({deletingApp.studentName})?

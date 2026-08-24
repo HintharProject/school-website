@@ -12,6 +12,9 @@ export default function AdmissionForm() {
   const [dragActive, setDragActive] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<{ name: string; size: string; type: string }[]>([]);
   const [submittedId, setSubmittedId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [emailSent, setEmailSent] = useState(false);
 
   const [formData, setFormData] = useState({
     // Step 1: Student Details
@@ -95,13 +98,10 @@ export default function AdmissionForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const secureRandomArray = new Uint32Array(1);
-    if (typeof window !== "undefined" && window.crypto?.getRandomValues) {
-      window.crypto.getRandomValues(secureRandomArray);
-    }
-    const secureNum = 1000 + (secureRandomArray[0] ? secureRandomArray[0] % 9000 : Math.floor(1000 + Math.random() * 9000));
-    const randomCode = `HIS-2026-${secureNum}`;
-    setSubmittedId(randomCode);
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    setSubmitError(null);
 
     // Map programLevel to readable format
     const gradeLabel =
@@ -111,33 +111,6 @@ export default function AdmissionForm() {
         ? "Pearson IGCSE (Year 10)"
         : "Lower Secondary (Year 8)";
 
-    const newRecord = {
-      id: randomCode,
-      student_name: formData.studentName,
-      date_of_birth: formData.dob || undefined,
-      gender: formData.gender as "Male" | "Female" | "Other",
-      nationality: formData.nationality,
-      grade: gradeLabel,
-      program_level: formData.programLevel,
-      academic_stream: formData.academicStream,
-      selected_subjects: formData.selectedSubjects,
-      intended_start_term: formData.intendedStartTerm,
-      study_mode: formData.studyMode,
-      previous_school: formData.currentSchool || undefined,
-      parent_name: formData.parentName || undefined,
-      relationship: formData.relationship,
-      parent_email: formData.parentEmail,
-      parent_phone: formData.parentPhone,
-      address: formData.address || undefined,
-      emergency_contact: formData.emergencyContact || undefined,
-      medical_notes: formData.medicalNotes || undefined,
-      how_heard: formData.howHeard || undefined,
-      submitted_date: new Date().toISOString().split("T")[0],
-      status: "Pending" as const,
-      notes: `Selected track: ${formData.academicStream.toUpperCase()} | Subjects: ${formData.selectedSubjects.join(", ")} | Mode: ${formData.studyMode}`,
-    };
-
-    // Save to Cloudflare D1 via submitPublicAdmissionAction
     try {
       const result = await submitPublicAdmissionAction({
         studentName: formData.studentName,
@@ -160,15 +133,27 @@ export default function AdmissionForm() {
         medicalNotes: formData.medicalNotes || null,
         howHeard: formData.howHeard || "School Website",
       });
-      if (result.applicationId) {
-        setSubmittedId(result.applicationId);
-      }
-    } catch (err) {
-      console.warn("Admission submission note:", err);
-    }
 
-    setCurrentStep(5);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+      if (!result.success || !result.applicationId) {
+        setSubmitError(
+          (result as { error?: string }).error ||
+            "Your application could not be submitted. Please check your connection and try again."
+        );
+        setIsSubmitting(false);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+
+      setSubmittedId(result.applicationId);
+      setEmailSent(result.emailSent === true);
+      setCurrentStep(5);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch {
+      setSubmitError("Your application could not be submitted. Please check your connection and try again.");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const nextStep = () => {
@@ -189,7 +174,7 @@ export default function AdmissionForm() {
         {/* Header */}
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 bg-[#E8F0FE] px-4 py-1.5 rounded-full mb-4 border border-[#0E3B7D]/20">
-            <span className="material-symbols-outlined text-[#0E3B7D] text-sm font-bold">school</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-[#0E3B7D] text-sm font-bold">school</span>
             <span className="text-xs font-extrabold text-[#0E3B7D] uppercase tracking-wider">
               Admissions 2026–2027
             </span>
@@ -229,9 +214,9 @@ export default function AdmissionForm() {
                     }`}
                   >
                     {currentStep > item.step ? (
-                      <span className="material-symbols-outlined text-base">check</span>
+                      <span aria-hidden="true" className="material-symbols-outlined text-base">check</span>
                     ) : (
-                      <span className="material-symbols-outlined text-base">{item.icon}</span>
+                      <span aria-hidden="true" className="material-symbols-outlined text-base">{item.icon}</span>
                     )}
                   </div>
                   <span
@@ -265,10 +250,11 @@ export default function AdmissionForm() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div className="space-y-1.5 sm:col-span-2">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  <label htmlFor="adm-student-name" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                     Full Student Name (as on Passport / Birth Certificate) *
                   </label>
                   <input
+                    id="adm-student-name"
                     required
                     type="text"
                     value={formData.studentName}
@@ -279,10 +265,11 @@ export default function AdmissionForm() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  <label htmlFor="adm-dob" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                     Date of Birth *
                   </label>
                   <input
+                    id="adm-dob"
                     required
                     type="date"
                     value={formData.dob}
@@ -292,10 +279,11 @@ export default function AdmissionForm() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  <label htmlFor="adm-gender" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                     Gender *
                   </label>
                   <select
+                    id="adm-gender"
                     value={formData.gender}
                     onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0E3B7D] outline-none transition-all text-sm text-slate-900"
@@ -307,10 +295,11 @@ export default function AdmissionForm() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  <label htmlFor="adm-program-level" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                     Target Academic Program *
                   </label>
                   <select
+                    id="adm-program-level"
                     value={formData.programLevel}
                     onChange={(e) => setFormData({ ...formData, programLevel: e.target.value })}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0E3B7D] outline-none transition-all text-sm text-slate-900 font-semibold"
@@ -322,10 +311,11 @@ export default function AdmissionForm() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  <label htmlFor="adm-current-school" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                     Current / Previous School
                   </label>
                   <input
+                    id="adm-current-school"
                     type="text"
                     value={formData.currentSchool}
                     onChange={(e) => setFormData({ ...formData, currentSchool: e.target.value })}
@@ -343,7 +333,7 @@ export default function AdmissionForm() {
                   className="inline-flex items-center gap-2 px-6 py-3 bg-[#0E3B7D] hover:bg-[#164E9A] text-white rounded-xl text-xs font-extrabold uppercase tracking-wider shadow-md hover:scale-105 active:scale-95 disabled:opacity-50 transition-all"
                 >
                   <span>Continue to Curriculum</span>
-                  <span className="material-symbols-outlined text-sm font-bold">arrow_forward</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-sm font-bold">arrow_forward</span>
                 </button>
               </div>
             </div>
@@ -363,40 +353,43 @@ export default function AdmissionForm() {
 
               {/* Stream Selection */}
               <div className="space-y-3">
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                   Academic Focus Track
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3" role="radiogroup" aria-label="Academic Focus Track">
                   {[
                     { id: "stem", label: "STEM & Pure Sciences", icon: "science", desc: "Physics, Chem, Bio, Pure Math" },
                     { id: "cs", label: "Computing & IT", icon: "developer_board", desc: "Computer Science, ICT, Math" },
                     { id: "business", label: "Business & Commerce", icon: "trending_up", desc: "Economics, Accounting, Business" },
                   ].map((track) => (
-                    <div
+                    <button
                       key={track.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={formData.academicStream === track.id}
                       onClick={() => setFormData({ ...formData, academicStream: track.id })}
-                      className={`p-4 rounded-2xl border cursor-pointer transition-all ${
+                      className={`p-4 rounded-2xl border text-left cursor-pointer transition-all ${
                         formData.academicStream === track.id
                           ? "border-[#0E3B7D] bg-[#E8F0FE] ring-2 ring-[#0E3B7D]/30"
                           : "border-slate-200 hover:border-[#0E3B7D]/50 bg-slate-50"
                       }`}
                     >
-                      <span className="material-symbols-outlined text-[#0E3B7D] text-2xl mb-1 font-bold">
+                      <span aria-hidden="true" className="material-symbols-outlined text-[#0E3B7D] text-2xl mb-1 font-bold block">
                         {track.icon}
                       </span>
-                      <h4 className="text-sm font-bold text-[#09234B]">{track.label}</h4>
-                      <p className="text-[11px] text-slate-500 mt-1 font-normal">{track.desc}</p>
-                    </div>
+                      <span className="block text-sm font-bold text-[#09234B]">{track.label}</span>
+                      <span className="block text-[11px] text-slate-500 mt-1 font-normal">{track.desc}</span>
+                    </button>
                   ))}
                 </div>
               </div>
 
               {/* Subject Checkboxes */}
               <div className="space-y-3">
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                   Select Target Electives / Subjects
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5" role="group" aria-label="Select Target Electives / Subjects">
                   {[
                     "Pure Mathematics",
                     "Further Mathematics",
@@ -417,13 +410,14 @@ export default function AdmissionForm() {
                         type="button"
                         key={subj}
                         onClick={() => toggleSubject(subj)}
-                        className={`flex items-center gap-2 p-2.5 rounded-xl text-left text-xs font-semibold border transition-all ${
+                        aria-pressed={isSelected}
+                        className={`flex items-center gap-2 p-2.5 rounded-xl text-left text-xs font-semibold border transition-all cursor-pointer ${
                           isSelected
                             ? "bg-[#FFF8E1] border-[#FFC700] text-[#09234B]"
                             : "bg-slate-50 border-slate-200 text-slate-600 hover:border-[#0E3B7D]/50"
                         }`}
                       >
-                        <span className="material-symbols-outlined text-base text-[#0E3B7D]">
+                        <span aria-hidden="true" className="material-symbols-outlined text-base text-[#0E3B7D]">
                           {isSelected ? "check_box" : "check_box_outline_blank"}
                         </span>
                         <span className="truncate">{subj}</span>
@@ -436,10 +430,11 @@ export default function AdmissionForm() {
               {/* Study Mode & Term */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  <label htmlFor="adm-start-term" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                     Intended Start Term
                   </label>
                   <select
+                    id="adm-start-term"
                     value={formData.intendedStartTerm}
                     onChange={(e) => setFormData({ ...formData, intendedStartTerm: e.target.value })}
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900"
@@ -450,10 +445,11 @@ export default function AdmissionForm() {
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  <label htmlFor="adm-study-mode" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                     Study Format
                   </label>
                   <select
+                    id="adm-study-mode"
                     value={formData.studyMode}
                     onChange={(e) => setFormData({ ...formData, studyMode: e.target.value })}
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900"
@@ -478,7 +474,7 @@ export default function AdmissionForm() {
                   className="inline-flex items-center gap-2 px-6 py-3 bg-[#0E3B7D] hover:bg-[#164E9A] text-white rounded-xl text-xs font-extrabold uppercase tracking-wider shadow-md hover:scale-105 active:scale-95 transition-all"
                 >
                   <span>Continue to Guardian Info</span>
-                  <span className="material-symbols-outlined text-sm font-bold">arrow_forward</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-sm font-bold">arrow_forward</span>
                 </button>
               </div>
             </div>
@@ -498,10 +494,11 @@ export default function AdmissionForm() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  <label htmlFor="adm-parent-name" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                     Parent / Guardian Full Name *
                   </label>
                   <input
+                    id="adm-parent-name"
                     required
                     type="text"
                     value={formData.parentName}
@@ -512,10 +509,11 @@ export default function AdmissionForm() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  <label htmlFor="adm-relationship" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                     Relationship to Student *
                   </label>
                   <select
+                    id="adm-relationship"
                     value={formData.relationship}
                     onChange={(e) => setFormData({ ...formData, relationship: e.target.value })}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0E3B7D] outline-none transition-all text-sm text-slate-900"
@@ -527,10 +525,11 @@ export default function AdmissionForm() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  <label htmlFor="adm-parent-email" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                     Email Address (for admissions status) *
                   </label>
                   <input
+                    id="adm-parent-email"
                     required
                     type="email"
                     value={formData.parentEmail}
@@ -541,10 +540,11 @@ export default function AdmissionForm() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  <label htmlFor="adm-parent-phone" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                     Primary Phone Number *
                   </label>
                   <input
+                    id="adm-parent-phone"
                     required
                     type="tel"
                     value={formData.parentPhone}
@@ -555,10 +555,11 @@ export default function AdmissionForm() {
                 </div>
 
                 <div className="space-y-1.5 sm:col-span-2">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  <label htmlFor="adm-address" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                     Residential Address in Yangon / Township
                   </label>
                   <input
+                    id="adm-address"
                     type="text"
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
@@ -583,7 +584,7 @@ export default function AdmissionForm() {
                   className="inline-flex items-center gap-2 px-6 py-3 bg-[#0E3B7D] hover:bg-[#164E9A] text-white rounded-xl text-xs font-extrabold uppercase tracking-wider shadow-md hover:scale-105 active:scale-95 disabled:opacity-50 transition-all"
                 >
                   <span>Continue to Uploads</span>
-                  <span className="material-symbols-outlined text-sm font-bold">arrow_forward</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-sm font-bold">arrow_forward</span>
                 </button>
               </div>
             </div>
@@ -592,6 +593,12 @@ export default function AdmissionForm() {
           {/* STEP 4: Document Uploads & Submission */}
           {currentStep === 4 && (
             <form onSubmit={handleSubmit} className="space-y-6">
+              {submitError && (
+                <div role="alert" className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-start gap-2.5">
+                  <span aria-hidden="true" className="material-symbols-outlined text-base shrink-0 text-red-500 mt-0.5">error</span>
+                  <span>{submitError}</span>
+                </div>
+              )}
               <div className="border-b border-slate-100 pb-4">
                 <h2 className="text-xl font-bold text-[#09234B]">
                   Step 4: Supporting Documents &amp; Review
@@ -613,14 +620,18 @@ export default function AdmissionForm() {
                     : "border-slate-300 hover:border-[#0E3B7D] bg-slate-50"
                 }`}
               >
-                <span className="material-symbols-outlined text-4xl text-[#FFC700] mb-2 font-bold">
+                <span aria-hidden="true" className="material-symbols-outlined text-4xl text-[#FFC700] mb-2 font-bold">
                   cloud_upload
                 </span>
                 <p className="text-sm font-bold text-[#09234B] mb-1">
                   Drag and drop student documents here
                 </p>
-                <p className="text-xs text-slate-500 mb-4 font-normal">
+                <p className="text-xs text-slate-500 mb-1 font-normal">
                   Accepts PDF, JPG, PNG up to 15MB (Transcripts, Birth Cert, Passport Photo)
+                </p>
+                <p className="text-[11px] text-slate-400 mb-4 font-normal">
+                  Documents listed here are recorded with your inquiry. Please present the original documents at the
+                  campus office during verification.
                 </p>
                 <label className="bg-white hover:bg-slate-100 border border-slate-300 px-5 py-2 rounded-full text-xs font-bold uppercase tracking-wider cursor-pointer transition-colors text-[#0E3B7D] inline-block shadow-sm">
                   Browse Files
@@ -640,7 +651,7 @@ export default function AdmissionForm() {
                       className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200"
                     >
                       <div className="flex items-center gap-2.5 overflow-hidden">
-                        <span className="material-symbols-outlined text-[#0E3B7D] text-base">description</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-[#0E3B7D] text-base">description</span>
                         <div>
                           <p className="text-xs font-bold text-[#09234B] truncate max-w-[280px]">
                             {file.name}
@@ -654,7 +665,7 @@ export default function AdmissionForm() {
                         className="text-slate-400 hover:text-red-500 p-1"
                         aria-label="Remove attached file"
                       >
-                        <span className="material-symbols-outlined text-sm">close</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-sm">close</span>
                       </button>
                     </div>
                   ))}
@@ -685,10 +696,20 @@ export default function AdmissionForm() {
                 </button>
                 <button
                   type="submit"
-                  className="inline-flex items-center gap-2 px-8 py-3.5 bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-md active:scale-95 border border-[#FFC700]"
+                  disabled={isSubmitting}
+                  className="inline-flex items-center gap-2 px-8 py-3.5 bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-md active:scale-95 border border-[#FFC700] disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
                 >
-                  <span>Submit Application</span>
-                  <span className="material-symbols-outlined text-base font-bold">verified</span>
+                  {isSubmitting ? (
+                    <>
+                      <span aria-hidden="true" className="w-3.5 h-3.5 border-2 border-[#09234B]/30 border-t-[#09234B] rounded-full animate-spin" />
+                      <span>Submitting Application...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Submit Application</span>
+                      <span aria-hidden="true" className="material-symbols-outlined text-base font-bold">verified</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>
@@ -698,7 +719,7 @@ export default function AdmissionForm() {
           {currentStep === 5 && submittedId && (
             <div className="text-center py-8 space-y-6">
               <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto ring-8 ring-emerald-50">
-                <span className="material-symbols-outlined text-3xl font-bold">check_circle</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-3xl font-bold">check_circle</span>
               </div>
 
               <div>
@@ -733,15 +754,26 @@ export default function AdmissionForm() {
                 </h4>
                 <div className="space-y-2 text-xs text-slate-600 font-normal">
                   <div className="flex items-start gap-2">
-                    <span className="material-symbols-outlined text-[#0E3B7D] text-sm shrink-0">mark_email_read</span>
-                    <span>A confirmation email has been sent to <strong>{formData.parentEmail}</strong>.</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-[#0E3B7D] text-sm shrink-0">mark_email_read</span>
+                    <span>
+                      {emailSent ? (
+                        <>
+                          A confirmation email has been sent to <strong>{formData.parentEmail}</strong>.
+                        </>
+                      ) : (
+                        <>
+                          Our Admissions Office will contact you at <strong>{formData.parentEmail}</strong> or{" "}
+                          <strong>{formData.parentPhone}</strong> with your confirmation.
+                        </>
+                      )}
+                    </span>
                   </div>
                   <div className="flex items-start gap-2">
-                    <span className="material-symbols-outlined text-[#0E3B7D] text-sm shrink-0">calendar_today</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-[#0E3B7D] text-sm shrink-0">calendar_today</span>
                     <span>Our admissions counselor will contact you within 24–48 hours to schedule the placement assessment.</span>
                   </div>
                   <div className="flex items-start gap-2">
-                    <span className="material-symbols-outlined text-[#0E3B7D] text-sm shrink-0">apartment</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-[#0E3B7D] text-sm shrink-0">apartment</span>
                     <span>Campus placement takes place at No. 23B, Ywar Ma Kyaung Lane, Hlaing Township, Yangon.</span>
                   </div>
                 </div>
@@ -753,7 +785,7 @@ export default function AdmissionForm() {
                   onClick={() => window.print()}
                   className="px-6 py-2.5 rounded-full border border-slate-300 text-xs font-bold uppercase tracking-wider hover:bg-slate-100 transition-colors flex items-center gap-1.5 text-slate-700"
                 >
-                  <span className="material-symbols-outlined text-sm">print</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-sm">print</span>
                   <span>Print Receipt</span>
                 </button>
                 <a

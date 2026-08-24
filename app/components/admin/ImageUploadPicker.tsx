@@ -150,16 +150,16 @@ export default function ImageUploadPicker({
     <div className="space-y-2 text-xs">
       <div className="flex items-center justify-between">
         <label className="font-bold text-slate-700 flex items-center gap-1.5">
-          <span className="material-symbols-outlined text-sm text-[#0E3B7D]">add_photo_alternate</span>
+          <span aria-hidden="true" className="material-symbols-outlined text-sm text-[#0E3B7D]">add_photo_alternate</span>
           <span>{label}</span>
         </label>
         {value && (
-          <button
+          <button aria-label="Delete"
             type="button"
             onClick={() => onChange("")}
             className="text-red-500 hover:text-red-700 text-[11px] font-bold flex items-center gap-1"
           >
-            <span className="material-symbols-outlined text-xs">delete</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-xs">delete</span>
             <span>Remove Image</span>
           </button>
         )}
@@ -176,7 +176,7 @@ export default function ImageUploadPicker({
               : "text-slate-500 hover:text-slate-800"
           }`}
         >
-          <span className="material-symbols-outlined text-sm">cloud_upload</span>
+          <span aria-hidden="true" className="material-symbols-outlined text-sm">cloud_upload</span>
           <span>Upload File</span>
         </button>
         <button
@@ -188,7 +188,7 @@ export default function ImageUploadPicker({
               : "text-slate-500 hover:text-slate-800"
           }`}
         >
-          <span className="material-symbols-outlined text-sm">photo_library</span>
+          <span aria-hidden="true" className="material-symbols-outlined text-sm">photo_library</span>
           <span>School Library</span>
         </button>
         <button
@@ -200,7 +200,7 @@ export default function ImageUploadPicker({
               : "text-slate-500 hover:text-slate-800"
           }`}
         >
-          <span className="material-symbols-outlined text-sm">link</span>
+          <span aria-hidden="true" className="material-symbols-outlined text-sm">link</span>
           <span>Direct URL</span>
         </button>
       </div>
@@ -238,7 +238,7 @@ export default function ImageUploadPicker({
           ) : (
             <div className="py-2 flex flex-col items-center justify-center gap-2.5 w-full">
               <div className="w-11 h-11 rounded-2xl bg-blue-100/80 text-[#0E3B7D] flex items-center justify-center shadow-xs">
-                <span className="material-symbols-outlined text-2xl">file_upload</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-2xl">file_upload</span>
               </div>
               <div className="text-center pointer-events-none">
                 <p className="font-bold text-slate-800 text-xs mb-0.5">
@@ -256,7 +256,7 @@ export default function ImageUploadPicker({
                 }}
                 className="mt-1 inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-[#0E3B7D] hover:bg-[#164E9A] text-white font-black text-xs shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer border border-[#FFC700]/30"
               >
-                <span className="material-symbols-outlined text-base">folder_open</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-base">folder_open</span>
                 <span>Browse Image File</span>
               </button>
             </div>
@@ -295,7 +295,7 @@ export default function ImageUploadPicker({
                     />
                     {isSelected && (
                       <div className="absolute inset-0 bg-[#0E3B7D]/60 flex items-center justify-center text-white">
-                        <span className="material-symbols-outlined text-lg">check_circle</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-lg">check_circle</span>
                       </div>
                     )}
                   </div>
@@ -328,7 +328,7 @@ export default function ImageUploadPicker({
       {/* Error Message */}
       {errorMessage && (
         <div className="p-2 rounded-xl bg-red-50 text-red-700 text-[11px] font-semibold flex items-center gap-1.5 border border-red-200">
-          <span className="material-symbols-outlined text-sm">error</span>
+          <span aria-hidden="true" className="material-symbols-outlined text-sm">error</span>
           <span>{errorMessage}</span>
         </div>
       )}
@@ -347,15 +347,15 @@ export default function ImageUploadPicker({
                 onClick={() => fileInputRef.current?.click()}
                 className="px-2.5 py-1 rounded-lg bg-blue-50 text-[#0E3B7D] hover:bg-blue-100 font-bold text-[10px] flex items-center gap-1 transition-colors border border-blue-200 cursor-pointer"
               >
-                <span className="material-symbols-outlined text-xs">refresh</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-xs">refresh</span>
                 <span>Replace</span>
               </button>
-              <button
+              <button aria-label="Delete"
                 type="button"
                 onClick={() => onChange("")}
                 className="px-2 py-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 font-bold text-[10px] flex items-center gap-1 transition-colors border border-red-200 cursor-pointer"
               >
-                <span className="material-symbols-outlined text-xs">delete</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-xs">delete</span>
                 <span>Remove</span>
               </button>
             </div>

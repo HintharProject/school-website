@@ -135,7 +135,7 @@ export default function Navbar() {
               className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full text-xs font-extrabold tracking-wider uppercase transition-all duration-200 bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] shadow-md hover:shadow-lg active:scale-95 whitespace-nowrap border border-[#FFC700]"
             >
               <span>Apply Now</span>
-              <span className="material-symbols-outlined text-sm font-bold">arrow_forward</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-sm font-bold">arrow_forward</span>
             </Link>
 
             {/* Mobile Menu Toggle Button */}
@@ -149,7 +149,7 @@ export default function Navbar() {
               }`}
               aria-label="Open navigation menu"
             >
-              <span className="material-symbols-outlined text-28px">menu</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-28px">menu</span>
             </button>
           </div>
         </div>
@@ -200,7 +200,7 @@ export default function Navbar() {
               className="text-slate-500 hover:text-[#0E3B7D] p-1.5 rounded-lg hover:bg-slate-200 transition-colors"
               aria-label="Close menu"
             >
-              <span className="material-symbols-outlined text-2xl">close</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-2xl">close</span>
             </button>
           </div>
 
@@ -227,7 +227,7 @@ export default function Navbar() {
                   }`}
                 >
                   <span>{item.label}</span>
-                  <span className="material-symbols-outlined text-xs opacity-60">
+                  <span aria-hidden="true" className="material-symbols-outlined text-xs opacity-60">
                     arrow_forward
                   </span>
                 </Link>
@@ -242,14 +242,14 @@ export default function Navbar() {
                 className="flex items-center justify-center gap-2 w-full bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] py-3 rounded-xl text-xs font-extrabold tracking-wider uppercase shadow-md active:scale-95 transition-all"
               >
                 <span>Apply for Admission</span>
-                <span className="material-symbols-outlined text-base font-bold">arrow_forward</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-base font-bold">arrow_forward</span>
               </Link>
               <Link
                 href="/admin/login"
                 onClick={() => setMobileOpen(false)}
                 className="flex items-center justify-center gap-2 w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl text-xs font-bold tracking-wider uppercase border border-slate-200 hover:text-[#0E3B7D] transition-all"
               >
-                <span className="material-symbols-outlined text-base">admin_panel_settings</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-base">admin_panel_settings</span>
                 <span>Staff & Admin Portal</span>
               </Link>
             </div>

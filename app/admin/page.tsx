@@ -128,21 +128,12 @@ export default function AdminDashboardPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <Link
-            href="/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold transition-all flex items-center gap-1.5"
-          >
-            <span className="material-symbols-outlined text-sm text-[#0E3B7D]">open_in_new</span>
-            <span>Public Site</span>
-          </Link>
           {isAdmin ? (
             <Link
               href="/admin/users"
               className="px-4 py-2.5 rounded-xl bg-[#0E3B7D] hover:bg-[#164E9A] text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
             >
-              <span className="material-symbols-outlined text-sm">person_add</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-sm">person_add</span>
               <span>Invite Account</span>
             </Link>
           ) : (
@@ -150,7 +141,7 @@ export default function AdminDashboardPage() {
               href="/admin/yearbook"
               className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
             >
-              <span className="material-symbols-outlined text-sm">add</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-sm">add</span>
               <span>Submit Yearbook Entry</span>
             </Link>
           )}
@@ -163,7 +154,7 @@ export default function AdminDashboardPage() {
           <>
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-blue-50 text-[#0E3B7D] flex items-center justify-center font-bold">
-                <span className="material-symbols-outlined text-2xl">school</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-2xl">school</span>
               </div>
               <div>
                 <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Admissions</p>
@@ -174,7 +165,7 @@ export default function AdminDashboardPage() {
 
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold">
-                <span className="material-symbols-outlined text-2xl">location_city</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-2xl">location_city</span>
               </div>
               <div>
                 <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Campuses</p>
@@ -185,7 +176,7 @@ export default function AdminDashboardPage() {
 
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center font-bold">
-                <span className="material-symbols-outlined text-2xl">menu_book</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-2xl">menu_book</span>
               </div>
               <div>
                 <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Classes &amp; Syllabi</p>
@@ -196,7 +187,7 @@ export default function AdminDashboardPage() {
 
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
-                <span className="material-symbols-outlined text-2xl">manage_accounts</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-2xl">manage_accounts</span>
               </div>
               <div>
                 <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">User Directory</p>
@@ -207,9 +198,9 @@ export default function AdminDashboardPage() {
           </>
         ) : (
           <>
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
+            <div className="bg-white p-5 rounded-2xl border border-[#FFC700]/60 ring-1 ring-[#FFC700]/30 shadow-sm flex items-center gap-4 sm:col-span-2 xl:col-span-1">
               <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
-                <span className="material-symbols-outlined text-2xl">auto_stories</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-2xl">auto_stories</span>
               </div>
               <div>
                 <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">My Submissions</p>
@@ -220,7 +211,7 @@ export default function AdminDashboardPage() {
 
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-blue-50 text-[#0E3B7D] flex items-center justify-center font-bold">
-                <span className="material-symbols-outlined text-2xl">groups</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-2xl">groups</span>
               </div>
               <div>
                 <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Student Societies</p>
@@ -231,7 +222,7 @@ export default function AdminDashboardPage() {
 
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center font-bold">
-                <span className="material-symbols-outlined text-2xl">event</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-2xl">event</span>
               </div>
               <div>
                 <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Events &amp; Activities</p>
@@ -242,7 +233,7 @@ export default function AdminDashboardPage() {
 
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold">
-                <span className="material-symbols-outlined text-2xl">menu_book</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-2xl">menu_book</span>
               </div>
               <div>
                 <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Course Schedules</p>
@@ -253,6 +244,33 @@ export default function AdminDashboardPage() {
           </>
         )}
       </div>
+
+      {/* Contributor Quick Actions */}
+      {!isAdmin && (
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
+          <h2 className="text-base font-black text-[#09234B] uppercase tracking-wider mb-4">
+            Quick Actions
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {[
+              { href: "/admin/yearbook", icon: "auto_stories", title: "Yearbook Entry", desc: "Submit alumni honors" },
+              { href: "/admin/classes", icon: "menu_book", title: "Classes & Timetables", desc: "Browse course schedules" },
+              { href: "/admin/clubs", icon: "groups", title: "Clubs & Activities", desc: "Propose societies & events" },
+              { href: "/admin/notices", icon: "campaign", title: "Noticeboard", desc: "Messages & your tasks" },
+            ].map((a) => (
+              <Link
+                key={a.href}
+                href={a.href}
+                className="group p-4 rounded-2xl border border-slate-200 hover:border-[#0E3B7D]/50 hover:bg-[#E8F0FE]/40 transition-all"
+              >
+                <span aria-hidden="true" className="material-symbols-outlined text-2xl text-[#0E3B7D]">{a.icon}</span>
+                <p className="text-xs font-black text-[#09234B] mt-2 group-hover:text-[#0E3B7D]">{a.title}</p>
+                <p className="text-[10px] text-slate-500 mt-0.5">{a.desc}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Admin Recent Applications Table */}
       {isAdmin && (
@@ -269,7 +287,7 @@ export default function AdminDashboardPage() {
               className="text-xs font-bold text-[#0E3B7D] hover:underline flex items-center gap-1"
             >
               <span>View All Pipeline</span>
-              <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-sm">arrow_forward</span>
             </Link>
           </div>
 

@@ -4,6 +4,7 @@ import {
   text,
   integer,
   index,
+  uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
 // ==============================================================================
@@ -401,6 +402,78 @@ export const auditLogs = sqliteTable(
   ]
 );
 
+// Club Members Table (admin-managed roster; no user account required)
+export const clubMembers = sqliteTable(
+  "club_members",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    clubId: integer("club_id")
+      .notNull()
+      .references(() => clubs.id, { onDelete: "cascade" }),
+    studentName: text("student_name").notNull(),
+    grade: text("grade"),
+    contactEmail: text("contact_email"),
+    contactPhone: text("contact_phone"),
+    notes: text("notes"),
+    status: text("status").notNull().default("active"), // "active" | "left"
+    addedBy: text("added_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
+  },
+  (table) => [
+    index("idx_club_members_club").on(table.clubId),
+    index("idx_club_members_status").on(table.status),
+  ]
+);
+
+// Noticeboard: messages and tasks published by admins (e.g. from the
+// Principal's office) to administrators and student contributors.
+export const notices = sqliteTable(
+  "notices",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    priority: text("priority").notNull().default("normal"), // "normal" | "urgent"
+    targetType: text("target_type").notNull().default("all"), // "all" | "admins" | "contributors"
+    isTask: integer("is_task", { mode: "boolean" }).notNull().default(false),
+    dueDate: text("due_date"),
+    createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
+  },
+  (table) => [
+    index("idx_notices_target").on(table.targetType),
+    index("idx_notices_created").on(table.createdAt),
+  ]
+);
+
+// Per-user acknowledgement/completion of a notice task.
+export const noticeReads = sqliteTable(
+  "notice_reads",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    noticeId: integer("notice_id")
+      .notNull()
+      .references(() => notices.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    completedAt: text("completed_at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
+  },
+  (table) => [uniqueIndex("idx_notice_read_unique").on(table.noticeId, table.userId)]
+);
+
 // ==============================================================================
 // 3. RELATIONS DEFINITIONS
 // ==============================================================================
@@ -470,6 +543,36 @@ export const yearbookAlumniRelations = relations(yearbookAlumni, ({ one }) => ({
   }),
 }));
 
+export const clubMembersRelations = relations(clubMembers, ({ one }) => ({
+  club: one(clubs, {
+    fields: [clubMembers.clubId],
+    references: [clubs.id],
+  }),
+  adder: one(users, {
+    fields: [clubMembers.addedBy],
+    references: [users.id],
+  }),
+}));
+
+export const noticesRelations = relations(notices, ({ one, many }) => ({
+  author: one(users, {
+    fields: [notices.createdBy],
+    references: [users.id],
+  }),
+  reads: many(noticeReads),
+}));
+
+export const noticeReadsRelations = relations(noticeReads, ({ one }) => ({
+  notice: one(notices, {
+    fields: [noticeReads.noticeId],
+    references: [notices.id],
+  }),
+  user: one(users, {
+    fields: [noticeReads.userId],
+    references: [users.id],
+  }),
+}));
+
 // Singular aliases for Better Auth compatibility
 export const user = users;
 export const session = sessions;
@@ -507,6 +610,15 @@ export type NewActivity = typeof activities.$inferInsert;
 
 export type YearbookScholar = typeof yearbookAlumni.$inferSelect;
 export type NewYearbookScholar = typeof yearbookAlumni.$inferInsert;
+
+export type ClubMember = typeof clubMembers.$inferSelect;
+export type NewClubMember = typeof clubMembers.$inferInsert;
+
+export type Notice = typeof notices.$inferSelect;
+export type NewNotice = typeof notices.$inferInsert;
+
+export type NoticeRead = typeof noticeReads.$inferSelect;
+export type NewNoticeRead = typeof noticeReads.$inferInsert;
 
 export type FileAsset = typeof fileAssets.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;

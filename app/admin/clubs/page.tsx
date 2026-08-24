@@ -28,6 +28,22 @@ import {
   updateActivityAction,
   deleteActivityAction,
 } from "@/lib/actions/activities";
+import {
+  getClubMembersAction,
+  addClubMemberAction,
+  removeClubMemberAction,
+} from "@/lib/actions/clubMembers";
+
+interface ClubMemberRow {
+  id: number;
+  clubId: number;
+  studentName: string;
+  grade?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  notes?: string | null;
+  status: string;
+}
 
 export default function AdminClubsPage() {
   const [activeSection, setActiveSection] = useState<"clubs" | "activities">("clubs");
@@ -45,6 +61,19 @@ export default function AdminClubsPage() {
   const [isAddClubModalOpen, setIsAddClubModalOpen] = useState(false);
   const [editingClub, setEditingClub] = useState<ClubItem | null>(null);
   const [deletingClub, setDeletingClub] = useState<ClubItem | null>(null);
+
+  // Club members state
+  const [membersClub, setMembersClub] = useState<ClubItem | null>(null);
+  const [clubMemberList, setClubMemberList] = useState<ClubMemberRow[]>([]);
+  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
+  const [isAddingMember, setIsAddingMember] = useState(false);
+  const [memberForm, setMemberForm] = useState({
+    studentName: "",
+    grade: "",
+    contactEmail: "",
+    contactPhone: "",
+    notes: "",
+  });
 
   // Modals state - Activities
   const [isAddActivityModalOpen, setIsAddActivityModalOpen] = useState(false);
@@ -190,6 +219,58 @@ export default function AdminClubsPage() {
     }
   };
 
+  // Club members handlers
+  const openMembersModal = async (club: ClubItem) => {
+    setMembersClub(club);
+    setIsLoadingMembers(true);
+    setMemberForm({ studentName: "", grade: "", contactEmail: "", contactPhone: "", notes: "" });
+    try {
+      const rows = await getClubMembersAction(club.id);
+      setClubMemberList(rows as ClubMemberRow[]);
+    } catch (err: any) {
+      showToast(`Error: ${err?.message || "Failed to load club members."}`);
+      setClubMemberList([]);
+    } finally {
+      setIsLoadingMembers(false);
+    }
+  };
+
+  const handleAddMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!membersClub || !memberForm.studentName.trim() || isAddingMember) return;
+    setIsAddingMember(true);
+    try {
+      const res = await addClubMemberAction(membersClub.id, memberForm);
+      if (res.success) {
+        showToast(`${memberForm.studentName} added to ${membersClub.name}.`);
+        setMemberForm({ studentName: "", grade: "", contactEmail: "", contactPhone: "", notes: "" });
+        const rows = await getClubMembersAction(membersClub.id);
+        setClubMemberList(rows as ClubMemberRow[]);
+      } else {
+        showToast(`Error: ${res.error || "Failed to add member."}`);
+      }
+    } catch (err: any) {
+      showToast(`Error: ${err?.message || "Failed to add member."}`);
+    } finally {
+      setIsAddingMember(false);
+    }
+  };
+
+  const handleRemoveMember = async (memberId: number, studentName: string) => {
+    if (!membersClub) return;
+    try {
+      const res = await removeClubMemberAction(memberId);
+      if (res.success) {
+        setClubMemberList((prev) => prev.filter((m) => m.id !== memberId));
+        showToast(`${studentName} removed from ${membersClub.name}.`);
+      } else {
+        showToast(`Error: ${res.error || "Failed to remove member."}`);
+      }
+    } catch (err: any) {
+      showToast(`Error: ${err?.message || "Failed to remove member."}`);
+    }
+  };
+
   // Action Handlers - Activities
   const handleCreateActivity = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -239,8 +320,8 @@ export default function AdminClubsPage() {
     <div className="space-y-6">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#0E3B7D] text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-[#FFC700] animate-bounce">
-          <span className="material-symbols-outlined text-[#FFC700]">check_circle</span>
+        <div role="status" aria-live="polite" className="fixed bottom-6 right-6 z-50 bg-[#0E3B7D] text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-[#FFC700] animate-fade-in">
+          <span aria-hidden="true" className="material-symbols-outlined text-[#FFC700]">check_circle</span>
           <span className="text-sm font-bold">{toastMessage}</span>
         </div>
       )}
@@ -269,7 +350,7 @@ export default function AdminClubsPage() {
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            <span className="material-symbols-outlined text-base">groups</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-base">groups</span>
             <span>Clubs ({clubs.length})</span>
           </button>
           <button
@@ -280,7 +361,7 @@ export default function AdminClubsPage() {
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            <span className="material-symbols-outlined text-base">event</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-base">event</span>
             <span>Events &amp; Activities ({activities.length})</span>
           </button>
         </div>
@@ -289,7 +370,7 @@ export default function AdminClubsPage() {
       {/* Filter and Add Bar */}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-2xl border border-slate-200">
         <div className="relative w-full sm:w-80">
-          <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base">
+          <span aria-hidden="true" className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base">
             search
           </span>
           <input
@@ -310,7 +391,7 @@ export default function AdminClubsPage() {
             onClick={() => setIsAddClubModalOpen(true)}
             className="w-full sm:w-auto px-4 py-2 bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] font-extrabold text-xs rounded-xl shadow-xs flex items-center justify-center gap-1.5 uppercase tracking-wider cursor-pointer"
           >
-            <span className="material-symbols-outlined text-base">add_circle</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-base">add_circle</span>
             <span>{isAdmin ? "Add New Club" : "Propose New Club"}</span>
           </button>
         ) : (
@@ -318,7 +399,7 @@ export default function AdminClubsPage() {
             onClick={() => setIsAddActivityModalOpen(true)}
             className="w-full sm:w-auto px-4 py-2 bg-[#0E3B7D] hover:bg-[#164E9A] text-white font-extrabold text-xs rounded-xl shadow-xs flex items-center justify-center gap-1.5 uppercase tracking-wider cursor-pointer"
           >
-            <span className="material-symbols-outlined text-base">event_available</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-base">event_available</span>
             <span>{isAdmin ? "Add Event / Activity" : "Propose Activity"}</span>
           </button>
         )}
@@ -357,11 +438,11 @@ export default function AdminClubsPage() {
 
                     <div className="space-y-1 text-xs text-slate-500 pt-2 border-t border-slate-100">
                       <p className="flex items-center gap-1.5">
-                        <span className="material-symbols-outlined text-sm text-[#0E3B7D]">schedule</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-sm text-[#0E3B7D]">schedule</span>
                         <span>{club.meetingTime}</span>
                       </p>
                       <p className="flex items-center gap-1.5">
-                        <span className="material-symbols-outlined text-sm text-[#0E3B7D]">person</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-sm text-[#0E3B7D]">person</span>
                         <span className="truncate">{club.leadership}</span>
                       </p>
                     </div>
@@ -373,18 +454,28 @@ export default function AdminClubsPage() {
                     {campusInfo.label}
                   </span>
                   <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => setEditingClub(club)}
-                      className="p-1.5 rounded-lg text-slate-500 hover:text-[#0E3B7D] hover:bg-blue-50 transition-colors cursor-pointer"
-                    >
-                      <span className="material-symbols-outlined text-base">edit</span>
-                    </button>
                     {isAdmin && (
                       <button
+                        onClick={() => openMembersModal(club)}
+                        aria-label={`Manage members of ${club.name}`}
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition-colors cursor-pointer"
+                      >
+                        <span aria-hidden="true" className="material-symbols-outlined text-base">group_add</span>
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setEditingClub(club)}
+                      aria-label={`Edit ${club.name}`}
+                      className="p-1.5 rounded-lg text-slate-500 hover:text-[#0E3B7D] hover:bg-blue-50 transition-colors cursor-pointer"
+                    >
+                      <span aria-hidden="true" className="material-symbols-outlined text-base">edit</span>
+                    </button>
+                    {isAdmin && (
+                      <button aria-label="Delete"
                         onClick={() => setDeletingClub(club)}
                         className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
                       >
-                        <span className="material-symbols-outlined text-base">delete</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-base">delete</span>
                       </button>
                     )}
                   </div>
@@ -425,31 +516,31 @@ export default function AdminClubsPage() {
 
                 <div className="p-5 space-y-2.5">
                   <div className="flex items-center gap-2 text-xs font-bold text-[#0E3B7D]">
-                    <span className="material-symbols-outlined text-sm">calendar_month</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-sm">calendar_month</span>
                     <span>{act.date} • {act.time}</span>
                   </div>
                   <h3 className="text-base font-black text-[#09234B]">{act.title}</h3>
                   <p className="text-xs text-slate-600 line-clamp-2">{act.description}</p>
                   <p className="text-xs text-slate-500 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-xs">location_on</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-xs">location_on</span>
                     <span>{act.location}</span>
                   </p>
                 </div>
               </div>
 
               <div className="p-3 px-5 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-1.5">
-                <button
+                <button aria-label="Edit"
                   onClick={() => setEditingActivity(act)}
                   className="p-1.5 rounded-lg text-slate-500 hover:text-[#0E3B7D] hover:bg-blue-50 transition-colors cursor-pointer"
                 >
-                  <span className="material-symbols-outlined text-base">edit</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-base">edit</span>
                 </button>
                 {isAdmin && (
-                  <button
+                  <button aria-label="Delete"
                     onClick={() => setDeletingActivity(act)}
                     className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
                   >
-                    <span className="material-symbols-outlined text-base">delete</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-base">delete</span>
                   </button>
                 )}
               </div>
@@ -461,7 +552,7 @@ export default function AdminClubsPage() {
       {/* ADD CLUB MODAL */}
       {isAddClubModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 space-y-4 shadow-2xl">
+          <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 space-y-4 shadow-2xl">
             <h2 className="text-xl font-black text-[#09234B]">Add / Propose Student Club</h2>
             <form onSubmit={handleCreateClub} className="space-y-3 text-xs">
               <div>
@@ -576,7 +667,7 @@ export default function AdminClubsPage() {
       {/* EDIT CLUB MODAL */}
       {editingClub && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 space-y-4 shadow-2xl">
+          <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 space-y-4 shadow-2xl">
             <h2 className="text-xl font-black text-[#09234B]">Edit Club: {editingClub.name}</h2>
             <form onSubmit={handleSaveEditClub} className="space-y-3 text-xs">
               <div>
@@ -687,7 +778,7 @@ export default function AdminClubsPage() {
       {/* ADD ACTIVITY MODAL */}
       {isAddActivityModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 space-y-4 shadow-2xl">
+          <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 space-y-4 shadow-2xl">
             <h2 className="text-xl font-black text-[#09234B]">Add / Propose Activity</h2>
             <form onSubmit={handleCreateActivity} className="space-y-3 text-xs">
               <div>
@@ -860,7 +951,7 @@ export default function AdminClubsPage() {
       {/* EDIT ACTIVITY MODAL */}
       {editingActivity && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 space-y-4 shadow-2xl">
+          <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 space-y-4 shadow-2xl">
             <h2 className="text-xl font-black text-[#09234B]">Edit Activity: {editingActivity.title}</h2>
             <form onSubmit={handleSaveEditActivity} className="space-y-3 text-xs">
               <div>
@@ -981,10 +1072,140 @@ export default function AdminClubsPage() {
         </div>
       )}
 
+      {/* CLUB MEMBERS MODAL */}
+      {membersClub && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="members-modal-title"
+            className="bg-white rounded-3xl max-w-xl w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 space-y-5 shadow-2xl"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 id="members-modal-title" className="text-xl font-black text-[#09234B]">
+                  Members — {membersClub.name}
+                </h2>
+                <p className="text-xs text-slate-500 mt-1">
+                  Add students to this club by entering their details. No student account is required.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMembersClub(null)}
+                aria-label="Close members panel"
+                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <span aria-hidden="true" className="material-symbols-outlined text-base">close</span>
+              </button>
+            </div>
+
+            {/* Add member form */}
+            {isAdmin && (
+              <form onSubmit={handleAddMember} className="space-y-3 p-4 rounded-2xl border border-slate-200 bg-slate-50">
+                <p className="text-xs font-black text-slate-700 uppercase tracking-wider">Add Student to Club</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <label htmlFor="member-name" className="font-bold text-slate-700 block mb-1">Student Name *</label>
+                    <input
+                      id="member-name"
+                      type="text"
+                      required
+                      placeholder="e.g. Aung Kaung Myat"
+                      value={memberForm.studentName}
+                      onChange={(e) => setMemberForm({ ...memberForm, studentName: e.target.value })}
+                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="member-grade" className="font-bold text-slate-700 block mb-1">Grade / Year</label>
+                    <input
+                      id="member-grade"
+                      type="text"
+                      placeholder="e.g. IGCSE Year 10"
+                      value={memberForm.grade}
+                      onChange={(e) => setMemberForm({ ...memberForm, grade: e.target.value })}
+                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="member-email" className="font-bold text-slate-700 block mb-1">Contact Email</label>
+                    <input
+                      id="member-email"
+                      type="email"
+                      placeholder="student@hinthar.education"
+                      value={memberForm.contactEmail}
+                      onChange={(e) => setMemberForm({ ...memberForm, contactEmail: e.target.value })}
+                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="member-phone" className="font-bold text-slate-700 block mb-1">Contact Phone</label>
+                    <input
+                      id="member-phone"
+                      type="tel"
+                      placeholder="+95 9 ..."
+                      value={memberForm.contactPhone}
+                      onChange={(e) => setMemberForm({ ...memberForm, contactPhone: e.target.value })}
+                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
+                    />
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  disabled={isAddingMember}
+                  className="px-5 py-2 rounded-xl bg-[#0E3B7D] hover:bg-[#164E9A] text-white font-bold disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed"
+                >
+                  {isAddingMember ? "Adding..." : "Add Member"}
+                </button>
+              </form>
+            )}
+
+            {/* Member list */}
+            <div className="space-y-2">
+              <p className="text-xs font-black text-slate-700 uppercase tracking-wider">
+                Roster ({clubMemberList.length})
+              </p>
+              {isLoadingMembers ? (
+                <div className="py-8 flex justify-center" role="status" aria-label="Loading members">
+                  <span aria-hidden="true" className="w-6 h-6 border-2 border-slate-200 border-t-[#0E3B7D] rounded-full animate-spin" />
+                </div>
+              ) : clubMemberList.length === 0 ? (
+                <div className="text-center py-8 px-4 border border-dashed border-slate-300 rounded-2xl">
+                  <span aria-hidden="true" className="material-symbols-outlined text-3xl text-slate-300">group_off</span>
+                  <p className="text-xs text-slate-500 mt-2">No members yet. Use the form above to add the first student.</p>
+                </div>
+              ) : (
+                clubMemberList.map((m) => (
+                  <div key={m.id} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 bg-white">
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-[#09234B] truncate">{m.studentName}</p>
+                      <p className="text-[10px] text-slate-500 truncate">
+                        {[m.grade, m.contactEmail, m.contactPhone].filter(Boolean).join(" · ") || "No additional details"}
+                      </p>
+                    </div>
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveMember(m.id, m.studentName)}
+                        aria-label={`Remove ${m.studentName} from ${membersClub.name}`}
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0 cursor-pointer"
+                      >
+                        <span aria-hidden="true" className="material-symbols-outlined text-base">person_remove</span>
+                      </button>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* DELETE CONFIRMATIONS */}
       {deletingClub && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
+          <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
             <h3 className="text-base font-black text-[#09234B]">Delete Club?</h3>
             <p className="text-xs text-slate-600">
               Are you sure you want to delete <strong>{deletingClub.name}</strong>?
@@ -1011,7 +1232,7 @@ export default function AdminClubsPage() {
 
       {deletingActivity && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
+          <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
             <h3 className="text-base font-black text-[#09234B]">Delete Activity?</h3>
             <p className="text-xs text-slate-600">
               Are you sure you want to remove <strong>{deletingActivity.title}</strong>?

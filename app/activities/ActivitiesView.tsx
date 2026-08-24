@@ -32,38 +32,57 @@ const galleryMoments = [
   { image: "/images/g9.jpg", caption: "Alumni & Parent Engagement Night", tag: "Community" },
 ];
 
-export default function ActivitiesView() {
-  const [events, setEvents] = useState<SchoolEvent[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+interface RawActivityRecord {
+  id: number | string;
+  title: string;
+  category: string;
+  date: string;
+  month?: string;
+  day?: string;
+  time: string;
+  location: string;
+  description: string;
+  image?: string;
+  status: string;
+  featured?: number | boolean | null;
+  reviewStatus?: string;
+}
+
+function mapActivity(a: RawActivityRecord): SchoolEvent {
+  return {
+    id: Number(a.id),
+    title: a.title,
+    category: a.category as SchoolEvent["category"],
+    date: a.date,
+    month: (a.month || a.date || "").slice(0, 3).toUpperCase(),
+    day: a.day || a.date,
+    time: a.time,
+    location: a.location,
+    description: a.description,
+    image: a.image || "/images/engineering.avif",
+    status: a.status as SchoolEvent["status"],
+    featured: Boolean(a.featured),
+  };
+}
+
+export default function ActivitiesView({ initialData }: { initialData?: RawActivityRecord[] }) {
+  const [events, setEvents] = useState<SchoolEvent[]>(() => (initialData ?? []).map(mapActivity));
+  const [isLoading, setIsLoading] = useState(!initialData);
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [rsvpModalEvent, setRsvpModalEvent] = useState<SchoolEvent | null>(null);
-  const [rsvpSubmitted, setRsvpSubmitted] = useState(false);
-  const [rsvpName, setRsvpName] = useState("");
-  const [rsvpEmail, setRsvpEmail] = useState("");
 
   useEffect(() => {
+    if (initialData) return;
+
     async function loadEvents() {
       try {
         setIsLoading(true);
         const data = await getActivities();
-        if (data && data.length > 0) {
-          const published = data.filter((a: any) => a.reviewStatus === "published" || !a.reviewStatus);
-          const mapped: SchoolEvent[] = published.map((a: any) => ({
-            id: Number(a.id),
-            title: a.title,
-            category: a.category,
-            date: a.date,
-            month: a.month || "SEP",
-            day: a.day || "18",
-            time: a.time,
-            location: a.location,
-            description: a.description,
-            image: a.image || "/images/engineering.avif",
-            status: a.status,
-            featured: Boolean(a.featured),
-          }));
-          setEvents(mapped);
-        }
+        setEvents(
+          ((data ?? []) as RawActivityRecord[])
+            .filter((a) => a.reviewStatus === "published" || !a.reviewStatus)
+            .map(mapActivity)
+        );
       } catch (err) {
         console.warn("Activities load note:", err);
       } finally {
@@ -72,7 +91,7 @@ export default function ActivitiesView() {
     }
 
     loadEvents();
-  }, []);
+  }, [initialData]);
 
   const filteredEvents =
     activeCategory === "all"
@@ -80,17 +99,6 @@ export default function ActivitiesView() {
       : events.filter((e) => e.category === activeCategory);
 
   const featuredEvents = events.filter((e) => e.featured);
-
-  const handleRsvpSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setRsvpSubmitted(true);
-    setTimeout(() => {
-      setRsvpSubmitted(false);
-      setRsvpModalEvent(null);
-      setRsvpName("");
-      setRsvpEmail("");
-    }, 2500);
-  };
 
   return (
     <div className="min-h-screen flex flex-col pt-20 bg-slate-50">
@@ -100,7 +108,7 @@ export default function ActivitiesView() {
         {/* Page Hero Header */}
         <div className="text-center max-w-2xl mx-auto mb-12">
           <div className="inline-flex items-center gap-2 bg-[#E8F0FE] px-4 py-1.5 rounded-full mb-4 border border-[#0E3B7D]/20">
-            <span className="material-symbols-outlined text-[#0E3B7D] text-sm font-bold">campaign</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-[#0E3B7D] text-sm font-bold">campaign</span>
             <span className="text-xs font-extrabold text-[#0E3B7D] uppercase tracking-wider">
               Campus Life &amp; Events
             </span>
@@ -140,7 +148,7 @@ export default function ActivitiesView() {
         {featuredEvents.length > 0 && activeCategory === "all" && (
           <div className="mb-12">
             <div className="flex items-center gap-2 mb-4">
-              <span className="material-symbols-outlined text-[#FFC700] text-xl font-bold">stars</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-[#FFC700] text-xl font-bold">stars</span>
               <h2 className="text-lg font-black text-[#09234B] uppercase tracking-wider">
                 Featured Highlights
               </h2>
@@ -177,11 +185,12 @@ export default function ActivitiesView() {
                     </p>
                     <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
                       <span className="text-xs text-slate-500 flex items-center gap-1">
-                        <span className="material-symbols-outlined text-sm text-[#0E3B7D]">location_on</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-sm text-[#0E3B7D]">location_on</span>
                         <span>{ev.location}</span>
                       </span>
                       <button
                         onClick={() => setRsvpModalEvent(ev)}
+                        aria-haspopup="dialog"
                         className="px-4 py-1.5 bg-[#0E3B7D] hover:bg-[#164E9A] text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
                       >
                         Register / RSVP
@@ -218,7 +227,7 @@ export default function ActivitiesView() {
 
                 <div className="p-5 space-y-2.5">
                   <div className="flex items-center gap-2 text-xs font-bold text-[#0E3B7D]">
-                    <span className="material-symbols-outlined text-sm">event</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-sm">event</span>
                     <span>{ev.date}</span>
                   </div>
                   <h3 className="text-base font-black text-[#09234B]">{ev.title}</h3>
@@ -273,79 +282,57 @@ export default function ActivitiesView() {
           </div>
         </section>
 
-        {/* RSVP Modal */}
+        {/* Event Details Modal */}
         {rsvpModalEvent && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-4 shadow-2xl">
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="event-details-title"
+              className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-4 shadow-2xl"
+            >
               <div className="flex justify-between items-start">
                 <div>
                   <span className="text-[10px] font-black uppercase tracking-wider text-[#0E3B7D]">
                     Event Registration
                   </span>
-                  <h3 className="text-xl font-black text-[#09234B]">{rsvpModalEvent.title}</h3>
+                  <h3 id="event-details-title" className="text-xl font-black text-[#09234B]">{rsvpModalEvent.title}</h3>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setRsvpModalEvent(null)}
-                  className="text-slate-400 hover:text-slate-700"
+                  aria-label="Close event details"
+                  className="text-slate-400 hover:text-slate-700 cursor-pointer"
                 >
-                  <span className="material-symbols-outlined">close</span>
+                  <span aria-hidden="true" className="material-symbols-outlined">close</span>
                 </button>
               </div>
 
-              {rsvpSubmitted ? (
-                <div className="p-4 bg-emerald-50 text-emerald-800 rounded-2xl text-center space-y-2 border border-emerald-200">
-                  <span className="material-symbols-outlined text-3xl text-emerald-600">check_circle</span>
-                  <p className="text-xs font-bold">Registration Confirmed!</p>
-                  <p className="text-[11px] text-emerald-700">We have logged your RSVP slot for {rsvpModalEvent.date}.</p>
-                </div>
-              ) : (
-                <form onSubmit={handleRsvpSubmit} className="space-y-3 text-xs">
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Your Full Name</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Lin Myat Thu"
-                      value={rsvpName}
-                      onChange={(e) => setRsvpName(e.target.value)}
-                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
-                    />
-                  </div>
+              <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-100 text-[11px] text-slate-600 space-y-1">
+                <p><strong>Date &amp; Time:</strong> {rsvpModalEvent.date} ({rsvpModalEvent.time})</p>
+                <p><strong>Venue:</strong> {rsvpModalEvent.location}</p>
+              </div>
 
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Email Address</label>
-                    <input
-                      type="email"
-                      required
-                      placeholder="name@gmail.com"
-                      value={rsvpEmail}
-                      onChange={(e) => setRsvpEmail(e.target.value)}
-                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
-                    />
-                  </div>
+              <div className="space-y-2.5 text-xs text-slate-600 leading-relaxed">
+                <p>
+                  Registration for school events is handled by the Student Affairs office and homeroom teachers.
+                  Students can sign up at the campus office, or parents can reserve a place by calling us.
+                </p>
+                <p className="flex items-center gap-2">
+                  <span aria-hidden="true" className="material-symbols-outlined text-sm text-[#0E3B7D]">call</span>
+                  <span>Inquiries: +95 9 894 332200</span>
+                </p>
+              </div>
 
-                  <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-100 text-[11px] text-slate-600 space-y-1">
-                    <p><strong>Date &amp; Time:</strong> {rsvpModalEvent.date} ({rsvpModalEvent.time})</p>
-                    <p><strong>Venue:</strong> {rsvpModalEvent.location}</p>
-                  </div>
-
-                  <div className="flex justify-end gap-3 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setRsvpModalEvent(null)}
-                      className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-5 py-2 rounded-xl bg-[#0E3B7D] text-white font-bold"
-                    >
-                      Confirm RSVP
-                    </button>
-                  </div>
-                </form>
-              )}
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={() => setRsvpModalEvent(null)}
+                  className="px-4 py-2 rounded-xl bg-[#0E3B7D] hover:bg-[#164E9A] text-white font-bold cursor-pointer"
+                >
+                  Got it
+                </button>
+              </div>
             </div>
           </div>
         )}

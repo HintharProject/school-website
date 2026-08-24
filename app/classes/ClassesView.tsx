@@ -30,14 +30,79 @@ interface AnnouncementItem {
   content: string;
 }
 
-export default function ClassesView() {
+interface RawCourseRecord {
+  id: string;
+  name: string;
+  code: string;
+  grade: string;
+  category: string;
+  time: string;
+  instructor: string;
+  room?: string | null;
+  credits?: string | null;
+  description?: string | null;
+}
+
+interface RawBulletinRecord {
+  id: number | string;
+  title: string;
+  date: string;
+  type: string;
+  content: string;
+}
+
+function mapCourse(c: RawCourseRecord): CourseItem {
+  let level: "Lower Secondary" | "Pearson IGCSE" | "Pearson IAL" = "Pearson IAL";
+  if (c.grade.includes("Lower Secondary")) level = "Lower Secondary";
+  else if (c.grade.includes("IGCSE")) level = "Pearson IGCSE";
+
+  return {
+    id: c.id,
+    name: c.name,
+    code: c.code,
+    level,
+    category: c.category as CourseItem["category"],
+    schedule: c.time,
+    room: c.room || "Campus Academic Wing",
+    instructor: c.instructor,
+    description: c.description || `${c.grade} curriculum specialized instruction.`,
+    credits: c.credits || "Core Course",
+  };
+}
+
+function mapBulletin(b: RawBulletinRecord): AnnouncementItem {
+  let badgeColor = "bg-[#E8F0FE] text-[#0E3B7D]";
+  if (b.type === "Official Notice") badgeColor = "bg-red-100 text-red-700";
+  else if (b.type === "General") badgeColor = "bg-slate-100 text-slate-700";
+
+  return {
+    id: Number(b.id),
+    title: b.title,
+    date: b.date,
+    badge: b.type,
+    badgeColor,
+    content: b.content,
+  };
+}
+
+export default function ClassesView({
+  initialCourses,
+  initialBulletins,
+}: {
+  initialCourses?: RawCourseRecord[];
+  initialBulletins?: RawBulletinRecord[];
+}) {
   const [activeTab, setActiveTab] = useState<"courses" | "announcements">("courses");
   const [levelFilter, setLevelFilter] = useState<string>("all");
-  const [courses, setCourses] = useState<CourseItem[]>([]);
-  const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [courses, setCourses] = useState<CourseItem[]>(() => (initialCourses ?? []).map(mapCourse));
+  const [announcements, setAnnouncements] = useState<AnnouncementItem[]>(() =>
+    (initialBulletins ?? []).map(mapBulletin)
+  );
+  const [isLoading, setIsLoading] = useState(!initialCourses && !initialBulletins);
 
   useEffect(() => {
+    if (initialCourses && initialBulletins) return;
+
     async function loadData() {
       try {
         setIsLoading(true);
@@ -46,45 +111,8 @@ export default function ClassesView() {
           getBulletins().catch(() => []),
         ]);
 
-        if (dbCourses && dbCourses.length > 0) {
-          const mapped: CourseItem[] = dbCourses.map((c: any) => {
-            let level: "Lower Secondary" | "Pearson IGCSE" | "Pearson IAL" = "Pearson IAL";
-            if (c.grade.includes("Lower Secondary")) level = "Lower Secondary";
-            else if (c.grade.includes("IGCSE")) level = "Pearson IGCSE";
-
-            return {
-              id: c.id,
-              name: c.name,
-              code: c.code,
-              level,
-              category: c.category,
-              schedule: c.time,
-              room: c.room || "Campus Academic Wing",
-              instructor: c.instructor,
-              description: c.description || `${c.grade} curriculum specialized instruction.`,
-              credits: c.credits || "Core Course",
-            };
-          });
-          setCourses(mapped);
-        }
-
-        if (dbBulletins && dbBulletins.length > 0) {
-          const mappedBulletins: AnnouncementItem[] = dbBulletins.map((b: any) => {
-            let badgeColor = "bg-[#E8F0FE] text-[#0E3B7D]";
-            if (b.type === "Official Notice") badgeColor = "bg-red-100 text-red-700";
-            else if (b.type === "General") badgeColor = "bg-slate-100 text-slate-700";
-
-            return {
-              id: Number(b.id),
-              title: b.title,
-              date: b.date,
-              badge: b.type,
-              badgeColor,
-              content: b.content,
-            };
-          });
-          setAnnouncements(mappedBulletins);
-        }
+        setCourses(((dbCourses ?? []) as unknown as RawCourseRecord[]).map(mapCourse));
+        setAnnouncements(((dbBulletins ?? []) as unknown as RawBulletinRecord[]).map(mapBulletin));
       } catch (err) {
         console.warn("Classes query note:", err);
       } finally {
@@ -93,7 +121,7 @@ export default function ClassesView() {
     }
 
     loadData();
-  }, []);
+  }, [initialCourses, initialBulletins]);
 
   const filteredCourses =
     levelFilter === "all"
@@ -108,7 +136,7 @@ export default function ClassesView() {
         {/* Header */}
         <div className="text-center max-w-2xl mx-auto mb-10">
           <div className="inline-flex items-center gap-2 bg-[#E8F0FE] px-4 py-1.5 rounded-full mb-4 border border-[#0E3B7D]/20">
-            <span className="material-symbols-outlined text-[#0E3B7D] text-sm font-bold">schedule</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-[#0E3B7D] text-sm font-bold">schedule</span>
             <span className="text-xs font-extrabold text-[#0E3B7D] uppercase tracking-wider">
               Year 7 to 13 Timetables &amp; Bulletins
             </span>
@@ -190,7 +218,7 @@ export default function ClassesView() {
                         <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#E8F0FE] text-[#0E3B7D]">
                           {course.level}
                         </span>
-                        <span className="font-mono text-xs font-bold text-slate-400">
+                        <span className="font-mono text-xs font-bold text-slate-500">
                           {course.code}
                         </span>
                       </div>
@@ -205,15 +233,15 @@ export default function ClassesView() {
 
                     <div className="space-y-2 pt-4 border-t border-slate-100 text-xs text-slate-600">
                       <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-sm text-[#0E3B7D]">schedule</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-sm text-[#0E3B7D]">schedule</span>
                         <span className="font-medium">{course.schedule}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-sm text-[#0E3B7D]">person</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-sm text-[#0E3B7D]">person</span>
                         <span className="font-semibold text-slate-800">{course.instructor}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-sm text-[#0E3B7D]">location_on</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-sm text-[#0E3B7D]">location_on</span>
                         <span>{course.room}</span>
                       </div>
                     </div>
@@ -239,7 +267,7 @@ export default function ClassesView() {
                     <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${notice.badgeColor}`}>
                       {notice.badge}
                     </span>
-                    <span className="text-xs font-bold text-slate-400">{notice.date}</span>
+                    <span className="text-xs font-bold text-slate-500">{notice.date}</span>
                   </div>
                   <h3 className="text-base font-black text-[#09234B]">{notice.title}</h3>
                   <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">{notice.content}</p>

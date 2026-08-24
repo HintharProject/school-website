@@ -1,8 +1,8 @@
 "use server";
 
 import { getDb, yearbookAlumni, NewYearbookScholar } from "@/lib/db";
-import { eq, desc } from "drizzle-orm";
-import { requireAdmin, requireStudentOrAdmin, logAudit } from "@/lib/auth/rbac";
+import { eq, desc, or } from "drizzle-orm";
+import { requireAdmin, requireStudentOrAdmin, logAudit, getServerSession } from "@/lib/auth/rbac";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 
@@ -26,9 +26,25 @@ const yearbookSchema = z.object({
 
 export async function getYearbook() {
   const db = await getDb();
+  const { user } = await getServerSession();
+
+  if (!user) {
+    return db
+      .select()
+      .from(yearbookAlumni)
+      .where(eq(yearbookAlumni.status, "published"))
+      .orderBy(desc(yearbookAlumni.category), desc(yearbookAlumni.id));
+  }
+  if (user.role === "admin") {
+    return db
+      .select()
+      .from(yearbookAlumni)
+      .orderBy(desc(yearbookAlumni.category), desc(yearbookAlumni.id));
+  }
   return db
     .select()
     .from(yearbookAlumni)
+    .where(or(eq(yearbookAlumni.status, "published"), eq(yearbookAlumni.submittedBy, user.id)))
     .orderBy(desc(yearbookAlumni.category), desc(yearbookAlumni.id));
 }
 
@@ -71,20 +87,32 @@ export async function updateYearbookAction(id: number, data: unknown) {
   const validated = yearbookSchema.partial().parse(data);
   const db = await getDb();
 
+  let resetToReview = false;
   if (user.role === "student") {
     const existing = await db.select().from(yearbookAlumni).where(eq(yearbookAlumni.id, id)).limit(1);
     if (!existing.length || existing[0].submittedBy !== user.id) {
-      throw new Error("FORBIDDEN: You can only edit your own yearbook submissions.");
+      return { success: false as const, error: "You can only edit your own yearbook submissions." };
     }
+    resetToReview = !existing[0].status || existing[0].status === "published" || existing[0].status === "archived";
   }
 
-  await db
+  const updateData: Partial<NewYearbookScholar> = {
+    ...validated,
+    updatedAt: new Date().toISOString(),
+  };
+  if (resetToReview) {
+    updateData.status = "pending_review";
+  }
+
+  const updated = await db
     .update(yearbookAlumni)
-    .set({
-      ...validated,
-      updatedAt: new Date().toISOString(),
-    })
-    .where(eq(yearbookAlumni.id, id));
+    .set(updateData)
+    .where(eq(yearbookAlumni.id, id))
+    .returning({ id: yearbookAlumni.id });
+
+  if (!updated.length) {
+    return { success: false as const, error: "Yearbook entry not found. It may have been deleted." };
+  }
 
   await logAudit({
     actor: user,
@@ -99,25 +127,37 @@ export async function updateYearbookAction(id: number, data: unknown) {
   return { success: true };
 }
 
-export async function setYearbookStatusAction(id: number, status: "published" | "pending_review" | "archived", reviewerNotes?: string) {
+export async function setYearbookStatusAction(id: number, status: string, reviewerNotes?: string) {
   const user = await requireAdmin();
   const db = await getDb();
 
-  await db
+  const statusSchema = z.enum(["published", "pending_review", "archived"]);
+  const parsed = statusSchema.safeParse(status);
+  if (!parsed.success) {
+    return { success: false as const, error: "Invalid yearbook status." };
+  }
+  const validStatus = parsed.data;
+
+  const updated = await db
     .update(yearbookAlumni)
     .set({
-      status,
+      status: validStatus,
       reviewerNotes: reviewerNotes ?? undefined,
       updatedAt: new Date().toISOString(),
     })
-    .where(eq(yearbookAlumni.id, id));
+    .where(eq(yearbookAlumni.id, id))
+    .returning({ id: yearbookAlumni.id });
+
+  if (!updated.length) {
+    return { success: false as const, error: "Yearbook entry not found. It may have been deleted." };
+  }
 
   await logAudit({
     actor: user,
-    action: `ADMIN_SET_YEARBOOK_STATUS_${status.toUpperCase()}`,
+    action: `ADMIN_SET_YEARBOOK_STATUS_${validStatus.toUpperCase()}`,
     resource: "yearbook_alumni",
     resourceId: String(id),
-    details: { status, reviewerNotes },
+    details: { status: validStatus, reviewerNotes },
   });
 
   revalidatePath("/yearbook");

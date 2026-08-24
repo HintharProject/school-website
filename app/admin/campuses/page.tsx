@@ -150,7 +150,7 @@ export default function AdminCampusesPage() {
     return (
       <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-sm max-w-xl mx-auto my-12">
         <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto mb-4">
-          <span className="material-symbols-outlined text-3xl">lock</span>
+          <span aria-hidden="true" className="material-symbols-outlined text-3xl">lock</span>
         </div>
         <h2 className="text-xl font-black text-slate-800">Campus Master Records</h2>
         <p className="text-xs text-slate-500 mt-2 leading-relaxed">
@@ -164,8 +164,8 @@ export default function AdminCampusesPage() {
     <div className="space-y-6">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#0E3B7D] text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-[#FFC700] animate-bounce">
-          <span className="material-symbols-outlined text-[#FFC700]">check_circle</span>
+        <div role="status" aria-live="polite" className="fixed bottom-6 right-6 z-50 bg-[#0E3B7D] text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-[#FFC700] animate-fade-in">
+          <span aria-hidden="true" className="material-symbols-outlined text-[#FFC700]">check_circle</span>
           <span className="text-sm font-bold">{toastMessage}</span>
         </div>
       )}
@@ -189,7 +189,7 @@ export default function AdminCampusesPage() {
             onClick={() => setIsAddModalOpen(true)}
             className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] font-extrabold text-xs uppercase tracking-wider shadow-sm transition-all active:scale-95 cursor-pointer"
           >
-            <span className="material-symbols-outlined text-base">add_location_alt</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-base">add_location_alt</span>
             <span>Add New Campus</span>
           </button>
         </div>
@@ -217,7 +217,7 @@ export default function AdminCampusesPage() {
         </div>
 
         <div className="relative w-full sm:w-72">
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
+          <span aria-hidden="true" className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
             search
           </span>
           <input
@@ -271,19 +271,19 @@ export default function AdminCampusesPage() {
 
                 <div className="space-y-2 text-xs text-slate-600">
                   <div className="flex items-start gap-2">
-                    <span className="material-symbols-outlined text-base text-slate-400 shrink-0 mt-0.5">
+                    <span aria-hidden="true" className="material-symbols-outlined text-base text-slate-400 shrink-0 mt-0.5">
                       location_on
                     </span>
                     <span>{campus.address}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-base text-slate-400 shrink-0">
+                    <span aria-hidden="true" className="material-symbols-outlined text-base text-slate-400 shrink-0">
                       call
                     </span>
                     <span>{campus.phone}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-base text-slate-400 shrink-0">
+                    <span aria-hidden="true" className="material-symbols-outlined text-base text-slate-400 shrink-0">
                       mail
                     </span>
                     <span>{campus.email}</span>
@@ -331,24 +331,24 @@ export default function AdminCampusesPage() {
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-[11px] font-bold text-[#0E3B7D] hover:underline bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200"
                   >
-                    <span className="material-symbols-outlined text-xs">map</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-xs">map</span>
                     <span>Map</span>
                   </a>
                 )}
               </div>
               <div className="flex items-center gap-2">
-                <button
+                <button aria-label="Edit"
                   onClick={() => setEditingCampus(campus)}
                   className="px-3 py-1.5 rounded-lg bg-[#E8F0FE] hover:bg-[#0E3B7D] text-[#0E3B7D] hover:text-white font-bold text-xs transition-all flex items-center gap-1 cursor-pointer"
                 >
-                  <span className="material-symbols-outlined text-sm">edit</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-sm">edit</span>
                   <span>Edit</span>
                 </button>
-                <button
+                <button aria-label="Delete"
                   onClick={() => setDeletingCampus(campus)}
                   className="px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-600 text-red-600 hover:text-white font-bold text-xs transition-all flex items-center gap-1 cursor-pointer"
                 >
-                  <span className="material-symbols-outlined text-sm">delete</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-sm">delete</span>
                   <span>Delete</span>
                 </button>
               </div>
@@ -360,14 +360,14 @@ export default function AdminCampusesPage() {
       {/* EDIT CAMPUS MODAL */}
       {editingCampus && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl p-6 sm:p-8 space-y-6">
+          <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl p-6 sm:p-8 space-y-6">
             <div className="flex justify-between items-center pb-4 border-b border-slate-100">
               <h2 className="text-xl font-black text-[#09234B]">Edit Campus: {editingCampus.name}</h2>
               <button
                 onClick={() => setEditingCampus(null)}
                 className="text-slate-400 hover:text-slate-700"
               >
-                <span className="material-symbols-outlined">close</span>
+                <span aria-hidden="true" className="material-symbols-outlined">close</span>
               </button>
             </div>
 
@@ -513,14 +513,14 @@ export default function AdminCampusesPage() {
       {/* ADD CAMPUS MODAL */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl p-6 sm:p-8 space-y-6">
+          <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl p-6 sm:p-8 space-y-6">
             <div className="flex justify-between items-center pb-4 border-b border-slate-100">
               <h2 className="text-xl font-black text-[#09234B]">Add New School Campus</h2>
               <button
                 onClick={() => setIsAddModalOpen(false)}
                 className="text-slate-400 hover:text-slate-700"
               >
-                <span className="material-symbols-outlined">close</span>
+                <span aria-hidden="true" className="material-symbols-outlined">close</span>
               </button>
             </div>
 
@@ -659,9 +659,9 @@ export default function AdminCampusesPage() {
       {/* DELETE CONFIRMATION MODAL */}
       {deletingCampus && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+          <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
             <div className="w-12 h-12 rounded-xl bg-red-100 text-red-600 flex items-center justify-center">
-              <span className="material-symbols-outlined text-2xl">warning</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-2xl">warning</span>
             </div>
             <h3 className="text-lg font-black text-[#09234B]">Delete Campus?</h3>
             <p className="text-xs text-slate-600">

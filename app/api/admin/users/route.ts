@@ -14,8 +14,8 @@ export async function GET() {
 
     const userList = await getUsers();
     return NextResponse.json({ users: userList, count: userList.length });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Failed to fetch users" }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "Failed to fetch users." }, { status: 500 });
   }
 }
 
@@ -34,7 +34,7 @@ export async function DELETE(req: Request) {
 
     await deleteUserAction(id);
     return NextResponse.json({ success: true, message: "User deleted successfully" });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Failed to delete user" }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "Failed to delete user." }, { status: 500 });
   }
 }

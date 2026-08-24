@@ -10,13 +10,21 @@ import ChatbotWidget from "../components/ChatbotWidget";
 import { CampusRecord, mapCampusRecord } from "../admin/adminStore";
 import { getCampuses } from "@/lib/actions/campuses";
 
-export default function CampusesView() {
-  const [campuses, setCampuses] = useState<CampusRecord[]>([]);
+export default function CampusesView({
+  initialData,
+}: {
+  initialData?: Parameters<typeof mapCampusRecord>[0][];
+}) {
+  const [campuses, setCampuses] = useState<CampusRecord[]>(() =>
+    (initialData ?? []).map(mapCampusRecord)
+  );
   const [selectedCity, setSelectedCity] = useState<"All" | "Yangon" | "Mawlamyine">("All");
   const [activeCampusModal, setActiveCampusModal] = useState<CampusRecord | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!initialData);
 
   useEffect(() => {
+    if (initialData) return;
+
     async function loadCampuses() {
       try {
         setIsLoading(true);
@@ -31,7 +39,7 @@ export default function CampusesView() {
       }
     }
     loadCampuses();
-  }, []);
+  }, [initialData]);
 
   const filteredCampuses = campuses.filter((campus) => {
     if (selectedCity === "All") return true;
@@ -48,7 +56,7 @@ export default function CampusesView() {
         {/* Hero Section */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12 text-center">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#E8F0FE] text-[#0E3B7D] text-xs font-black uppercase tracking-wider mb-4 border border-[#0E3B7D]/20">
-            <span className="material-symbols-outlined text-sm">location_city</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-sm">location_city</span>
             <span>Nationwide Campus Network</span>
           </div>
           <h1 className="text-3xl sm:text-5xl font-black text-[#09234B] tracking-tight">
@@ -100,7 +108,7 @@ export default function CampusesView() {
           {/* Grid of Campuses */}
           {filteredCampuses.length === 0 && !isLoading && (
             <div className="text-center py-20 bg-white rounded-3xl border border-slate-200 p-8 shadow-xs max-w-xl mx-auto">
-              <span className="material-symbols-outlined text-5xl text-slate-300 mb-2">location_city</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-5xl text-slate-300 mb-2">location_city</span>
               <h3 className="text-base font-bold text-[#09234B]">No campuses listed</h3>
               <p className="text-xs text-slate-500 mt-1">
                 Active campus centers configured in the school database will appear here.
@@ -154,13 +162,13 @@ export default function CampusesView() {
                     <div className="space-y-4">
                       {/* Grades Served */}
                       <div className="flex items-center gap-2 text-xs font-bold text-[#0E3B7D] bg-blue-50/80 px-3.5 py-2 rounded-xl border border-blue-100">
-                        <span className="material-symbols-outlined text-sm">school</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-sm">school</span>
                         <span>{campus.gradesServed}</span>
                       </div>
 
                       {/* Address */}
                       <div className="flex items-start gap-2.5 text-xs sm:text-sm text-slate-700">
-                        <span className="material-symbols-outlined text-base text-[#0E3B7D] shrink-0 mt-0.5">
+                        <span aria-hidden="true" className="material-symbols-outlined text-base text-[#0E3B7D] shrink-0 mt-0.5">
                           pin_drop
                         </span>
                         <span className="font-medium">{campus.address}</span>
@@ -169,18 +177,18 @@ export default function CampusesView() {
                       {/* Contact Info */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-600">
                         <div className="flex items-center gap-2">
-                          <span className="material-symbols-outlined text-sm text-[#0E3B7D]">call</span>
+                          <span aria-hidden="true" className="material-symbols-outlined text-sm text-[#0E3B7D]">call</span>
                           <span className="font-semibold truncate">{campus.phone}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="material-symbols-outlined text-sm text-[#0E3B7D]">mail</span>
+                          <span aria-hidden="true" className="material-symbols-outlined text-sm text-[#0E3B7D]">mail</span>
                           <span className="font-semibold truncate">{campus.email}</span>
                         </div>
                       </div>
 
                       {/* Key Facilities Badges */}
                       <div>
-                        <p className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">
+                        <p className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 mb-2">
                           Campus Highlights &amp; Facilities
                         </p>
                         <div className="flex flex-wrap gap-1.5">
@@ -208,7 +216,7 @@ export default function CampusesView() {
                           onClick={() => setActiveCampusModal(campus)}
                           className="px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer"
                         >
-                          <span className="material-symbols-outlined text-base text-[#0E3B7D]">info</span>
+                          <span aria-hidden="true" className="material-symbols-outlined text-base text-[#0E3B7D]">info</span>
                           <span>Details</span>
                         </button>
                         {campus.mapUrl && (
@@ -218,7 +226,7 @@ export default function CampusesView() {
                             rel="noopener noreferrer"
                             className="px-3.5 py-2.5 rounded-xl bg-[#E8F0FE] hover:bg-[#0E3B7D] text-[#0E3B7D] hover:text-white text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer"
                           >
-                            <span className="material-symbols-outlined text-base">map</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-base">map</span>
                             <span>View Map</span>
                           </a>
                         )}
@@ -229,7 +237,7 @@ export default function CampusesView() {
                         className="px-4 py-2.5 rounded-xl bg-[#0E3B7D] hover:bg-[#164E9A] text-white text-xs font-black uppercase tracking-wider shadow-md hover:shadow-lg transition-all flex items-center gap-1.5"
                       >
                         <span>Apply</span>
-                        <span className="material-symbols-outlined text-base">arrow_forward</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-base">arrow_forward</span>
                       </Link>
                     </div>
                   </div>
@@ -242,7 +250,7 @@ export default function CampusesView() {
         {/* Modal: Full Campus Facilities */}
         {activeCampusModal && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 space-y-6 shadow-2xl">
+            <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 space-y-6 shadow-2xl">
               <div className="flex justify-between items-start">
                 <div>
                   <span className="text-xs font-black uppercase text-[#FFC700] tracking-wider bg-[#09234B] px-3 py-1 rounded-full">
@@ -257,7 +265,7 @@ export default function CampusesView() {
                   onClick={() => setActiveCampusModal(null)}
                   className="text-slate-400 hover:text-slate-700"
                 >
-                  <span className="material-symbols-outlined">close</span>
+                  <span aria-hidden="true" className="material-symbols-outlined">close</span>
                 </button>
               </div>
 
@@ -271,7 +279,7 @@ export default function CampusesView() {
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#E8F0FE] hover:bg-[#0E3B7D] text-[#0E3B7D] hover:text-white font-bold text-[11px] transition-colors shrink-0"
                     >
-                      <span className="material-symbols-outlined text-xs">map</span>
+                      <span aria-hidden="true" className="material-symbols-outlined text-xs">map</span>
                       <span>Open Map</span>
                     </a>
                   )}
@@ -286,7 +294,7 @@ export default function CampusesView() {
                   <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {activeCampusModal.facilities?.map((f, idx) => (
                       <li key={idx} className="flex items-center gap-2 bg-slate-50 p-2 rounded-xl">
-                        <span className="material-symbols-outlined text-sm text-[#0E3B7D]">check_circle</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-sm text-[#0E3B7D]">check_circle</span>
                         <span>{f}</span>
                       </li>
                     ))}
@@ -306,7 +314,7 @@ export default function CampusesView() {
                   className="px-5 py-2 bg-[#0E3B7D] text-white rounded-xl font-bold text-xs flex items-center gap-1"
                 >
                   <span>Apply Now</span>
-                  <span className="material-symbols-outlined text-xs">arrow_forward</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-xs">arrow_forward</span>
                 </Link>
               </div>
             </div>

@@ -11,8 +11,6 @@ const ALLOWED_MIME_TYPES = [
   "image/webp",
   "image/avif",
   "image/gif",
-  "image/svg+xml",
-  "application/pdf",
 ];
 
 export async function POST(req: NextRequest) {
@@ -41,8 +39,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: `Invalid file type (${mimeType}). Allowed formats: JPG, PNG, WebP, AVIF, GIF, SVG, PDF.`,
+          error: `Invalid file type (${mimeType || "unknown"}). Allowed formats: JPG, PNG, WebP, AVIF, GIF.`,
         },
+        { status: 400 }
+      );
+    }
+
+    // Defense-in-depth: verify magic bytes match the declared image type
+    const header = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+    const signatureOk =
+      (mimeType === "image/jpeg" || mimeType === "image/jpg")
+        ? header[0] === 0xff && header[1] === 0xd8
+        : mimeType === "image/png"
+          ? header[0] === 0x89 && header[1] === 0x50
+          : mimeType === "image/gif"
+            ? header[0] === 0x47 && header[1] === 0x49
+            : mimeType === "image/webp"
+              ? header[8] === 0x57 && header[9] === 0x45 && header[10] === 0x42 && header[11] === 0x50
+              : mimeType === "image/avif"
+                ? header[4] === 0x66 && header[5] === 0x74 && header[6] === 0x79 && header[7] === 0x70
+                : true;
+    if (!signatureOk) {
+      return NextResponse.json(
+        { success: false, error: "File contents do not match the declared image type." },
         { status: 400 }
       );
     }
@@ -83,15 +102,23 @@ export async function POST(req: NextRequest) {
           httpMetadata: { contentType: file.type },
         });
         publicUrl = `/api/assets/${objectKey}`;
-      } else {
-        // Fallback for local development when running standalone Next.js server without Miniflare R2
+      } else if (process.env.ALLOW_LOCAL_BASE64_UPLOADS === "true") {
+        // Explicit local-dev escape hatch only. Never enabled by default:
+        // multi-MB data URLs bloat D1 rows and every subsequent page load.
         const base64 = Buffer.from(arrayBuffer).toString("base64");
         publicUrl = `data:${file.type};base64,${base64}`;
+      } else {
+        return NextResponse.json(
+          { success: false, error: "Asset storage is not configured. Upload aborted." },
+          { status: 503 }
+        );
       }
-    } catch {
-      // If R2 binding is not available in local dev, fallback to base64 data URI
-      const base64 = Buffer.from(arrayBuffer).toString("base64");
-      publicUrl = `data:${file.type};base64,${base64}`;
+    } catch (r2Err) {
+      console.error("R2 upload failed:", r2Err);
+      return NextResponse.json(
+        { success: false, error: "Asset storage is currently unavailable. Please retry." },
+        { status: 503 }
+      );
     }
 
     // 2. Track metadata in Cloudflare D1 file_assets
@@ -109,7 +136,11 @@ export async function POST(req: NextRequest) {
         createdAt: new Date().toISOString(),
       });
     } catch (dbErr) {
-      console.warn("file_assets metadata record note:", dbErr);
+      console.error("file_assets metadata record failed:", dbErr);
+      return NextResponse.json(
+        { success: false, error: "Upload succeeded but asset registration failed. Please re-upload." },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({
@@ -122,7 +153,7 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     console.error("Upload API error:", err);
     return NextResponse.json(
-      { success: false, error: err.message || "Failed to process asset upload." },
+      { success: false, error: "Failed to process asset upload." },
       { status: 500 }
     );
   }

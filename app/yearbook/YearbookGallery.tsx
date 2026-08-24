@@ -39,45 +39,75 @@ const campusFilters = [
   { id: "Both", label: "Both (Dual Network)" },
 ];
 
-export default function YearbookGallery() {
-  const [entries, setEntries] = useState<YearbookEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+interface RawYearbookRecord {
+  id: number | string;
+  name: string;
+  category: string;
+  role: string;
+  destination?: string | null;
+  subjects?: string | null;
+  quote: string;
+  image?: string;
+  badge?: string | null;
+  campus?: string | null;
+  status?: string;
+}
+
+function mapYearbookEntry(d: RawYearbookRecord): YearbookEntry {
+  return {
+    id: Number(d.id),
+    name: d.name,
+    category: d.category as YearbookEntry["category"],
+    categoryLabel: d.category === "Class of 2026" ? "Pearson IAL Scholar" : "Alumni Success",
+    role: d.role,
+    destination: d.destination ?? undefined,
+    subjects: d.subjects ?? undefined,
+    quote: d.quote,
+    image: d.image || "/images/g5.jpg",
+    badge: d.badge || "Alumni",
+    campus: d.campus || "both-campuses",
+  };
+}
+
+export default function YearbookGallery({
+  initialData,
+}: {
+  initialData?: RawYearbookRecord[];
+}) {
+  const [entries, setEntries] = useState<YearbookEntry[]>(() =>
+    (initialData ?? [])
+      .filter((d) => d.status === "published" || !d.status)
+      .map(mapYearbookEntry)
+  );
+  const [isLoading, setIsLoading] = useState(!initialData);
+  const [hasError, setHasError] = useState(false);
   const [activeCategory, setActiveCategory] = useState("All");
   const [activeCampus, setActiveCampus] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
+    if (initialData) return;
+
     async function loadYearbook() {
       try {
         setIsLoading(true);
+        setHasError(false);
         const data = await getYearbook();
-
-        if (data && data.length > 0) {
-          const published = data.filter((d: any) => d.status === "published" || !d.status);
-          const mapped: YearbookEntry[] = published.map((d: any) => ({
-            id: Number(d.id),
-            name: d.name,
-            category: d.category,
-            categoryLabel: d.category === "Class of 2026" ? "Pearson IAL Scholar" : "Alumni Success",
-            role: d.role,
-            destination: d.destination ?? undefined,
-            subjects: d.subjects ?? undefined,
-            quote: d.quote,
-            image: d.image || "/images/g5.jpg",
-            badge: d.badge || "Alumni",
-            campus: d.campus || "both-campuses",
-          }));
-          setEntries(mapped);
-        }
+        setEntries(
+          (data as RawYearbookRecord[])
+            .filter((d) => d.status === "published" || !d.status)
+            .map(mapYearbookEntry)
+        );
       } catch (err) {
         console.warn("Yearbook fetch note:", err);
+        setHasError(true);
       } finally {
         setIsLoading(false);
       }
     }
 
     loadYearbook();
-  }, []);
+  }, [initialData]);
 
   const filteredEntries = entries.filter((entry) => {
     const matchesCategory =
@@ -111,7 +141,7 @@ export default function YearbookGallery() {
         {/* Header */}
         <div className="text-center max-w-2xl mx-auto mb-10">
           <div className="inline-flex items-center gap-2 bg-[#E8F0FE] px-4 py-1.5 rounded-full mb-4 border border-[#0E3B7D]/20">
-            <span className="material-symbols-outlined text-[#0E3B7D] text-sm font-bold">auto_stories</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-[#0E3B7D] text-sm font-bold">auto_stories</span>
             <span className="text-xs font-extrabold text-[#0E3B7D] uppercase tracking-wider">
               Hinthar Alumni Chronicle
             </span>
@@ -132,6 +162,7 @@ export default function YearbookGallery() {
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
+                aria-pressed={activeCategory === cat}
                 className={`px-4 py-2 rounded-full text-xs font-extrabold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
                   activeCategory === cat
                     ? "bg-[#0E3B7D] text-white shadow-sm"
@@ -150,7 +181,8 @@ export default function YearbookGallery() {
                 <button
                   key={cf.id}
                   onClick={() => setActiveCampus(cf.id)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  aria-pressed={activeCampus === cf.id}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     activeCampus === cf.id
                       ? "bg-[#FFC700] text-[#09234B] font-black"
                       : "text-slate-600 hover:text-[#0E3B7D]"
@@ -162,13 +194,14 @@ export default function YearbookGallery() {
             </div>
 
             <div className="relative w-full sm:w-72">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
+              <span aria-hidden="true" className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
                 search
               </span>
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                aria-label="Search alumni by name, university, or award"
                 placeholder="Search alumni name, university, award..."
                 className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
               />
@@ -176,8 +209,48 @@ export default function YearbookGallery() {
           </div>
         </div>
 
+        {/* Error state */}
+        {hasError && !isLoading && (
+          <div role="alert" className="max-w-md mx-auto mb-8 p-4 rounded-2xl bg-red-50 border border-red-200 text-center">
+            <p className="text-sm font-bold text-red-700 mb-2">Could not load the yearbook.</p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="px-4 py-1.5 rounded-xl bg-red-600 text-white text-xs font-bold cursor-pointer"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {/* Loading skeleton */}
+        {isLoading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" aria-busy="true" aria-label="Loading yearbook entries">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="bg-white rounded-3xl overflow-hidden border border-slate-200 animate-pulse">
+                <div className="h-64 bg-slate-200" />
+                <div className="p-6 space-y-3">
+                  <div className="h-3 bg-slate-200 rounded w-3/4" />
+                  <div className="h-3 bg-slate-100 rounded w-full" />
+                  <div className="h-3 bg-slate-100 rounded w-2/3" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Yearbook Gallery Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {!isLoading && (
+          filteredEntries.length === 0 ? (
+            <div className="text-center py-16 px-6 border border-dashed border-slate-300 rounded-3xl max-w-md mx-auto">
+              <span aria-hidden="true" className="material-symbols-outlined text-4xl text-slate-300">auto_stories</span>
+              <h2 className="text-base font-black text-[#09234B] mt-3">No Scholars Found</h2>
+              <p className="text-xs text-slate-500 mt-1">
+                Try adjusting the category, campus, or search filters.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <AnimatePresence mode="popLayout">
             {filteredEntries.map((scholar) => {
               const campusInfo = formatCampusBadge(scholar.campus);
@@ -244,7 +317,7 @@ export default function YearbookGallery() {
                     <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${campusInfo.badgeClass}`}>
                       {campusInfo.label}
                     </span>
-                    <span className="text-[10px] font-bold text-slate-400 font-mono">
+                    <span className="text-[10px] font-bold text-slate-500 font-mono">
                       HIS Scholar #{scholar.id}
                     </span>
                   </div>
@@ -252,7 +325,9 @@ export default function YearbookGallery() {
               );
             })}
           </AnimatePresence>
-        </div>
+            </div>
+          )
+        )}
       </main>
 
       <FooterSection />
