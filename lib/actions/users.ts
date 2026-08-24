@@ -2,6 +2,7 @@
 
 import { getDb, users, invitations, accounts, sessions } from "@/lib/db";
 import { eq, desc, and, sql } from "drizzle-orm";
+import { headers } from "next/headers";
 import { requireAdmin, logAudit, assertNotLastAdmin } from "@/lib/auth/rbac";
 import { getAuth } from "@/lib/auth/auth";
 import { z } from "zod";
@@ -100,7 +101,31 @@ export async function inviteUserAction(data: unknown) {
     createdAt: new Date(),
   });
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  // Resolve a public base URL for the invite link:
+  // 1. Explicit env override (NEXT_PUBLIC_APP_URL)
+  // 2. The host of the incoming request (correct on production, previews, custom domains)
+  // 3. BETTER_AUTH_URL as configured in wrangler vars
+  let baseUrl = "";
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    baseUrl = process.env.NEXT_PUBLIC_APP_URL.replace(/\/+$/, "");
+  } else {
+    try {
+      const reqHeaders = await headers();
+      const host = reqHeaders.get("x-forwarded-host") || reqHeaders.get("host");
+      if (host) {
+        const proto = reqHeaders.get("x-forwarded-proto") || "https";
+        baseUrl = `${proto}://${host}`;
+      }
+    } catch {
+      // headers() unavailable — fall through
+    }
+  }
+  if (!baseUrl) {
+    baseUrl =
+      process.env.BETTER_AUTH_URL?.replace(/\/+$/, "") ||
+      "https://hinthar.thawyezaw.workers.dev";
+  }
+
   const inviteUrl = `${baseUrl}/admin/login?inviteToken=${token}&email=${encodeURIComponent(cleanEmail)}`;
 
   // Dispatch email via Resend
