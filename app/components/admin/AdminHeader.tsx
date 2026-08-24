@@ -10,12 +10,17 @@ import {
   AdminNotificationItem,
 } from "@/lib/actions/notifications";
 
-export default function AdminHeader() {
+export default function AdminHeader({
+  onMenuToggle,
+  isDrawerOpen = false,
+}: {
+  onMenuToggle?: () => void;
+  isDrawerOpen?: boolean;
+}) {
   const router = useRouter();
   const [activeRole, setActiveRole] = useState<UserProfile>(FALLBACK_GUEST_USER);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [notifications, setNotifications] = useState<AdminNotificationItem[]>([]);
   const [totalPendingCount, setTotalPendingCount] = useState(0);
@@ -49,7 +54,7 @@ export default function AdminHeader() {
     fetchNotifications();
   }, []);
 
-  // Close dropdowns on outside click
+  // Close dropdowns on outside click or Escape
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
@@ -59,8 +64,18 @@ export default function AdminHeader() {
         setNotifDropdownOpen(false);
       }
     };
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setUserDropdownOpen(false);
+        setNotifDropdownOpen(false);
+      }
+    };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
   }, []);
 
   const handleSignOut = async () => {
@@ -78,21 +93,23 @@ export default function AdminHeader() {
   const isAdmin = activeRole?.role === "admin";
 
   return (
-    <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-6 sm:px-8 sticky top-0 z-30 shadow-xs">
-      {/* Search Area */}
-      <div className="flex items-center gap-3">
-        <div className="relative w-64 sm:w-80 hidden md:block">
-          <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base">
-            search
+    <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-8 sticky top-0 z-30 shadow-xs">
+      {/* Left Controls: Mobile Menu + Brand */}
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onMenuToggle}
+          aria-label={isDrawerOpen ? "Close navigation menu" : "Open navigation menu"}
+          aria-expanded={isDrawerOpen}
+          className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-600 hover:bg-slate-100 transition-colors border border-slate-200 lg:hidden cursor-pointer"
+        >
+          <span aria-hidden="true" className="material-symbols-outlined text-lg">
+            {isDrawerOpen ? "close" : "menu"}
           </span>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Quick search student, class, notice..."
-            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
-          />
-        </div>
+        </button>
+        <span className="font-black text-sm text-[#09234B] tracking-tight lg:hidden">
+          Hinthar Portal
+        </span>
       </div>
 
       {/* Right Controls: Live Site, Notifications, User Account Popover */}
@@ -104,7 +121,7 @@ export default function AdminHeader() {
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#E8F0FE] hover:bg-[#0E3B7D] text-[#0E3B7D] hover:text-white text-[11px] font-black transition-all"
         >
-          <span className="material-symbols-outlined text-sm">open_in_new</span>
+          <span aria-hidden="true" className="material-symbols-outlined text-sm">open_in_new</span>
           <span className="hidden sm:inline">View Live Site</span>
         </Link>
 
@@ -116,10 +133,11 @@ export default function AdminHeader() {
               setNotifDropdownOpen(next);
               if (next) fetchNotifications();
             }}
-            className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-600 hover:bg-slate-100 transition-colors relative border border-slate-200 cursor-pointer"
             aria-label="Notifications"
+            aria-expanded={notifDropdownOpen}
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-600 hover:bg-slate-100 transition-colors relative border border-slate-200 cursor-pointer"
           >
-            <span className="material-symbols-outlined text-lg">notifications</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-lg">notifications</span>
             {totalPendingCount > 0 ? (
               <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-red-500 text-white font-black text-[10px] rounded-full flex items-center justify-center ring-2 ring-white animate-pulse">
                 {totalPendingCount}
@@ -128,7 +146,7 @@ export default function AdminHeader() {
           </button>
 
           {notifDropdownOpen && (
-            <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-slate-200 p-4 z-50 animate-in fade-in zoom-in-95 duration-150">
+            <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-slate-200 p-4 z-50 animate-fade-in">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div>
                   <h4 className="text-xs font-black text-[#09234B] uppercase tracking-wider">
@@ -166,7 +184,7 @@ export default function AdminHeader() {
                           : "bg-emerald-100 text-emerald-800"
                       }`}
                     >
-                      <span className="material-symbols-outlined text-sm">{n.icon}</span>
+                      <span aria-hidden="true" className="material-symbols-outlined text-sm">{n.icon}</span>
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1">
@@ -190,7 +208,7 @@ export default function AdminHeader() {
                   disabled={isLoadingNotifs}
                   className="text-slate-500 hover:text-slate-800 text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
                 >
-                  <span className={`material-symbols-outlined text-xs ${isLoadingNotifs ? "animate-spin" : ""}`}>
+                  <span aria-hidden="true" className={`material-symbols-outlined text-xs ${isLoadingNotifs ? "animate-spin" : ""}`}>
                     refresh
                   </span>
                   <span>Refresh</span>
@@ -211,12 +229,14 @@ export default function AdminHeader() {
         <div className="relative" ref={userMenuRef}>
           <button
             onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-            className="flex items-center gap-2.5 p-1.5 sm:px-3 sm:py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-all text-left"
+            aria-expanded={userDropdownOpen}
+            aria-haspopup="menu"
+            className="flex items-center gap-2.5 p-1.5 sm:px-3 sm:py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-all text-left cursor-pointer"
           >
             <div
               className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs shadow-xs ${activeRole?.badgeColor || "bg-[#FFC700] text-[#09234B]"}`}
             >
-              {activeRole?.initials || "TY"}
+              {activeRole?.initials || (activeRole?.fullName || "U").charAt(0).toUpperCase()}
             </div>
             <div className="hidden sm:block">
               <div className="flex items-center gap-1.5">
@@ -226,7 +246,7 @@ export default function AdminHeader() {
                 {activeRole?.roleLabel || "Administrator"}
               </p>
             </div>
-            <span className="material-symbols-outlined text-slate-400 text-base">expand_more</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-slate-400 text-base">expand_more</span>
           </button>
 
           {userDropdownOpen && (
@@ -236,7 +256,7 @@ export default function AdminHeader() {
                 <div
                   className={`w-9 h-9 rounded-lg flex items-center justify-center font-black text-xs shrink-0 ${activeRole?.badgeColor || "bg-[#FFC700] text-[#09234B]"}`}
                 >
-                  {activeRole?.initials || "TY"}
+                  {activeRole?.initials || (activeRole?.fullName || "U").charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-black text-[#09234B] truncate">{activeRole?.fullName || "Administrator"}</p>
@@ -255,7 +275,7 @@ export default function AdminHeader() {
                     onClick={() => setUserDropdownOpen(false)}
                     className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-slate-50 text-slate-700 hover:text-[#0E3B7D] transition-colors"
                   >
-                    <span className="material-symbols-outlined text-base text-[#0E3B7D]">manage_accounts</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-base text-[#0E3B7D]">manage_accounts</span>
                     <span>Manage User Accounts</span>
                   </Link>
                 )}
@@ -265,7 +285,7 @@ export default function AdminHeader() {
                   onClick={() => setUserDropdownOpen(false)}
                   className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-slate-50 text-slate-700 hover:text-[#0E3B7D] transition-colors"
                 >
-                  <span className="material-symbols-outlined text-base text-[#0E3B7D]">
+                  <span aria-hidden="true" className="material-symbols-outlined text-base text-[#0E3B7D]">
                     {isAdmin ? "school" : "auto_stories"}
                   </span>
                   <span>{isAdmin ? "Admissions Pipeline" : "Yearbook Submissions"}</span>
@@ -276,7 +296,7 @@ export default function AdminHeader() {
                   onClick={() => setUserDropdownOpen(false)}
                   className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-slate-50 text-slate-700 hover:text-[#0E3B7D] transition-colors"
                 >
-                  <span className="material-symbols-outlined text-base text-[#0E3B7D]">
+                  <span aria-hidden="true" className="material-symbols-outlined text-base text-[#0E3B7D]">
                     lock_reset
                   </span>
                   <span>Change Password</span>
@@ -291,7 +311,7 @@ export default function AdminHeader() {
                   disabled={isSigningOut}
                   className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition-all text-xs font-bold uppercase tracking-wider disabled:opacity-60 cursor-pointer"
                 >
-                  <span className="material-symbols-outlined text-sm">logout</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-sm">logout</span>
                   <span>{isSigningOut ? "Signing out..." : "Sign Out"}</span>
                 </button>
               </div>

@@ -34,6 +34,20 @@ export async function GET(
     object.writeHttpMetadata(headers);
     headers.set("etag", object.httpEtag);
     headers.set("Cache-Control", "public, max-age=31536000, immutable");
+    headers.set("X-Content-Type-Options", "nosniff");
+
+    // Defense-in-depth for executable/document content types (legacy uploads):
+    // force download and sandbox so scripts can never run on our origin.
+    const contentType = (headers.get("content-type") || "").toLowerCase();
+    if (
+      contentType.includes("svg") ||
+      contentType.includes("html") ||
+      contentType.includes("xml") ||
+      contentType.includes("pdf")
+    ) {
+      headers.set("Content-Disposition", "attachment");
+      headers.set("Content-Security-Policy", "sandbox");
+    }
 
     return new NextResponse(object.body as any, {
       headers,

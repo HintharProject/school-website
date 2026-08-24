@@ -1,11 +1,12 @@
 "use server";
 
-import { getDb, users, invitations, NewUser, accounts, sessions } from "@/lib/db";
-import { eq, desc, and } from "drizzle-orm";
+import { getDb, users, invitations, accounts, sessions } from "@/lib/db";
+import { eq, desc, and, sql } from "drizzle-orm";
 import { requireAdmin, logAudit, assertNotLastAdmin } from "@/lib/auth/rbac";
 import { getAuth } from "@/lib/auth/auth";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { escapeHtml } from "@/lib/email/email";
 
 const inviteSchema = z.object({
   email: z.string().email(),
@@ -48,7 +49,12 @@ export async function getPendingInvitations() {
 
 export async function inviteUserAction(data: unknown) {
   const admin = await requireAdmin();
-  const validated = inviteSchema.parse(data);
+
+  const parsed = inviteSchema.safeParse(data);
+  if (!parsed.success) {
+    return { success: false as const, error: "Please provide a valid email address and full name." };
+  }
+  const validated = parsed.data;
   const db = await getDb();
 
   const cleanEmail = validated.email.toLowerCase().trim();
@@ -61,7 +67,7 @@ export async function inviteUserAction(data: unknown) {
     .limit(1);
 
   if (existingUser.length > 0) {
-    throw new Error(`A user with email ${cleanEmail} already has an active school account.`);
+    return { success: false as const, error: "A user with this email already has an active school account." };
   }
 
   // Generate secure single-use token (32 bytes hex)
@@ -111,8 +117,8 @@ export async function inviteUserAction(data: unknown) {
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px;">
             <h2 style="color: #0E3B7D;">Hinthar International School Portal</h2>
-            <p>Dear <strong>${validated.fullName}</strong>,</p>
-            <p>You have been officially invited to join the Hinthar School Portal with the role of <strong>${validated.role.toUpperCase()}</strong>.</p>
+            <p>Dear <strong>${escapeHtml(validated.fullName)}</strong>,</p>
+            <p>You have been officially invited to join the Hinthar School Portal with the role of <strong>${escapeHtml(validated.role.toUpperCase())}</strong>.</p>
             <div style="margin: 24px 0; text-align: center;">
               <a href="${inviteUrl}" style="background-color: #0E3B7D; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Accept Invitation & Set Password</a>
             </div>
@@ -166,85 +172,117 @@ export async function acceptInviteAction(token: string, password: string) {
     throw new Error("This invitation has expired. Please request a new invitation from the administrator.");
   }
 
-  // Create user via Better Auth
-  const created = await auth.api.signUpEmail({
-    body: {
-      email: invite.email,
-      password,
-      name: invite.fullName,
-    },
-  });
+  // Atomically claim the invitation (single-use guarantee even under
+  // concurrent submissions): only one UPDATE with status='pending' succeeds.
+  const claimed = await db
+    .update(invitations)
+    .set({ status: "accepted", acceptedAt: new Date() })
+    .where(and(eq(invitations.id, invite.id), eq(invitations.status, "pending")))
+    .returning({ id: invitations.id });
 
-  if (!created?.user) {
-    throw new Error("Failed to initialize account credentials. Please try again.");
+  if (claimed.length === 0) {
+    throw new Error("This invitation has already been used.");
   }
 
-  // Update profile attributes in users table
-  await db
-    .update(users)
-    .set({
-      role: invite.role,
-      status: "active",
-      title: invite.title ?? (invite.role === "admin" ? "Staff Administrator" : "Student Contributor"),
-      campusId: invite.campusId ?? "ywarma-campus",
-      grade: invite.grade ?? null,
-      updatedAt: new Date(),
-    })
-    .where(eq(users.id, created.user.id));
+  let acceptedUserId = "";
+  let acceptedEmail = invite.email;
+  try {
+    // Create user via Better Auth
+    const created = await auth.api.signUpEmail({
+      body: {
+        email: invite.email,
+        password,
+        name: invite.fullName,
+      },
+    });
 
-  // Invalidate invitation token
-  await db
-    .update(invitations)
-    .set({
-      status: "accepted",
-      acceptedAt: new Date(),
-    })
-    .where(eq(invitations.id, invite.id));
+    if (!created?.user) {
+      throw new Error("Failed to initialize account credentials. Please try again.");
+    }
+
+    acceptedUserId = created.user.id;
+
+    // Update profile attributes in users table
+    await db
+      .update(users)
+      .set({
+        role: invite.role,
+        status: "active",
+        title: invite.title ?? (invite.role === "admin" ? "Staff Administrator" : "Student Contributor"),
+        campusId: invite.campusId ?? "ywarma-campus",
+        grade: invite.grade ?? null,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, created.user.id));
+  } catch (err) {
+    // Release the claim so a corrected retry is possible
+    await db
+      .update(invitations)
+      .set({ status: "pending", acceptedAt: null })
+      .where(eq(invitations.id, invite.id));
+    throw err;
+  }
 
   await logAudit({
     actor: {
-      id: created.user.id,
-      email: invite.email,
+      id: acceptedUserId || acceptedEmail,
+      email: acceptedEmail,
       name: invite.fullName,
       role: invite.role as "admin" | "student",
       status: "active",
     },
     action: "USER_ACCEPTED_INVITATION",
     resource: "users",
-    resourceId: created.user.id,
-    details: { email: invite.email, role: invite.role },
+    resourceId: acceptedUserId || null,
+    details: { email: acceptedEmail, role: invite.role },
   });
 
   return { success: true, email: invite.email };
 }
 
-export async function updateUserStatusAction(id: string, status: "active" | "inactive" | "suspended") {
+export async function updateUserStatusAction(id: string, status: string) {
   const admin = await requireAdmin();
   const db = await getDb();
 
-  if (status !== "active") {
+  const statusSchema = z.enum(["active", "inactive", "suspended"]);
+  const parsedStatus = statusSchema.safeParse(status);
+  if (!parsedStatus.success) {
+    return { success: false as const, error: "Invalid account status." };
+  }
+  const validStatus = parsedStatus.data;
+
+  if (validStatus !== "active") {
     await assertNotLastAdmin(id);
   }
 
-  await db
-    .update(users)
-    .set({
-      status,
-      updatedAt: new Date(),
-    })
-    .where(eq(users.id, id));
+  // Conditional write guards against racing away the last active admin.
+  const guard =
+    validStatus !== "active"
+      ? sql`(SELECT COUNT(*) FROM users WHERE role = 'admin' AND status = 'active' AND id != ${id}) > 0`
+      : sql`1 = 1`;
+
+  const result = await db.run(
+    sql`UPDATE users SET status = ${validStatus}, updated_at = ${new Date().toISOString()} WHERE id = ${id} AND ${guard}`
+  );
+
+  if (!result.meta.changes) {
+    return {
+      success: false as const,
+      error: "Account not found, unchanged, or it is the sole remaining active administrator.",
+    };
+  }
 
   // If suspended/inactive, invalidate active sessions
-  if (status !== "active") {
+  if (validStatus !== "active") {
     await db.delete(sessions).where(eq(sessions.userId, id));
   }
 
   await logAudit({
     actor: admin,
-    action: `ADMIN_SET_USER_STATUS_${status.toUpperCase()}`,
+    action: `ADMIN_SET_USER_STATUS_${validStatus.toUpperCase()}`,
     resource: "users",
     resourceId: id,
-    details: { status },
+    details: { status: validStatus },
   });
 
   revalidatePath("/admin/users");
@@ -257,10 +295,24 @@ export async function deleteUserAction(id: string) {
 
   await assertNotLastAdmin(id);
 
-  // Cascade delete sessions, accounts, and user
+  // Cascade delete sessions, accounts, then the user. The conditional DELETE
+  // prevents removing the last active admin in a concurrent race.
+  const result = await db.run(
+    sql`DELETE FROM users WHERE id = ${id} AND (
+      role != 'admin' OR status != 'active' OR
+      (SELECT COUNT(*) FROM users WHERE role = 'admin' AND status = 'active') > 1
+    )`
+  );
+
+  if (!result.meta.changes) {
+    return {
+      success: false as const,
+      error: "Account not found or it is the sole remaining active administrator.",
+    };
+  }
+
   await db.delete(sessions).where(eq(sessions.userId, id));
   await db.delete(accounts).where(eq(accounts.userId, id));
-  await db.delete(users).where(eq(users.id, id));
 
   await logAudit({
     actor: admin,
@@ -271,15 +323,4 @@ export async function deleteUserAction(id: string) {
 
   revalidatePath("/admin/users");
   return { success: true };
-}
-
-export async function ensureAdminReadyAction() {
-  try {
-    const { bootstrapInitialAdmin } = await import("@/lib/auth/bootstrap");
-    const res = await bootstrapInitialAdmin();
-    return res;
-  } catch (err: any) {
-    console.warn("ensureAdminReadyAction warning:", err);
-    return { success: false, message: err?.message || String(err) };
-  }
 }

@@ -178,7 +178,7 @@ export default function ChatbotPageView() {
         {/* Header */}
         <div className="text-center max-w-2xl mx-auto mb-8">
           <div className="inline-flex items-center gap-2 bg-[#E8F0FE] px-4 py-1.5 rounded-full mb-3 border border-[#0E3B7D]/20">
-            <span className="material-symbols-outlined text-[#0E3B7D] text-sm font-bold">smart_toy</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-[#0E3B7D] text-sm font-bold">smart_toy</span>
             <span className="text-xs font-extrabold text-[#0E3B7D] uppercase tracking-wider">
               AI Admissions Counselor
             </span>
@@ -197,7 +197,7 @@ export default function ChatbotPageView() {
           <div className="lg:col-span-1 space-y-4">
             <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center gap-2 text-[#09234B] font-bold text-sm">
-                <span className="material-symbols-outlined text-[#FFC700] text-lg font-bold">help_outline</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-[#FFC700] text-lg font-bold">help_outline</span>
                 <span>Frequently Asked Topics</span>
               </div>
 
@@ -235,7 +235,7 @@ export default function ChatbotPageView() {
                 className="inline-flex items-center gap-1 px-4 py-2 bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] rounded-xl text-xs font-black uppercase tracking-wider shadow-sm transition-colors"
               >
                 <span>Book Campus Tour</span>
-                <span className="material-symbols-outlined text-sm font-bold">arrow_forward</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-sm font-bold">arrow_forward</span>
               </Link>
             </div>
           </div>
@@ -246,7 +246,7 @@ export default function ChatbotPageView() {
             <div className="p-4 bg-[#09234B] text-white flex items-center justify-between border-b border-[#FFC700]/30">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-[#FFC700] text-[#09234B] flex items-center justify-center font-black">
-                  <span className="material-symbols-outlined text-2xl font-bold">school</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-2xl font-bold">school</span>
                 </div>
                 <div>
                   <h3 className="text-sm font-bold">Hinthar Interactive AI Counselor</h3>
@@ -266,7 +266,7 @@ export default function ChatbotPageView() {
                 m.role === "ai" ? (
                   <div key={m.id} className="flex items-start gap-3 max-w-[90%]">
                     <div className="w-8 h-8 rounded-xl bg-[#E8F0FE] text-[#0E3B7D] flex items-center justify-center shrink-0 mt-0.5 border border-[#0E3B7D]/20">
-                      <span className="material-symbols-outlined text-base font-bold">smart_toy</span>
+                      <span aria-hidden="true" className="material-symbols-outlined text-base font-bold">smart_toy</span>
                     </div>
                     <div className="space-y-1.5 flex-1">
                       <div className="bg-white p-4 rounded-2xl rounded-tl-sm shadow-sm border border-slate-200 text-slate-800 leading-relaxed">
@@ -278,7 +278,7 @@ export default function ChatbotPageView() {
                               className="inline-flex items-center gap-1 text-xs font-bold text-[#0E3B7D] hover:underline"
                             >
                               <span>{m.link.label}</span>
-                              <span className="material-symbols-outlined text-sm font-bold">arrow_forward</span>
+                              <span aria-hidden="true" className="material-symbols-outlined text-sm font-bold">arrow_forward</span>
                             </Link>
                           </div>
                         )}
@@ -298,7 +298,7 @@ export default function ChatbotPageView() {
 
               {isTyping && (
                 <div className="flex items-center gap-2 text-slate-500 text-xs pl-2">
-                  <span className="material-symbols-outlined text-sm animate-spin text-[#0E3B7D]">refresh</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-sm animate-spin text-[#0E3B7D]">refresh</span>
                   <span>Hinthar Counselor is preparing your answer...</span>
                 </div>
               )}
@@ -326,7 +326,7 @@ export default function ChatbotPageView() {
                   disabled={!input.trim()}
                   className="bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] px-5 py-3 rounded-2xl transition-colors disabled:opacity-40 flex items-center justify-center font-bold text-xs uppercase tracking-wider shadow-sm border border-[#FFC700]"
                 >
-                  <span className="material-symbols-outlined text-lg font-bold">send</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-lg font-bold">send</span>
                 </button>
               </form>
             </div>

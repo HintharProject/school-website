@@ -8,6 +8,13 @@
       "when": 1787302790342,
       "tag": "0000_cloudy_kang",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1787578719810,
+      "tag": "0001_fuzzy_black_bird",
+      "breakpoints": true
     }
   ]
 }

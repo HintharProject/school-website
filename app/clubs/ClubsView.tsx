@@ -30,47 +30,66 @@ const campusFilters = [
   { id: "Both", label: "Both (All-School)" },
 ];
 
-export default function ClubsView() {
-  const [clubs, setClubs] = useState<ClubItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+interface RawClubRecord {
+  id: number | string;
+  name: string;
+  category: string;
+  icon?: string;
+  members?: string;
+  meetingTime?: string;
+  meeting_time?: string;
+  leadership?: string;
+  description: string;
+  image?: string;
+  campus?: string | null;
+  status?: string;
+}
+
+function mapClub(c: RawClubRecord): ClubItem {
+  let cat: "stem" | "debate" | "sports" | "arts" = "stem";
+  if (c.category.includes("Debate")) cat = "debate";
+  else if (c.category.includes("Sports")) cat = "sports";
+  else if (c.category.includes("Creative") || c.category.includes("Arts")) cat = "arts";
+
+  return {
+    id: Number(c.id),
+    name: c.name,
+    category: cat,
+    categoryLabel: c.category,
+    icon: c.icon || "groups",
+    members: c.members || "30+ Members",
+    meetingTime: c.meetingTime || c.meeting_time || "Weekly",
+    room: "Campus Dedicated Studio",
+    leadership: c.leadership || "Student Council Lead",
+    description: c.description,
+    image: c.image || "/images/g2.jpg",
+    campus: c.campus || "both-campuses",
+  };
+}
+
+export default function ClubsView({ initialData }: { initialData?: RawClubRecord[] }) {
+  const [clubs, setClubs] = useState<ClubItem[]>(() =>
+    (initialData ?? [])
+      .filter((c) => c.status === "published" || !c.status)
+      .map(mapClub)
+  );
+  const [isLoading, setIsLoading] = useState(!initialData);
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [activeCampus, setActiveCampus] = useState<string>("All");
   const [selectedClub, setSelectedClub] = useState<ClubItem | null>(null);
-  const [studentName, setStudentName] = useState("");
-  const [studentGrade, setStudentGrade] = useState("IGCSE Year 1");
-  const [joinSuccess, setJoinSuccess] = useState(false);
 
   useEffect(() => {
+    if (initialData) return;
+
     async function loadClubs() {
       try {
         setIsLoading(true);
         const data = await getClubs();
-
-        if (data && data.length > 0) {
-          const publishedClubs = data.filter((c: any) => c.status === "published" || !c.status);
-          const mapped: ClubItem[] = publishedClubs.map((c: any) => {
-            let cat: "stem" | "debate" | "sports" | "arts" = "stem";
-            if (c.category.includes("Debate")) cat = "debate";
-            else if (c.category.includes("Sports")) cat = "sports";
-            else if (c.category.includes("Creative") || c.category.includes("Arts")) cat = "arts";
-
-            return {
-              id: Number(c.id),
-              name: c.name,
-              category: cat,
-              categoryLabel: c.category,
-              icon: c.icon || "groups",
-              members: c.members || "30+ Members",
-              meetingTime: c.meetingTime || c.meeting_time || "Weekly",
-              room: "Campus Dedicated Studio",
-              leadership: c.leadership || "Student Council Lead",
-              description: c.description,
-              image: c.image || "/images/g2.jpg",
-              campus: c.campus || "both-campuses",
-            };
-          });
-          setClubs(mapped);
-        }
+        setClubs(
+          ((data ?? []) as RawClubRecord[])
+            .filter((c) => c.status === "published" || !c.status)
+            .map(mapClub)
+        );
       } catch (err) {
         console.warn("Clubs fetch note:", err);
       } finally {
@@ -79,7 +98,7 @@ export default function ClubsView() {
     }
 
     loadClubs();
-  }, []);
+  }, [initialData]);
 
   const filteredClubs = clubs.filter((c) => {
     const matchesCategory = activeCategory === "all" || c.category === activeCategory;
@@ -94,16 +113,6 @@ export default function ClubsView() {
     return matchesCategory && matchesCampus;
   });
 
-  const handleJoinSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setJoinSuccess(true);
-    setTimeout(() => {
-      setJoinSuccess(false);
-      setSelectedClub(null);
-      setStudentName("");
-    }, 2500);
-  };
-
   return (
     <div className="min-h-screen flex flex-col pt-20 bg-slate-50">
       <Navbar />
@@ -112,7 +121,7 @@ export default function ClubsView() {
         {/* Header */}
         <div className="text-center max-w-2xl mx-auto mb-10">
           <div className="inline-flex items-center gap-2 bg-[#E8F0FE] px-4 py-1.5 rounded-full mb-4 border border-[#0E3B7D]/20">
-            <span className="material-symbols-outlined text-[#0E3B7D] text-sm font-bold">groups</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-[#0E3B7D] text-sm font-bold">groups</span>
             <span className="text-xs font-extrabold text-[#0E3B7D] uppercase tracking-wider">
               Student Leadership &amp; Societies
             </span>
@@ -168,6 +177,25 @@ export default function ClubsView() {
         </div>
 
         {/* Clubs Grid */}
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" aria-busy="true" aria-label="Loading clubs">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="bg-white rounded-3xl overflow-hidden border border-slate-200 animate-pulse">
+                <div className="h-48 bg-slate-200" />
+                <div className="p-6 space-y-3">
+                  <div className="h-3 bg-slate-200 rounded w-2/3" />
+                  <div className="h-3 bg-slate-100 rounded w-full" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : filteredClubs.length === 0 ? (
+          <div className="text-center py-16 px-6 border border-dashed border-slate-300 rounded-3xl max-w-md mx-auto">
+            <span aria-hidden="true" className="material-symbols-outlined text-4xl text-slate-300">groups</span>
+            <h2 className="text-base font-black text-[#09234B] mt-3">No Clubs Found</h2>
+            <p className="text-xs text-slate-500 mt-1">Try adjusting the category or campus filters.</p>
+          </div>
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredClubs.map((club) => {
             const campusBadge = formatCampusBadge(club.campus);
@@ -199,11 +227,11 @@ export default function ClubsView() {
 
                     <div className="space-y-1.5 pt-3 border-t border-slate-100 text-xs text-slate-600">
                       <p className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-sm text-[#0E3B7D]">schedule</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-sm text-[#0E3B7D]">schedule</span>
                         <span>{club.meetingTime}</span>
                       </p>
                       <p className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-sm text-[#0E3B7D]">person</span>
+                        <span aria-hidden="true" className="material-symbols-outlined text-sm text-[#0E3B7D]">person</span>
                         <span className="truncate">{club.leadership}</span>
                       </p>
                     </div>
@@ -216,92 +244,77 @@ export default function ClubsView() {
                   </span>
                   <button
                     onClick={() => setSelectedClub(club)}
+                    aria-haspopup="dialog"
                     className="px-4 py-2 rounded-xl bg-[#0E3B7D] hover:bg-[#164E9A] text-white font-bold text-xs uppercase tracking-wider transition-all cursor-pointer"
                   >
-                    Join Club
+                    How to Join
                   </button>
                 </div>
               </div>
             );
           })}
         </div>
+        )}
 
-        {/* Join Club Modal */}
+        {/* How to Join Modal */}
         {selectedClub && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-4 shadow-2xl">
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="join-club-title"
+              className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-4 shadow-2xl"
+            >
               <div className="flex justify-between items-start">
                 <div>
                   <span className="text-[10px] font-black uppercase tracking-wider text-[#0E3B7D]">
                     Society Enrollment
                   </span>
-                  <h3 className="text-xl font-black text-[#09234B]">{selectedClub.name}</h3>
+                  <h3 id="join-club-title" className="text-xl font-black text-[#09234B]">{selectedClub.name}</h3>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setSelectedClub(null)}
-                  className="text-slate-400 hover:text-slate-700"
+                  aria-label="Close club details"
+                  className="text-slate-400 hover:text-slate-700 cursor-pointer"
                 >
-                  <span className="material-symbols-outlined">close</span>
+                  <span aria-hidden="true" className="material-symbols-outlined">close</span>
                 </button>
               </div>
 
-              {joinSuccess ? (
-                <div className="p-4 bg-emerald-50 text-emerald-800 rounded-2xl text-center space-y-2 border border-emerald-200">
-                  <span className="material-symbols-outlined text-3xl text-emerald-600">check_circle</span>
-                  <p className="text-xs font-bold">Enrollment Request Received!</p>
-                  <p className="text-[11px] text-emerald-700">The faculty advisor will contact you before the next session.</p>
+              <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-100 text-[11px] text-slate-600 space-y-1">
+                <p><strong>Session:</strong> {selectedClub.meetingTime}</p>
+                <p><strong>Advisor:</strong> {selectedClub.leadership}</p>
+              </div>
+
+              <div className="space-y-2.5 text-xs text-slate-600 leading-relaxed">
+                <p className="font-bold text-[#09234B] uppercase tracking-wider text-[11px]">How to Join</p>
+                <p>
+                  Club memberships are enrolled by the School Administration. Visit the Student Affairs office at your
+                  campus — or ask your homeroom teacher to register you — and our coordinators will add you to the
+                  roster before the next session.
+                </p>
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
+                  <p className="flex items-center gap-2">
+                    <span aria-hidden="true" className="material-symbols-outlined text-sm text-[#0E3B7D]">schedule</span>
+                    <span>Sessions: {selectedClub.meetingTime}</span>
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <span aria-hidden="true" className="material-symbols-outlined text-sm text-[#0E3B7D]">call</span>
+                    <span>Inquiries: +95 9 894 332200</span>
+                  </p>
                 </div>
-              ) : (
-                <form onSubmit={handleJoinSubmit} className="space-y-3 text-xs">
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Student Full Name</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Su Myat Noe"
-                      value={studentName}
-                      onChange={(e) => setStudentName(e.target.value)}
-                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
-                    />
-                  </div>
+              </div>
 
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Academic Year</label>
-                    <select
-                      value={studentGrade}
-                      onChange={(e) => setStudentGrade(e.target.value)}
-                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
-                    >
-                      <option value="Lower Secondary (Year 7–9)">Lower Secondary (Year 7–9)</option>
-                      <option value="IGCSE Year 1">IGCSE Year 1 (Year 10)</option>
-                      <option value="IGCSE Year 2">IGCSE Year 2 (Year 11)</option>
-                      <option value="IAL AS Level">IAL AS Level (Year 12)</option>
-                      <option value="IAL A2 Level">IAL A2 Level (Year 13)</option>
-                    </select>
-                  </div>
-
-                  <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-100 text-[11px] text-slate-600 space-y-1">
-                    <p><strong>Session:</strong> {selectedClub.meetingTime}</p>
-                    <p><strong>Advisor:</strong> {selectedClub.leadership}</p>
-                  </div>
-
-                  <div className="flex justify-end gap-3 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedClub(null)}
-                      className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-5 py-2 rounded-xl bg-[#0E3B7D] text-white font-bold"
-                    >
-                      Submit Registration
-                    </button>
-                  </div>
-                </form>
-              )}
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={() => setSelectedClub(null)}
+                  className="px-4 py-2 rounded-xl bg-[#0E3B7D] hover:bg-[#164E9A] text-white font-bold cursor-pointer"
+                >
+                  Got it
+                </button>
+              </div>
             </div>
           </div>
         )}

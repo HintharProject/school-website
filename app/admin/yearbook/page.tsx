@@ -238,8 +238,8 @@ export default function YearbookManagementPage() {
     <div className="space-y-6">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#0E3B7D] text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-[#FFC700] animate-bounce">
-          <span className="material-symbols-outlined text-[#FFC700]">check_circle</span>
+        <div role="status" aria-live="polite" className="fixed bottom-6 right-6 z-50 bg-[#0E3B7D] text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-[#FFC700] animate-fade-in">
+          <span aria-hidden="true" className="material-symbols-outlined text-[#FFC700]">check_circle</span>
           <span className="text-sm font-bold">{toastMessage}</span>
         </div>
       )}
@@ -270,7 +270,7 @@ export default function YearbookManagementPage() {
                     : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                <span className="material-symbols-outlined text-base">verified</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-base">verified</span>
                 <span>Published ({entries.filter((e) => e.status !== "pending_review").length})</span>
               </button>
               <button
@@ -281,7 +281,7 @@ export default function YearbookManagementPage() {
                     : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                <span className="material-symbols-outlined text-base">pending_actions</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-base">pending_actions</span>
                 <span>Review Queue ({pendingReviewCount})</span>
               </button>
             </>
@@ -290,7 +290,7 @@ export default function YearbookManagementPage() {
               onClick={() => setActiveTab("my_submissions")}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-extrabold text-xs bg-[#0E3B7D] text-white shadow-xs"
             >
-              <span className="material-symbols-outlined text-base">person</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-base">person</span>
               <span>My Submissions</span>
             </button>
           )}
@@ -300,7 +300,7 @@ export default function YearbookManagementPage() {
       {/* Filter and Add Bar */}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-2xl border border-slate-200">
         <div className="relative w-full sm:w-80">
-          <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base">
+          <span aria-hidden="true" className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base">
             search
           </span>
           <input
@@ -317,7 +317,7 @@ export default function YearbookManagementPage() {
             onClick={() => setIsAddModalOpen(true)}
             className="w-full sm:w-auto px-4 py-2 bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] font-extrabold text-xs rounded-xl shadow-xs flex items-center justify-center gap-1.5 uppercase tracking-wider cursor-pointer"
           >
-            <span className="material-symbols-outlined text-base">add_circle</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-base">add_circle</span>
             <span>{isAdmin ? "Add Scholar Entry" : "Submit My Profile"}</span>
           </button>
         </div>
@@ -327,7 +327,7 @@ export default function YearbookManagementPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredEntries.length === 0 ? (
           <div className="col-span-full bg-white rounded-3xl p-12 text-center border border-slate-200">
-            <span className="material-symbols-outlined text-4xl text-slate-300 mb-2">auto_stories</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-4xl text-slate-300 mb-2">auto_stories</span>
             <p className="text-sm font-bold text-slate-700">No yearbook profiles found</p>
             <p className="text-xs text-slate-400 mt-1">Try refining search parameters or submit a new scholar profile.</p>
           </div>
@@ -412,18 +412,18 @@ export default function YearbookManagementPage() {
                       </>
                     ) : (
                       <>
-                        <button
+                        <button aria-label="Edit"
                           onClick={() => setEditingScholar(scholar)}
                           className="p-1.5 rounded-lg text-slate-500 hover:text-[#0E3B7D] hover:bg-blue-50 transition-colors cursor-pointer"
                         >
-                          <span className="material-symbols-outlined text-base">edit</span>
+                          <span aria-hidden="true" className="material-symbols-outlined text-base">edit</span>
                         </button>
                         {isAdmin && (
-                          <button
+                          <button aria-label="Delete"
                             onClick={() => setDeletingScholar(scholar)}
                             className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
                           >
-                            <span className="material-symbols-outlined text-base">delete</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-base">delete</span>
                           </button>
                         )}
                       </>
@@ -439,7 +439,7 @@ export default function YearbookManagementPage() {
       {/* ADD SCHOLAR MODAL */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 space-y-4 shadow-2xl">
+          <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 space-y-4 shadow-2xl">
             <h2 className="text-xl font-black text-[#09234B]">Add / Submit Graduate Profile</h2>
             <form onSubmit={handleCreateScholar} className="space-y-3 text-xs">
               <div>
@@ -579,7 +579,7 @@ export default function YearbookManagementPage() {
       {/* EDIT SCHOLAR MODAL */}
       {editingScholar && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 space-y-4 shadow-2xl">
+          <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 space-y-4 shadow-2xl">
             <h2 className="text-xl font-black text-[#09234B]">Edit Profile: {editingScholar.name}</h2>
             <form onSubmit={handleSaveEditScholar} className="space-y-3 text-xs">
               <div>
@@ -714,7 +714,7 @@ export default function YearbookManagementPage() {
       {/* DELETE CONFIRMATION */}
       {deletingScholar && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
+          <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
             <h3 className="text-base font-black text-[#09234B]">Delete Scholar?</h3>
             <p className="text-xs text-slate-600">
               Are you sure you want to delete <strong>{deletingScholar.name}</strong> from the yearbook?

@@ -371,18 +371,20 @@ export interface UserProfile {
   createdAt: string;
 }
 
+// Pre-session placeholder. Deliberately NOT an admin: privileged UI must only
+// appear once the real session confirms the user's role.
 export const FALLBACK_GUEST_USER: UserProfile = {
-  id: "admin-init",
-  email: "admin@hinthar.education",
-  fullName: "School Administrator",
-  role: "admin",
-  roleLabel: "Administrator",
-  title: "School Administrator",
-  campusId: "both-campuses",
-  initials: "SA",
-  badgeColor: "bg-[#FFC700] text-[#09234B]",
+  id: "guest",
+  email: "",
+  fullName: "Signed Out",
+  role: "student",
+  roleLabel: "Guest",
+  title: "",
+  campusId: "ywarma-campus",
+  initials: "?",
+  badgeColor: "bg-slate-200 text-slate-600",
   status: "active",
-  createdAt: "2026-08-01",
+  createdAt: "",
 };
 
 export function mapUserProfileRecord(d: any): UserProfile {

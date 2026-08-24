@@ -1,7 +1,7 @@
 "use server";
 
 import { getDb, admissions, yearbookAlumni, clubs } from "@/lib/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { getServerSession } from "@/lib/auth/rbac";
 
 export interface AdminNotificationItem {
@@ -26,6 +26,7 @@ function formatRelativeTime(dateStr?: string | Date | null): string {
     const d = typeof dateStr === "string" ? new Date(dateStr) : dateStr;
     const now = Date.now();
     const diffMs = now - d.getTime();
+    if (Number.isNaN(diffMs)) return "recently";
     const diffMins = Math.floor(diffMs / (1000 * 60));
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
@@ -40,6 +41,15 @@ function formatRelativeTime(dateStr?: string | Date | null): string {
   }
 }
 
+async function safeCount(query: Promise<{ n: number }[]>): Promise<number> {
+  try {
+    const rows = await query;
+    return Number(rows[0]?.n ?? 0);
+  } catch {
+    return 0;
+  }
+}
+
 export async function getAdminNotificationsAction(): Promise<AdminNotificationResponse> {
   const session = await getServerSession();
   if (!session?.user || session.user.status !== "active") {
@@ -49,20 +59,24 @@ export async function getAdminNotificationsAction(): Promise<AdminNotificationRe
   const db = await getDb();
   const notifs: AdminNotificationItem[] = [];
 
+  // Exact counts (uncapped) for the badge
+  let pendingAdmissionsTotal = 0;
+
   // 1. Pending Admissions (Admins only)
-  let pendingAdmissionsCount = 0;
   if (session.user.role === "admin") {
     try {
-      const pendingAdmissions = await db
+      const recentAdmissions = await db
         .select()
         .from(admissions)
         .where(eq(admissions.status, "Pending"))
         .orderBy(desc(admissions.createdAt))
         .limit(5);
 
-      pendingAdmissionsCount = pendingAdmissions.length;
+      pendingAdmissionsTotal = await safeCount(
+        db.select({ n: sql<number>`count(*)` }).from(admissions).where(eq(admissions.status, "Pending"))
+      );
 
-      for (const adm of pendingAdmissions) {
+      for (const adm of recentAdmissions) {
         notifs.push({
           id: `adm_${adm.id}`,
           title: "New Admission Application",
@@ -79,17 +93,19 @@ export async function getAdminNotificationsAction(): Promise<AdminNotificationRe
     }
   }
 
-  // 2. Pending Yearbook Alumni Submissions
-  let pendingYearbookCount = 0;
+  // 2. Pending Yearbook Submissions
+  let pendingYearbookTotal = 0;
   try {
+    pendingYearbookTotal = await safeCount(
+      db.select({ n: sql<number>`count(*)` }).from(yearbookAlumni).where(eq(yearbookAlumni.status, "pending_review"))
+    );
+
     const pendingYearbook = await db
       .select()
       .from(yearbookAlumni)
       .where(eq(yearbookAlumni.status, "pending_review"))
       .orderBy(desc(yearbookAlumni.createdAt))
       .limit(5);
-
-    pendingYearbookCount = pendingYearbook.length;
 
     for (const yb of pendingYearbook) {
       notifs.push({
@@ -108,22 +124,25 @@ export async function getAdminNotificationsAction(): Promise<AdminNotificationRe
   }
 
   // 3. Pending Club Proposals
-  let pendingClubsCount = 0;
+  let pendingClubsTotal = 0;
   try {
+    pendingClubsTotal = await safeCount(
+      db.select({ n: sql<number>`count(*)` }).from(clubs).where(eq(clubs.status, "pending_review"))
+    );
+
     const pendingClubs = await db
       .select()
       .from(clubs)
       .where(eq(clubs.status, "pending_review"))
+      .orderBy(desc(clubs.createdAt))
       .limit(3);
-
-    pendingClubsCount = pendingClubs.length;
 
     for (const cl of pendingClubs) {
       notifs.push({
         id: `cl_${cl.id}`,
         title: "Club Proposal Submitted",
         desc: `${cl.name} submitted for review`,
-        time: "recently",
+        time: formatRelativeTime(cl.createdAt),
         icon: "groups",
         href: "/admin/clubs",
         unread: true,
@@ -134,9 +153,7 @@ export async function getAdminNotificationsAction(): Promise<AdminNotificationRe
     console.warn("Notifications club query note:", err);
   }
 
-  const totalPending = pendingAdmissionsCount + pendingYearbookCount + pendingClubsCount;
-
-  // Fallback items if everything is approved
+  // Fallback item if everything is approved
   if (notifs.length === 0) {
     notifs.push({
       id: "sys_all_good",
@@ -151,7 +168,7 @@ export async function getAdminNotificationsAction(): Promise<AdminNotificationRe
   }
 
   return {
-    totalPendingCount: totalPending,
+    totalPendingCount: pendingAdmissionsTotal + pendingYearbookTotal + pendingClubsTotal,
     notifications: notifs,
   };
 }

@@ -7,7 +7,13 @@ import Image from "next/image";
 import { UserProfile, FALLBACK_GUEST_USER, mapUserProfileRecord } from "../../admin/adminStore";
 import { authClient } from "@/lib/auth/auth-client";
 
-export default function AdminSidebar() {
+export default function AdminSidebar({
+  isOpen = false,
+  onClose,
+}: {
+  isOpen?: boolean;
+  onClose?: () => void;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const [activeRole, setActiveRole] = useState<UserProfile>(FALLBACK_GUEST_USER);
@@ -49,7 +55,11 @@ export default function AdminSidebar() {
   const navItems = getNavItems();
 
   return (
-    <aside className="w-64 bg-[#09234B] text-white h-screen fixed left-0 top-0 flex flex-col z-40 shadow-xl border-r border-[#FFC700]/20">
+    <aside
+      className={`w-64 bg-[#09234B] text-white h-screen fixed left-0 top-0 flex flex-col z-50 lg:z-40 shadow-xl border-r border-[#FFC700]/20 transition-transform duration-200 ${
+        isOpen ? "translate-x-0" : "-translate-x-full"
+      } lg:translate-x-0`}
+    >
       {/* Brand Header */}
       <div className="h-20 flex items-center px-6 border-b border-white/10 gap-3">
         <div className="relative w-10 h-10 rounded-full bg-white p-0.5 ring-2 ring-[#FFC700] shadow-sm shrink-0">
@@ -81,6 +91,9 @@ export default function AdminSidebar() {
             <Link
               key={item.href}
               href={item.href}
+              onClick={() => {
+                if (window.innerWidth < 1024) onClose?.();
+              }}
               className={`flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 text-xs font-bold uppercase tracking-wider ${
                 isActive
                   ? "bg-[#FFC700] text-[#09234B] shadow-md font-black"
@@ -88,6 +101,7 @@ export default function AdminSidebar() {
               }`}
             >
               <span
+                aria-hidden="true"
                 className={`material-symbols-outlined text-lg ${
                   isActive ? "text-[#09234B] font-bold" : "text-[#FFC700]"
                 }`}
@@ -110,7 +124,7 @@ export default function AdminSidebar() {
             rel="noopener noreferrer"
             className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-all text-xs font-semibold"
           >
-            <span className="material-symbols-outlined text-base text-[#FFC700]">open_in_new</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-base text-[#FFC700]">open_in_new</span>
             <span>View Public Site</span>
           </Link>
         </div>
@@ -122,7 +136,7 @@ export default function AdminSidebar() {
           <div
             className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs shrink-0 ${activeRole?.badgeColor || "bg-[#FFC700] text-[#09234B]"}`}
           >
-            {activeRole?.initials || "TY"}
+            {activeRole?.initials || (activeRole?.fullName || "U").charAt(0).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-bold text-white truncate">{activeRole?.fullName || "Administrator"}</p>
@@ -145,7 +159,7 @@ export default function AdminSidebar() {
           }}
           className="flex items-center justify-center gap-2 w-full py-2 px-3 bg-red-500/10 hover:bg-red-500 text-red-300 hover:text-white border border-red-500/30 rounded-xl transition-all text-xs font-bold uppercase tracking-wider cursor-pointer"
         >
-          <span className="material-symbols-outlined text-base">logout</span>
+          <span aria-hidden="true" className="material-symbols-outlined text-base">logout</span>
           <span>Sign Out</span>
         </button>
       </div>

@@ -1,8 +1,8 @@
 "use server";
 
 import { getDb, clubs, NewClub } from "@/lib/db";
-import { eq, desc } from "drizzle-orm";
-import { requireAdmin, requireStudentOrAdmin, logAudit } from "@/lib/auth/rbac";
+import { eq, desc, or } from "drizzle-orm";
+import { requireAdmin, requireStudentOrAdmin, logAudit, getServerSession } from "@/lib/auth/rbac";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 
@@ -27,9 +27,24 @@ const clubSchema = z.object({
 
 export async function getClubs() {
   const db = await getDb();
+  const { user } = await getServerSession();
+
+  // Unauthenticated visitors only ever see published clubs.
+  if (!user) {
+    return db
+      .select()
+      .from(clubs)
+      .where(eq(clubs.status, "published"))
+      .orderBy(desc(clubs.id));
+  }
+  if (user.role === "admin") {
+    return db.select().from(clubs).orderBy(desc(clubs.id));
+  }
+  // Students: published clubs plus their own submissions in any state.
   return db
     .select()
     .from(clubs)
+    .where(or(eq(clubs.status, "published"), eq(clubs.submittedBy, user.id)))
     .orderBy(desc(clubs.id));
 }
 
@@ -69,21 +84,35 @@ export async function updateClubAction(id: number, data: unknown) {
   const validated = clubSchema.partial().parse(data);
   const db = await getDb();
 
-  // If student, verify ownership or preserve review status
+  // If student, verify ownership and preserve moderation flow
+  let resetToReview = false;
   if (user.role === "student") {
     const existing = await db.select().from(clubs).where(eq(clubs.id, id)).limit(1);
     if (!existing.length || existing[0].submittedBy !== user.id) {
-      throw new Error("FORBIDDEN: You can only edit your own club proposals.");
+      return { success: false as const, error: "You can only edit your own club proposals." };
+    }
+    if (!existing[0].status || existing[0].status === "published" || existing[0].status === "archived") {
+      resetToReview = true;
     }
   }
 
-  await db
+  const updateData: Partial<NewClub> = {
+    ...validated,
+    updatedAt: new Date().toISOString(),
+  };
+  if (resetToReview) {
+    updateData.status = "pending_review";
+  }
+
+  const updated = await db
     .update(clubs)
-    .set({
-      ...validated,
-      updatedAt: new Date().toISOString(),
-    })
-    .where(eq(clubs.id, id));
+    .set(updateData)
+    .where(eq(clubs.id, id))
+    .returning({ id: clubs.id });
+
+  if (!updated.length) {
+    return { success: false as const, error: "Club not found. It may have been deleted." };
+  }
 
   await logAudit({
     actor: user,
@@ -98,24 +127,36 @@ export async function updateClubAction(id: number, data: unknown) {
   return { success: true };
 }
 
-export async function setClubStatusAction(id: number, status: "published" | "pending_review" | "archived") {
+export async function setClubStatusAction(id: number, status: string) {
   const user = await requireAdmin();
   const db = await getDb();
 
-  await db
+  const statusSchema = z.enum(["published", "pending_review", "archived"]);
+  const parsed = statusSchema.safeParse(status);
+  if (!parsed.success) {
+    return { success: false as const, error: "Invalid club status." };
+  }
+  const validStatus = parsed.data;
+
+  const updated = await db
     .update(clubs)
     .set({
-      status,
+      status: validStatus,
       updatedAt: new Date().toISOString(),
     })
-    .where(eq(clubs.id, id));
+    .where(eq(clubs.id, id))
+    .returning({ id: clubs.id });
+
+  if (!updated.length) {
+    return { success: false as const, error: "Club not found. It may have been deleted." };
+  }
 
   await logAudit({
     actor: user,
-    action: `ADMIN_SET_CLUB_STATUS_${status.toUpperCase()}`,
+    action: `ADMIN_SET_CLUB_STATUS_${validStatus.toUpperCase()}`,
     resource: "clubs",
     resourceId: String(id),
-    details: { status },
+    details: { status: validStatus },
   });
 
   revalidatePath("/clubs");

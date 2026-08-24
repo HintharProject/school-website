@@ -41,7 +41,7 @@ export default function AboutSection() {
               className="absolute -bottom-8 -right-4 sm:-right-8 lg:-bottom-10 lg:-right-8 bg-white/95 backdrop-blur-md p-6 rounded-2xl max-w-[320px] hidden sm:block border border-slate-200 shadow-xl"
             >
               <div className="w-10 h-10 bg-[#FFC700] rounded-full flex items-center justify-center mb-3 shadow-md">
-                <span className="material-symbols-outlined text-[#09234B] text-xl font-bold">
+                <span aria-hidden="true" className="material-symbols-outlined text-[#09234B] text-xl font-bold">
                   format_quote
                 </span>
               </div>
@@ -92,7 +92,7 @@ export default function AboutSection() {
                   className="inline-flex items-center gap-1.5 text-xs font-black text-[#0E3B7D] hover:text-[#FFC700] uppercase tracking-wider transition-colors"
                 >
                   <span>Explore All 4 Campus Locations &amp; Facilities</span>
-                  <span className="material-symbols-outlined text-sm font-black">arrow_forward</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-sm font-black">arrow_forward</span>
                 </a>
               </div>
             </div>
@@ -104,7 +104,7 @@ export default function AboutSection() {
                 className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm transition-all"
               >
                 <div className="w-10 h-10 rounded-xl bg-[#E8F0FE] flex items-center justify-center mb-3 text-[#0E3B7D]">
-                  <span className="material-symbols-outlined text-xl">verified</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-xl">verified</span>
                 </div>
                 <p className="text-2xl sm:text-3xl font-black text-[#09234B] mb-0.5">Pearson</p>
                 <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Edexcel Curriculum</p>
@@ -115,7 +115,7 @@ export default function AboutSection() {
                 className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm transition-all"
               >
                 <div className="w-10 h-10 rounded-xl bg-[#E8F0FE] flex items-center justify-center mb-3 text-[#0E3B7D]">
-                  <span className="material-symbols-outlined text-xl">school</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-xl">school</span>
                 </div>
                 <p className="text-2xl sm:text-3xl font-black text-[#09234B] mb-0.5">100%</p>
                 <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">University Pass Rate</p>
@@ -126,7 +126,7 @@ export default function AboutSection() {
                 className="col-span-2 sm:col-span-1 bg-gradient-to-br from-[#09234B] to-[#0E3B7D] p-4 sm:p-5 rounded-2xl shadow-md transition-all text-white"
               >
                 <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center mb-3 text-[#FFC700]">
-                  <span className="material-symbols-outlined text-xl">emoji_events</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-xl">emoji_events</span>
                 </div>
                 <p className="text-2xl sm:text-3xl font-black mb-0.5">15+</p>
                 <p className="text-[11px] font-bold text-[#FFC700] uppercase tracking-wider">Years of Dedication</p>

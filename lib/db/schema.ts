@@ -401,6 +401,34 @@ export const auditLogs = sqliteTable(
   ]
 );
 
+// Club Members Table (admin-managed roster; no user account required)
+export const clubMembers = sqliteTable(
+  "club_members",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    clubId: integer("club_id")
+      .notNull()
+      .references(() => clubs.id, { onDelete: "cascade" }),
+    studentName: text("student_name").notNull(),
+    grade: text("grade"),
+    contactEmail: text("contact_email"),
+    contactPhone: text("contact_phone"),
+    notes: text("notes"),
+    status: text("status").notNull().default("active"), // "active" | "left"
+    addedBy: text("added_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
+  },
+  (table) => [
+    index("idx_club_members_club").on(table.clubId),
+    index("idx_club_members_status").on(table.status),
+  ]
+);
+
 // ==============================================================================
 // 3. RELATIONS DEFINITIONS
 // ==============================================================================
@@ -470,6 +498,17 @@ export const yearbookAlumniRelations = relations(yearbookAlumni, ({ one }) => ({
   }),
 }));
 
+export const clubMembersRelations = relations(clubMembers, ({ one }) => ({
+  club: one(clubs, {
+    fields: [clubMembers.clubId],
+    references: [clubs.id],
+  }),
+  adder: one(users, {
+    fields: [clubMembers.addedBy],
+    references: [users.id],
+  }),
+}));
+
 // Singular aliases for Better Auth compatibility
 export const user = users;
 export const session = sessions;
@@ -507,6 +546,9 @@ export type NewActivity = typeof activities.$inferInsert;
 
 export type YearbookScholar = typeof yearbookAlumni.$inferSelect;
 export type NewYearbookScholar = typeof yearbookAlumni.$inferInsert;
+
+export type ClubMember = typeof clubMembers.$inferSelect;
+export type NewClubMember = typeof clubMembers.$inferInsert;
 
 export type FileAsset = typeof fileAssets.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;

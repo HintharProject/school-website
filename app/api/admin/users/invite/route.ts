@@ -22,6 +22,10 @@ export async function POST(req: Request) {
       grade: body.grade,
     });
 
+    if (!result.success) {
+      return NextResponse.json({ error: result.error }, { status: 400 });
+    }
+
     return NextResponse.json({
       success: true,
       email: body.email,
@@ -30,9 +34,10 @@ export async function POST(req: Request) {
       emailSent: result.emailSent,
       message: `Invitation link generated successfully.`,
     });
-  } catch (err: any) {
+  } catch {
+    console.error("Invite API error");
     return NextResponse.json(
-      { error: err.message || "Failed to generate invite" },
+      { error: "Failed to generate invitation. Please verify the details and retry." },
       { status: 500 }
     );
   }

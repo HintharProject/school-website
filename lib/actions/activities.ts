@@ -1,8 +1,8 @@
 "use server";
 
 import { getDb, activities, NewActivity } from "@/lib/db";
-import { eq, desc } from "drizzle-orm";
-import { requireAdmin, requireStudentOrAdmin, logAudit } from "@/lib/auth/rbac";
+import { eq, desc, or } from "drizzle-orm";
+import { requireAdmin, requireStudentOrAdmin, logAudit, getServerSession } from "@/lib/auth/rbac";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 
@@ -25,9 +25,25 @@ const activitySchema = z.object({
 
 export async function getActivities() {
   const db = await getDb();
+  const { user } = await getServerSession();
+
+  if (!user) {
+    return db
+      .select()
+      .from(activities)
+      .where(eq(activities.reviewStatus, "published"))
+      .orderBy(desc(activities.featured), desc(activities.id));
+  }
+  if (user.role === "admin") {
+    return db
+      .select()
+      .from(activities)
+      .orderBy(desc(activities.featured), desc(activities.id));
+  }
   return db
     .select()
     .from(activities)
+    .where(or(eq(activities.reviewStatus, "published"), eq(activities.submittedBy, user.id)))
     .orderBy(desc(activities.featured), desc(activities.id));
 }
 
@@ -68,21 +84,34 @@ export async function updateActivityAction(id: number, data: unknown) {
   const validated = activitySchema.partial().parse(data);
   const db = await getDb();
 
+  let resetToReview = false;
   if (user.role === "student") {
     const existing = await db.select().from(activities).where(eq(activities.id, id)).limit(1);
     if (!existing.length || existing[0].submittedBy !== user.id) {
-      throw new Error("FORBIDDEN: You can only edit your own activity proposals.");
+      return { success: false as const, error: "You can only edit your own activity proposals." };
     }
+    resetToReview =
+      !existing[0].reviewStatus || existing[0].reviewStatus === "published" || existing[0].reviewStatus === "archived";
   }
 
-  await db
+  const updateData: Partial<NewActivity> = {
+    ...validated,
+    clubId: validated.clubId !== undefined ? validated.clubId : undefined,
+    updatedAt: new Date().toISOString(),
+  };
+  if (resetToReview) {
+    updateData.reviewStatus = "pending_review";
+  }
+
+  const updated = await db
     .update(activities)
-    .set({
-      ...validated,
-      clubId: validated.clubId !== undefined ? validated.clubId : undefined,
-      updatedAt: new Date().toISOString(),
-    })
-    .where(eq(activities.id, id));
+    .set(updateData)
+    .where(eq(activities.id, id))
+    .returning({ id: activities.id });
+
+  if (!updated.length) {
+    return { success: false as const, error: "Activity not found. It may have been deleted." };
+  }
 
   await logAudit({
     actor: user,

@@ -59,7 +59,7 @@ export default function FaqSection() {
         {/* Heading */}
         <div className="text-center mb-12 md:mb-16">
           <div className="inline-flex items-center gap-2 bg-[#E8F0FE] px-4 py-1.5 rounded-full mb-4 border border-[#0E3B7D]/20">
-            <span className="material-symbols-outlined text-[#0E3B7D] text-sm font-bold">help</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-[#0E3B7D] text-sm font-bold">help</span>
             <span className="text-xs font-extrabold text-[#0E3B7D] uppercase tracking-wider">
               Have Questions?
             </span>

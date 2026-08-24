@@ -76,7 +76,7 @@ export default function FooterSection() {
                 aria-label={social.label}
                 className="w-9 h-9 rounded-full bg-white/10 border border-white/15 flex items-center justify-center hover:bg-[#FFC700] hover:text-[#09234B] hover:border-[#FFC700] hover:-translate-y-1 transition-all duration-200"
               >
-                <span className="material-symbols-outlined text-[18px]">{social.icon}</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-[18px]">{social.icon}</span>
               </a>
             ))}
           </div>
@@ -124,7 +124,7 @@ export default function FooterSection() {
               href="/admin/login"
               className="hover:text-[#FFC700] inline-flex items-center gap-1.5 text-xs font-bold text-slate-300 hover:translate-x-1 transition-all"
             >
-              <span className="material-symbols-outlined text-xs text-[#FFC700]">admin_panel_settings</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-xs text-[#FFC700]">admin_panel_settings</span>
               <span>Staff / Faculty Portal</span>
             </Link>
           </div>
@@ -139,7 +139,7 @@ export default function FooterSection() {
             {contactInfo.map((item) => (
               <div key={item.icon} className="flex gap-3.5 group">
                 <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center shrink-0 group-hover:bg-[#FFC700] group-hover:text-[#09234B] transition-colors">
-                  <span className="material-symbols-outlined text-white text-[18px] group-hover:text-[#09234B] transition-colors">
+                  <span aria-hidden="true" className="material-symbols-outlined text-white text-[18px] group-hover:text-[#09234B] transition-colors">
                     {item.icon}
                   </span>
                 </div>

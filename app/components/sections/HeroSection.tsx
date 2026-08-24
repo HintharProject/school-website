@@ -132,14 +132,14 @@ export default function HeroSection() {
                 className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] font-black text-xs uppercase tracking-wider shadow-lg shadow-[#FFC700]/25 hover:scale-[1.03] active:scale-[0.98] transition-all"
               >
                 <span>Apply for 2026–2027</span>
-                <span className="material-symbols-outlined text-base font-black">arrow_forward</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-base font-black">arrow_forward</span>
               </Link>
 
               <Link
                 href="/classes"
                 className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/25 text-white font-bold text-xs uppercase tracking-wider hover:scale-[1.03] active:scale-[0.98] transition-all"
               >
-                <span className="material-symbols-outlined text-base">menu_book</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-base">menu_book</span>
                 <span>Curriculum &amp; Syllabi</span>
               </Link>
 
@@ -147,7 +147,7 @@ export default function HeroSection() {
                 href="/chatbot"
                 className="inline-flex items-center gap-1.5 px-5 py-3.5 rounded-full bg-transparent hover:bg-white/10 text-[#FFC700] border border-[#FFC700]/40 font-bold text-xs uppercase tracking-wider transition-all"
               >
-                <span className="material-symbols-outlined text-base">smart_toy</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-base">smart_toy</span>
                 <span>Admissions AI</span>
               </Link>
             </motion.div>
@@ -256,7 +256,7 @@ export default function HeroSection() {
                   className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0E3B7D]/85 hover:bg-[#0E3B7D] border border-white/20 text-white text-xs font-bold uppercase tracking-wider shadow-sm transition-all"
                 >
                   <span>Explore Syllabus</span>
-                  <span className="material-symbols-outlined text-sm font-bold">arrow_forward</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-sm font-bold">arrow_forward</span>
                 </Link>
               </div>
             </div>

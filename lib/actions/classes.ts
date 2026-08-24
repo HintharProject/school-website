@@ -70,13 +70,18 @@ export async function updateCourseAction(id: string, data: unknown) {
   const validated = courseSchema.partial().parse(data);
   const db = await getDb();
 
-  await db
+  const updated = await db
     .update(classesCourses)
     .set({
       ...validated,
       updatedAt: new Date().toISOString(),
     })
-    .where(eq(classesCourses.id, id));
+    .where(eq(classesCourses.id, id))
+    .returning({ id: classesCourses.id });
+
+  if (!updated.length) {
+    return { success: false as const, error: "Course not found. It may have been deleted." };
+  }
 
   await logAudit({
     actor: user,

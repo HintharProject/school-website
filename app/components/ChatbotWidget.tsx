@@ -158,7 +158,7 @@ export default function ChatbotWidget() {
         <div className="bg-[#09234B] text-white p-4 flex justify-between items-center shrink-0 border-b border-[#FFC700]/30">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-[#FFC700] text-[#09234B] flex items-center justify-center font-black shadow-sm">
-              <span className="material-symbols-outlined text-xl font-bold">school</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-xl font-bold">school</span>
             </div>
             <div>
               <h4 className="text-sm font-black tracking-tight">Hinthar AI Counselor</h4>
@@ -175,7 +175,7 @@ export default function ChatbotWidget() {
             className="hover:bg-white/10 p-1.5 rounded-full transition-colors text-white/80 hover:text-white"
             aria-label="Close chat"
           >
-            <span className="material-symbols-outlined text-lg">close</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-lg">close</span>
           </button>
         </div>
 
@@ -184,7 +184,7 @@ export default function ChatbotWidget() {
             msg.role === "ai" ? (
               <div key={msg.id} className="flex gap-2.5 max-w-[88%] items-start">
                 <div className="w-7 h-7 rounded-lg bg-[#E8F0FE] text-[#0E3B7D] flex items-center justify-center shrink-0 mt-0.5 border border-[#0E3B7D]/20">
-                  <span className="material-symbols-outlined text-sm font-bold">smart_toy</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-sm font-bold">smart_toy</span>
                 </div>
                 <div className="space-y-1.5">
                   <div className="bg-white p-3.5 rounded-2xl rounded-tl-sm shadow-sm border border-slate-200 text-slate-800 leading-relaxed">
@@ -197,7 +197,7 @@ export default function ChatbotWidget() {
                           className="inline-flex items-center gap-1 text-[11px] font-bold text-[#0E3B7D] hover:underline"
                         >
                           <span>{msg.link.label}</span>
-                          <span className="material-symbols-outlined text-xs font-bold">arrow_forward</span>
+                          <span aria-hidden="true" className="material-symbols-outlined text-xs font-bold">arrow_forward</span>
                         </Link>
                       </div>
                     )}
@@ -217,7 +217,7 @@ export default function ChatbotWidget() {
 
           {isTyping && (
             <div className="flex gap-2 items-center text-slate-500 text-[11px] pl-2">
-              <span className="material-symbols-outlined text-xs animate-spin text-[#0E3B7D]">refresh</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-xs animate-spin text-[#0E3B7D]">refresh</span>
               <span>Hinthar Counselor is typing...</span>
             </div>
           )}
@@ -253,7 +253,7 @@ export default function ChatbotWidget() {
               className="bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] px-3.5 py-2 rounded-xl transition-colors disabled:opacity-40 flex items-center justify-center font-bold border border-[#FFC700]"
               aria-label="Send message"
             >
-              <span className="material-symbols-outlined text-base font-bold">send</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-base font-bold">send</span>
             </button>
           </form>
         </div>
@@ -265,7 +265,7 @@ export default function ChatbotWidget() {
         className="fixed bottom-6 right-6 z-[120] bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] w-14 h-14 rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all group border-2 border-white ring-2 ring-[#0E3B7D]/30"
         aria-label={isOpen ? "Close chat" : "Open admissions chat"}
       >
-        <span className="material-symbols-outlined text-2xl font-bold group-hover:rotate-12 transition-transform">
+        <span aria-hidden="true" className="material-symbols-outlined text-2xl font-bold group-hover:rotate-12 transition-transform">
           {isOpen ? "close" : "forum"}
         </span>
       </button>

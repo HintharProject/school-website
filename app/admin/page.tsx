@@ -134,7 +134,7 @@ export default function AdminDashboardPage() {
             rel="noopener noreferrer"
             className="px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold transition-all flex items-center gap-1.5"
           >
-            <span className="material-symbols-outlined text-sm text-[#0E3B7D]">open_in_new</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-sm text-[#0E3B7D]">open_in_new</span>
             <span>Public Site</span>
           </Link>
           {isAdmin ? (
@@ -142,7 +142,7 @@ export default function AdminDashboardPage() {
               href="/admin/users"
               className="px-4 py-2.5 rounded-xl bg-[#0E3B7D] hover:bg-[#164E9A] text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
             >
-              <span className="material-symbols-outlined text-sm">person_add</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-sm">person_add</span>
               <span>Invite Account</span>
             </Link>
           ) : (
@@ -150,7 +150,7 @@ export default function AdminDashboardPage() {
               href="/admin/yearbook"
               className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
             >
-              <span className="material-symbols-outlined text-sm">add</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-sm">add</span>
               <span>Submit Yearbook Entry</span>
             </Link>
           )}
@@ -163,7 +163,7 @@ export default function AdminDashboardPage() {
           <>
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-blue-50 text-[#0E3B7D] flex items-center justify-center font-bold">
-                <span className="material-symbols-outlined text-2xl">school</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-2xl">school</span>
               </div>
               <div>
                 <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Admissions</p>
@@ -174,7 +174,7 @@ export default function AdminDashboardPage() {
 
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold">
-                <span className="material-symbols-outlined text-2xl">location_city</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-2xl">location_city</span>
               </div>
               <div>
                 <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Campuses</p>
@@ -185,7 +185,7 @@ export default function AdminDashboardPage() {
 
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center font-bold">
-                <span className="material-symbols-outlined text-2xl">menu_book</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-2xl">menu_book</span>
               </div>
               <div>
                 <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Classes &amp; Syllabi</p>
@@ -196,7 +196,7 @@ export default function AdminDashboardPage() {
 
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
-                <span className="material-symbols-outlined text-2xl">manage_accounts</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-2xl">manage_accounts</span>
               </div>
               <div>
                 <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">User Directory</p>
@@ -209,7 +209,7 @@ export default function AdminDashboardPage() {
           <>
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
-                <span className="material-symbols-outlined text-2xl">auto_stories</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-2xl">auto_stories</span>
               </div>
               <div>
                 <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">My Submissions</p>
@@ -220,7 +220,7 @@ export default function AdminDashboardPage() {
 
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-blue-50 text-[#0E3B7D] flex items-center justify-center font-bold">
-                <span className="material-symbols-outlined text-2xl">groups</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-2xl">groups</span>
               </div>
               <div>
                 <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Student Societies</p>
@@ -231,7 +231,7 @@ export default function AdminDashboardPage() {
 
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center font-bold">
-                <span className="material-symbols-outlined text-2xl">event</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-2xl">event</span>
               </div>
               <div>
                 <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Events &amp; Activities</p>
@@ -242,7 +242,7 @@ export default function AdminDashboardPage() {
 
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold">
-                <span className="material-symbols-outlined text-2xl">menu_book</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-2xl">menu_book</span>
               </div>
               <div>
                 <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Course Schedules</p>
@@ -269,7 +269,7 @@ export default function AdminDashboardPage() {
               className="text-xs font-bold text-[#0E3B7D] hover:underline flex items-center gap-1"
             >
               <span>View All Pipeline</span>
-              <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-sm">arrow_forward</span>
             </Link>
           </div>
 

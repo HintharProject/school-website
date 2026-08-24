@@ -66,7 +66,7 @@ export default function UpdatePasswordPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-[#0E3B7D] rounded-2xl mx-auto flex items-center justify-center shadow-lg shadow-blue-900/20 mb-4 border border-[#FFC700]/40">
-            <span className="material-symbols-outlined text-3xl text-[#FFC700]">lock_reset</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-3xl text-[#FFC700]">lock_reset</span>
           </div>
           <h1 className="text-2xl font-black text-[#09234B] tracking-tight">Change Password</h1>
           <p className="text-sm text-slate-500 mt-1.5">
@@ -76,8 +76,8 @@ export default function UpdatePasswordPage() {
 
         {/* Feedback Alerts */}
         {errorMsg && (
-          <div className="mb-6 p-4 rounded-xl bg-rose-50 border border-rose-200 flex items-start gap-3 text-rose-700 text-sm">
-            <span className="material-symbols-outlined text-rose-500 text-lg flex-shrink-0 mt-0.5">error</span>
+          <div role="alert" className="mb-6 p-4 rounded-xl bg-rose-50 border border-rose-200 flex items-start gap-3 text-rose-700 text-sm">
+            <span aria-hidden="true" className="material-symbols-outlined text-rose-500 text-lg flex-shrink-0 mt-0.5">error</span>
             <div>
               <p className="font-bold">Update Error</p>
               <p className="text-xs text-rose-600 mt-0.5">{errorMsg}</p>
@@ -86,8 +86,8 @@ export default function UpdatePasswordPage() {
         )}
 
         {successMsg && (
-          <div className="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-3 text-emerald-700 text-sm animate-pulse">
-            <span className="material-symbols-outlined text-emerald-500 text-lg flex-shrink-0 mt-0.5">check_circle</span>
+          <div role="status" className="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-3 text-emerald-700 text-sm animate-pulse">
+            <span aria-hidden="true" className="material-symbols-outlined text-emerald-500 text-lg flex-shrink-0 mt-0.5">check_circle</span>
             <div>
               <p className="font-bold">Success</p>
               <p className="text-xs text-emerald-600 mt-0.5">{successMsg}</p>
@@ -98,12 +98,14 @@ export default function UpdatePasswordPage() {
         {/* Form */}
         <form onSubmit={handleUpdatePassword} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
+            <label htmlFor="current-password" className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
               Current Password
             </label>
             <input
+              id="current-password"
               type="password"
               required
+              autoComplete="current-password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
               placeholder="••••••••••••"
@@ -112,27 +114,32 @@ export default function UpdatePasswordPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
+            <label htmlFor="new-password" className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
               New Password
             </label>
             <input
+              id="new-password"
               type="password"
               required
+              autoComplete="new-password"
+              minLength={8}
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder="••••••••••••"
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
             />
-            <p className="text-[11px] text-slate-400 mt-1">Minimum 8 characters.</p>
+            <p className="text-[11px] text-slate-500 mt-1">Minimum 8 characters.</p>
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
+            <label htmlFor="confirm-new-password" className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
               Confirm New Password
             </label>
             <input
+              id="confirm-new-password"
               type="password"
               required
+              autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="••••••••••••"
@@ -153,7 +160,7 @@ export default function UpdatePasswordPage() {
             ) : (
               <>
                 <span>Save New Password</span>
-                <span className="material-symbols-outlined text-sm text-[#FFC700]">arrow_forward</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-sm text-[#FFC700]">arrow_forward</span>
               </>
             )}
           </button>

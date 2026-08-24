@@ -1,11 +1,11 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authClient } from "@/lib/auth/auth-client";
-import { acceptInviteAction, ensureAdminReadyAction } from "@/lib/actions/users";
+import { acceptInviteAction } from "@/lib/actions/users";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -43,9 +43,6 @@ export default function LoginForm() {
     const enteredEmail = email.trim().toLowerCase();
 
     try {
-      // Ensure initial admin is provisioned before login
-      await ensureAdminReadyAction().catch(() => {});
-
       const { data, error } = await authClient.signIn.email({
         email: enteredEmail,
         password,
@@ -72,6 +69,7 @@ export default function LoginForm() {
     } catch (err: any) {
       console.warn("Auth error:", err);
       setErrorMessage(err.message || "Authentication failed. Please check your credentials.");
+    } finally {
       setLoading(false);
     }
   };
@@ -131,7 +129,7 @@ export default function LoginForm() {
             </div>
 
             <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#E8F0FE] text-[#0E3B7D] text-[10px] font-black uppercase tracking-wider mb-2 border border-[#0E3B7D]/20">
-              <span className="material-symbols-outlined text-xs">shield_lock</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-xs">shield_lock</span>
               <span>Pearson Edexcel Centre 11051</span>
             </div>
 
@@ -147,15 +145,15 @@ export default function LoginForm() {
 
           {/* Alerts */}
           {errorMessage && (
-            <div className="mx-8 mt-4 p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-start gap-2.5">
-              <span className="material-symbols-outlined text-base shrink-0 text-red-500 mt-0.5">error</span>
+            <div role="alert" className="mx-8 mt-4 p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-start gap-2.5">
+              <span aria-hidden="true" className="material-symbols-outlined text-base shrink-0 text-red-500 mt-0.5">error</span>
               <span>{errorMessage}</span>
             </div>
           )}
 
           {successMessage && (
-            <div className="mx-8 mt-4 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold flex items-start gap-2.5">
-              <span className="material-symbols-outlined text-base shrink-0 text-emerald-500 mt-0.5">check_circle</span>
+            <div role="status" className="mx-8 mt-4 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold flex items-start gap-2.5">
+              <span aria-hidden="true" className="material-symbols-outlined text-base shrink-0 text-emerald-500 mt-0.5">check_circle</span>
               <span>{successMessage}</span>
             </div>
           )}
@@ -164,10 +162,11 @@ export default function LoginForm() {
           {isInviteMode ? (
             <form onSubmit={handleAcceptInvite} className="px-8 py-6 space-y-4">
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider pl-1">
+                <label htmlFor="invite-email" className="text-[11px] font-bold text-slate-700 uppercase tracking-wider pl-1">
                   Invited Email
                 </label>
                 <input
+                  id="invite-email"
                   type="email"
                   disabled
                   value={email}
@@ -176,10 +175,11 @@ export default function LoginForm() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider pl-1">
+                <label htmlFor="invite-password" className="text-[11px] font-bold text-slate-700 uppercase tracking-wider pl-1">
                   Create Password (min. 8 chars)
                 </label>
                 <input
+                  id="invite-password"
                   type="password"
                   required
                   value={password}
@@ -190,10 +190,11 @@ export default function LoginForm() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider pl-1">
+                <label htmlFor="invite-confirm-password" className="text-[11px] font-bold text-slate-700 uppercase tracking-wider pl-1">
                   Confirm Password
                 </label>
                 <input
+                  id="invite-confirm-password"
                   type="password"
                   required
                   value={confirmPassword}
@@ -209,20 +210,21 @@ export default function LoginForm() {
                 className="w-full bg-[#0E3B7D] hover:bg-[#164E9A] text-white py-3 rounded-xl font-black uppercase tracking-wider shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all mt-2 flex items-center justify-center gap-2 text-xs disabled:opacity-50 cursor-pointer"
               >
                 <span>{loading ? "Activating Account..." : "Accept & Enter Portal"}</span>
-                <span className="material-symbols-outlined text-sm font-bold">arrow_forward</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-sm font-bold">arrow_forward</span>
               </button>
             </form>
           ) : (
             <form onSubmit={handlePasswordLogin} className="px-8 py-6 space-y-4">
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider pl-1">
+                <label htmlFor="login-email" className="text-[11px] font-bold text-slate-700 uppercase tracking-wider pl-1">
                   School Account Email
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-base">
+                  <span aria-hidden="true" className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-base">
                     mail
                   </span>
                   <input
+                    id="login-email"
                     type="email"
                     required
                     value={email}
@@ -235,22 +237,24 @@ export default function LoginForm() {
 
               <div className="space-y-1">
                 <div className="flex justify-between items-center pl-1">
-                  <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                  <label htmlFor="login-password" className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
                     Password
                   </label>
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="text-[10px] font-bold text-slate-500 hover:text-slate-800"
+                    aria-pressed={showPassword}
+                    className="text-[10px] font-bold text-slate-500 hover:text-slate-800 cursor-pointer"
                   >
                     {showPassword ? "Hide" : "Show"}
                   </button>
                 </div>
                 <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-base">
+                  <span aria-hidden="true" className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-base">
                     lock
                   </span>
                   <input
+                    id="login-password"
                     type={showPassword ? "text" : "password"}
                     required
                     value={password}
@@ -267,7 +271,7 @@ export default function LoginForm() {
                 className="w-full bg-[#0E3B7D] hover:bg-[#164E9A] text-white py-3 rounded-xl font-black uppercase tracking-wider shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all mt-2 flex items-center justify-center gap-2 text-xs disabled:opacity-50 cursor-pointer"
               >
                 <span>{loading ? "Verifying Credentials..." : "Sign In to Portal"}</span>
-                <span className="material-symbols-outlined text-sm font-bold">arrow_forward</span>
+                <span aria-hidden="true" className="material-symbols-outlined text-sm font-bold">arrow_forward</span>
               </button>
             </form>
           )}
@@ -275,13 +279,13 @@ export default function LoginForm() {
           {/* Principal Direct Provisioning Footer Notice */}
           <div className="bg-slate-50 p-4 text-center border-t border-slate-200 space-y-2">
             <p className="text-[11px] text-slate-500 font-medium">
-              🔒 <strong>Closed Registration</strong>: Accounts are directly provisioned by <strong>School Administration</strong>.
+              ðŸ”’ <strong>Closed Registration</strong>: Accounts are directly provisioned by <strong>School Administration</strong>.
             </p>
             <Link
               href="/"
               className="text-xs font-bold text-[#0E3B7D] hover:underline inline-flex items-center gap-1"
             >
-              <span className="material-symbols-outlined text-sm">arrow_back</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-sm">arrow_back</span>
               <span>Back to Hinthar Public Website</span>
             </Link>
           </div>

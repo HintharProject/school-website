@@ -103,7 +103,7 @@ export default function SpecialisationsSection() {
           transition={{ duration: 0.5 }}
         >
           <div className="inline-flex items-center gap-2 bg-white px-4 py-1.5 rounded-full shadow-sm mb-4 border border-slate-200">
-            <span className="material-symbols-outlined text-[#FFC700] text-sm font-bold">menu_book</span>
+            <span aria-hidden="true" className="material-symbols-outlined text-[#FFC700] text-sm font-bold">menu_book</span>
             <span className="text-xs font-extrabold text-[#0E3B7D] uppercase tracking-wider">
               Academic Curriculums
             </span>
@@ -176,7 +176,7 @@ export default function SpecialisationsSection() {
 
                 {/* Floating Icon */}
                 <div className="absolute -bottom-5 right-5 w-11 h-11 bg-white rounded-xl shadow-lg flex items-center justify-center z-20 group-hover:-translate-y-1 transition-transform duration-300 border border-slate-200 text-[#0E3B7D]">
-                  <span className="material-symbols-outlined text-2xl font-bold">{prog.icon}</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-2xl font-bold">{prog.icon}</span>
                 </div>
               </div>
 
@@ -193,7 +193,7 @@ export default function SpecialisationsSection() {
                 <div className="space-y-1.5 mb-6 flex-1 pt-3 border-t border-slate-100">
                   {prog.highlights.map((h, i) => (
                     <div key={i} className="flex items-start gap-2 text-[12px] text-slate-600">
-                      <span className="material-symbols-outlined text-[#FFC700] text-sm shrink-0 mt-0.5 font-bold">check_circle</span>
+                      <span aria-hidden="true" className="material-symbols-outlined text-[#FFC700] text-sm shrink-0 mt-0.5 font-bold">check_circle</span>
                       <span>{h}</span>
                     </div>
                   ))}
@@ -205,7 +205,7 @@ export default function SpecialisationsSection() {
                     className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-[#E8F0FE] hover:bg-[#0E3B7D] hover:text-white text-[#0E3B7D] text-xs font-black tracking-wider uppercase transition-all"
                   >
                     <span>Enroll for {prog.badge}</span>
-                    <span className="material-symbols-outlined text-sm font-bold">arrow_forward</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-sm font-bold">arrow_forward</span>
                   </Link>
                 </div>
               </div>

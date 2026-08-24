@@ -22,9 +22,10 @@ export async function POST(req: Request) {
 
     const result = await bootstrapInitialAdmin();
     return NextResponse.json(result, { status: result.success ? 200 : 400 });
-  } catch (err: any) {
+  } catch (err) {
+    console.error("Bootstrap API error:", err);
     return NextResponse.json(
-      { error: err.message || "Failed to execute administrative bootstrap." },
+      { error: "Failed to execute administrative bootstrap." },
       { status: 500 }
     );
   }

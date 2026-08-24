@@ -13,6 +13,12 @@ export default function AdminLayoutWrapper({ children }: { children: React.React
 
   const { data: session, isPending } = authClient.useSession();
   const [isVerifying, setIsVerifying] = useState(!isAuthPublicPage);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  // Close the mobile drawer whenever the route changes
+  useEffect(() => {
+    setIsDrawerOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     if (isAuthPublicPage) {
@@ -50,10 +56,21 @@ export default function AdminLayoutWrapper({ children }: { children: React.React
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
-      <AdminSidebar />
-      <div className="pl-64 flex flex-col min-h-screen">
-        <AdminHeader />
-        <main className="flex-1 p-6 sm:p-8 max-w-[1400px] w-full">
+      {/* Mobile drawer backdrop */}
+      {isDrawerOpen && (
+        <button
+          type="button"
+          aria-label="Close navigation menu"
+          onClick={() => setIsDrawerOpen(false)}
+          className="fixed inset-0 z-[45] bg-black/50 backdrop-blur-xs lg:hidden cursor-pointer"
+        />
+      )}
+
+      <AdminSidebar isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} />
+
+      <div className="flex flex-col min-h-screen lg:pl-64">
+        <AdminHeader onMenuToggle={() => setIsDrawerOpen((v) => !v)} isDrawerOpen={isDrawerOpen} />
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1400px] w-full">
           {children}
         </main>
       </div>
