@@ -11,13 +11,9 @@ import {
 export default function AdminHeader({
   onMenuToggle,
   isDrawerOpen = false,
-  theme = "light",
-  onThemeToggle,
 }: {
   onMenuToggle?: () => void;
   isDrawerOpen?: boolean;
-  theme?: "light" | "dark";
-  onThemeToggle?: () => void;
 }) {
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
   const [notifications, setNotifications] = useState<AdminNotificationItem[]>([]);
@@ -85,19 +81,16 @@ export default function AdminHeader({
 
       {/* Right Controls */}
       <div className="flex items-center gap-2 sm:gap-2.5">
-        {/* Theme Toggle (admin portal only) */}
-        <button
-          type="button"
-          onClick={onThemeToggle}
-          aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-          aria-pressed={theme === "dark"}
-          title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-          className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-600 hover:bg-slate-100 transition-colors border border-slate-200 cursor-pointer"
+        {/* View Live Site */}
+        <Link
+          href="/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#E8F0FE] hover:bg-[#0E3B7D] text-[#0E3B7D] hover:text-white text-[11px] font-black transition-all cursor-pointer"
         >
-          <span aria-hidden="true" className="material-symbols-outlined text-lg">
-            {theme === "dark" ? "light_mode" : "dark_mode"}
-          </span>
-        </button>
+          <span aria-hidden="true" className="material-symbols-outlined text-sm">open_in_new</span>
+          <span className="hidden sm:inline">View Live Site</span>
+        </Link>
 
         {/* Notifications Popover */}
         <div className="relative" ref={notifMenuRef}>

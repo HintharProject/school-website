@@ -6,8 +6,6 @@ import AdminSidebar from "../components/admin/AdminSidebar";
 import AdminHeader from "../components/admin/AdminHeader";
 import { authClient } from "@/lib/auth/auth-client";
 
-const THEME_KEY = "hinthar-admin-theme";
-
 export default function AdminLayoutWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -16,29 +14,6 @@ export default function AdminLayoutWrapper({ children }: { children: React.React
   const { data: session, isPending } = authClient.useSession();
   const [isVerifying, setIsVerifying] = useState(!isAuthPublicPage);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-
-  // Restore saved theme preference
-  useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(THEME_KEY);
-      if (saved === "dark" || saved === "light") setTheme(saved);
-    } catch {
-      // localStorage unavailable
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    setTheme((prev) => {
-      const next = prev === "dark" ? "light" : "dark";
-      try {
-        window.localStorage.setItem(THEME_KEY, next);
-      } catch {
-        // ignore
-      }
-      return next;
-    });
-  };
 
   // Default the drawer open on large screens; always start closed on mobile.
   useEffect(() => {
@@ -96,8 +71,8 @@ export default function AdminLayoutWrapper({ children }: { children: React.React
   }
 
   return (
-    <div className={`min-h-screen bg-slate-50 text-slate-900 admin-shell ${theme === "dark" ? "dark" : ""}`}>
-      {/* Drawer backdrop */}
+    <div className="min-h-screen bg-slate-50 text-slate-900 admin-shell">
+      {/* Drawer backdrop (mobile/tablet only; desktop keeps the sidebar inline) */}
       {isDrawerOpen && (
         <button
           type="button"
@@ -109,13 +84,11 @@ export default function AdminLayoutWrapper({ children }: { children: React.React
 
       <AdminSidebar isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} />
 
-      {/* Content shifts only on large screens where the sidebar sits inline */}
+      {/* Content shifts only when the sidebar drawer is inline (large screens) */}
       <div className={`flex flex-col min-h-screen transition-[padding] duration-200 ${isDrawerOpen ? "lg:pl-64" : ""}`}>
         <AdminHeader
           onMenuToggle={() => setIsDrawerOpen((v) => !v)}
           isDrawerOpen={isDrawerOpen}
-          theme={theme}
-          onThemeToggle={toggleTheme}
         />
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1400px] w-full">
           {children}
