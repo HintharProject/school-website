@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import Image from "next/image";
 import { UserProfile, FALLBACK_GUEST_USER, mapUserProfileRecord } from "../../admin/adminStore";
 import { authClient } from "@/lib/auth/auth-client";
 
@@ -17,6 +16,9 @@ export default function AdminSidebar({
   const pathname = usePathname();
   const router = useRouter();
   const [activeRole, setActiveRole] = useState<UserProfile>(FALLBACK_GUEST_USER);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
 
   const { data: session } = authClient.useSession();
 
@@ -26,8 +28,26 @@ export default function AdminSidebar({
     }
   }, [session]);
 
-  const isAdmin = (activeRole?.role ?? "admin") === "admin";
-  const isStudent = (activeRole?.role ?? "") === "student";
+  // Close profile menu on outside click or Escape
+  useEffect(() => {
+    if (!profileOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setProfileOpen(false);
+      }
+    };
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setProfileOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [profileOpen]);
+
+  const isAdmin = (activeRole?.role ?? "") === "admin";
 
   // Dynamic Navigation Items based on Access Level
   const getNavItems = () => {
@@ -40,6 +60,8 @@ export default function AdminSidebar({
         { label: "Yearbook & Honors", href: "/admin/yearbook", icon: "auto_stories" },
         { label: "Classes & Syllabi", href: "/admin/classes", icon: "menu_book" },
         { label: "Clubs & Activities", href: "/admin/clubs", icon: "groups" },
+        { label: "Noticeboard", href: "/admin/notices", icon: "campaign" },
+        { label: "Help & Support", href: "/admin/help", icon: "support_agent" },
       ];
     }
 
@@ -49,38 +71,44 @@ export default function AdminSidebar({
       { label: "Yearbook Entry", href: "/admin/yearbook", icon: "auto_stories" },
       { label: "Classes & Timetables", href: "/admin/classes", icon: "menu_book" },
       { label: "Clubs & Activities", href: "/admin/clubs", icon: "groups" },
+      { label: "Noticeboard", href: "/admin/notices", icon: "campaign" },
+      { label: "Help & Support", href: "/admin/help", icon: "support_agent" },
     ];
   };
 
   const navItems = getNavItems();
 
+  const handleSignOut = async () => {
+    setIsSigningOut(true);
+    setProfileOpen(false);
+    try {
+      await authClient.signOut();
+    } catch (err) {
+      console.warn("Sidebar sign out error:", err);
+    }
+    router.push("/admin/login");
+    router.refresh();
+  };
+
+  const displayName = activeRole?.fullName || "Signed Out";
+  const initials =
+    activeRole?.initials || (displayName !== "Signed Out" ? displayName.charAt(0).toUpperCase() : "?");
+
   return (
     <aside
-      className={`w-64 bg-[#09234B] text-white h-screen fixed left-0 top-0 flex flex-col z-50 lg:z-40 shadow-xl border-r border-[#FFC700]/20 transition-transform duration-200 ${
+      className={`w-64 bg-[#09234B] text-white h-screen fixed left-0 top-0 flex flex-col z-[60] shadow-xl border-r border-[#FFC700]/20 transition-transform duration-200 ${
         isOpen ? "translate-x-0" : "-translate-x-full"
-      } lg:translate-x-0`}
+      }`}
     >
-      {/* Brand Header */}
-      <div className="h-20 flex items-center px-6 border-b border-white/10 gap-3">
-        <div className="relative w-10 h-10 rounded-full bg-white p-0.5 ring-2 ring-[#FFC700] shadow-sm shrink-0">
-          <Image src="/images/mainLogo.png" alt="Hinthar Logo" fill sizes="40px" className="object-contain" />
-        </div>
-        <div className="flex flex-col min-w-0">
-          <span className="font-black text-sm text-white tracking-tight leading-tight truncate">
-            Hinthar Portal
-          </span>
-          <span className="text-[10px] font-bold text-[#FFC700] uppercase tracking-wider">
-            {isAdmin ? "School Administrator" : "Student Contributor"}
-          </span>
-        </div>
+      {/* Section Header */}
+      <div className="h-16 flex items-center px-6 border-b border-white/10 shrink-0">
+        <span className="font-black text-sm text-[#FFC700] uppercase tracking-[0.2em]">
+          Dashboard
+        </span>
       </div>
 
       {/* Navigation Links */}
-      <div className="flex-1 overflow-y-auto py-6 px-4 space-y-1.5">
-        <p className="px-3 text-[11px] font-black text-[#FFC700] uppercase tracking-[0.16em] mb-3">
-          {isStudent ? "Student Workspace" : "Management Hub"}
-        </p>
-
+      <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1.5" aria-label="Portal navigation">
         {navItems.map((item) => {
           const isActive =
             item.href === "/admin"
@@ -112,55 +140,102 @@ export default function AdminSidebar({
             </Link>
           );
         })}
+      </nav>
 
-        {/* Live Site Shortcut */}
-        <div className="pt-6">
-          <p className="px-3 text-[11px] font-black text-slate-400 uppercase tracking-[0.16em] mb-2">
-            Public Gateway
-          </p>
-          <Link
-            href="/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-all text-xs font-semibold"
-          >
-            <span aria-hidden="true" className="material-symbols-outlined text-base text-[#FFC700]">open_in_new</span>
-            <span>View Public Site</span>
-          </Link>
-        </div>
-      </div>
-
-      {/* Active User Footer Info & Sign Out */}
-      <div className="p-4 border-t border-white/10 bg-[#061833] space-y-3">
-        <div className="flex items-center gap-2.5 px-1">
+      {/* Profile Box with Dropdown (moved from header top-right) */}
+      <div ref={profileRef} className="relative p-4 border-t border-white/10 bg-[#061833]">
+        {profileOpen && (
           <div
-            className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs shrink-0 ${activeRole?.badgeColor || "bg-[#FFC700] text-[#09234B]"}`}
+            role="menu"
+            aria-label="Account options"
+            className="absolute bottom-full left-4 right-4 mb-2 rounded-2xl bg-white shadow-2xl border border-slate-200 p-3 space-y-1 animate-fade-in origin-bottom-left"
           >
-            {activeRole?.initials || (activeRole?.fullName || "U").charAt(0).toUpperCase()}
+            {/* Account Info */}
+            <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 flex items-center gap-3 mb-1">
+              <div
+                className={`w-9 h-9 rounded-lg flex items-center justify-center font-black text-xs shrink-0 ${activeRole?.badgeColor || "bg-[#FFC700] text-[#09234B]"}`}
+              >
+                {initials}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-black text-[#09234B] truncate">{activeRole?.fullName || "Account"}</p>
+                <p className="text-[10px] text-slate-500 truncate">{activeRole?.email}</p>
+                <span className="inline-block mt-0.5 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-[#FFC700] text-[#09234B]">
+                  {activeRole?.roleLabel || "Member"}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-0.5 text-xs font-bold text-slate-700">
+              {isAdmin && (
+                <Link
+                  href="/admin/users"
+                  onClick={() => setProfileOpen(false)}
+                  role="menuitem"
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-slate-50 hover:text-[#0E3B7D] transition-colors cursor-pointer"
+                >
+                  <span aria-hidden="true" className="material-symbols-outlined text-base text-[#0E3B7D]">manage_accounts</span>
+                  <span>Manage User Accounts</span>
+                </Link>
+              )}
+              <Link
+                href={isAdmin ? "/admin/admissions" : "/admin/yearbook"}
+                onClick={() => setProfileOpen(false)}
+                role="menuitem"
+                className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-slate-50 hover:text-[#0E3B7D] transition-colors cursor-pointer"
+              >
+                <span aria-hidden="true" className="material-symbols-outlined text-base text-[#0E3B7D]">
+                  {isAdmin ? "school" : "auto_stories"}
+                </span>
+                <span>{isAdmin ? "Admissions Pipeline" : "My Submissions"}</span>
+              </Link>
+              <Link
+                href="/admin/update-password"
+                onClick={() => setProfileOpen(false)}
+                role="menuitem"
+                className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-slate-50 hover:text-[#0E3B7D] transition-colors cursor-pointer"
+              >
+                <span aria-hidden="true" className="material-symbols-outlined text-base text-[#0E3B7D]">lock_reset</span>
+                <span>Change Password</span>
+              </Link>
+            </div>
+
+            <div className="pt-1.5 border-t border-slate-100">
+              <button
+                type="button"
+                role="menuitem"
+                onClick={handleSignOut}
+                disabled={isSigningOut}
+                className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition-all text-xs font-bold uppercase tracking-wider disabled:opacity-60 cursor-pointer"
+              >
+                <span aria-hidden="true" className="material-symbols-outlined text-sm">logout</span>
+                <span>{isSigningOut ? "Signing out..." : "Sign Out"}</span>
+              </button>
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-white truncate">{activeRole?.fullName || "Administrator"}</p>
-            <p className="text-[10px] text-[#FFC700] font-semibold truncate">
-              {activeRole?.roleLabel || "Administrator"}
-            </p>
-          </div>
-        </div>
+        )}
 
         <button
           type="button"
-          onClick={async () => {
-            try {
-              await authClient.signOut();
-            } catch (err) {
-              console.warn("Sidebar sign out error:", err);
-            }
-            router.push("/admin/login");
-            router.refresh();
-          }}
-          className="flex items-center justify-center gap-2 w-full py-2 px-3 bg-red-500/10 hover:bg-red-500 text-red-300 hover:text-white border border-red-500/30 rounded-xl transition-all text-xs font-bold uppercase tracking-wider cursor-pointer"
+          onClick={() => setProfileOpen((v) => !v)}
+          aria-haspopup="menu"
+          aria-expanded={profileOpen}
+          className="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-white/10 transition-all text-left cursor-pointer"
         >
-          <span aria-hidden="true" className="material-symbols-outlined text-base">logout</span>
-          <span>Sign Out</span>
+          <div
+            className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs shrink-0 ${activeRole?.badgeColor || "bg-[#FFC700] text-[#09234B]"}`}
+          >
+            {initials}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold text-white truncate">{displayName}</p>
+            <p className="text-[10px] text-[#FFC700] font-semibold truncate">
+              {activeRole?.roleLabel || "Guest"}
+            </p>
+          </div>
+          <span aria-hidden="true" className="material-symbols-outlined text-base text-slate-300">
+            {profileOpen ? "expand_more" : "expand_less"}
+          </span>
         </button>
       </div>
     </aside>

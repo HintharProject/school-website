@@ -476,19 +476,41 @@ export default function AdminClassesPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Schedule / Time</label>
+                  <label htmlFor="course-days" className="font-bold text-slate-700 block mb-1">Class Days</label>
                   <input
+                    id="course-days"
                     type="text"
                     required
-                    placeholder="Mon, Wed, Fri • 08:30 AM"
-                    value={courseForm.time}
-                    onChange={(e) => setCourseForm({ ...courseForm, time: e.target.value })}
+                    placeholder="Mon, Wed, Fri"
+                    value={(courseForm.time.split("•")[0] || "").trim()}
+                    onChange={(e) => {
+                      const time = (courseForm.time.split("•")[1] || "").trim();
+                      setCourseForm({ ...courseForm, time: [e.target.value.trim(), time].filter(Boolean).join(" • ") });
+                    }}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
                   />
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Room / Lab</label>
+                  <label htmlFor="course-time" className="font-bold text-slate-700 block mb-1">Start Time</label>
                   <input
+                    id="course-time"
+                    type="time"
+                    required
+                    value={(courseForm.time.split("•")[1] || "").trim()}
+                    onChange={(e) => {
+                      const days = (courseForm.time.split("•")[0] || "").trim();
+                      setCourseForm({ ...courseForm, time: [days, e.target.value].filter(Boolean).join(" • ") });
+                    }}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="course-room" className="font-bold text-slate-700 block mb-1">Room / Lab</label>
+                  <input
+                    id="course-room"
                     type="text"
                     placeholder="Newton Science Lab"
                     value={courseForm.room}
@@ -575,18 +597,40 @@ export default function AdminClassesPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Schedule / Time</label>
+                  <label htmlFor="edit-course-days" className="font-bold text-slate-700 block mb-1">Class Days</label>
                   <input
+                    id="edit-course-days"
                     type="text"
                     required
-                    value={editingCourse.time}
-                    onChange={(e) => setEditingCourse({ ...editingCourse, time: e.target.value })}
+                    value={(editingCourse.time.split("•")[0] || "").trim()}
+                    onChange={(e) => {
+                      const time = (editingCourse.time.split("•")[1] || "").trim();
+                      setEditingCourse({ ...editingCourse, time: [e.target.value.trim(), time].filter(Boolean).join(" • ") });
+                    }}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
                   />
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Room / Lab</label>
+                  <label htmlFor="edit-course-time" className="font-bold text-slate-700 block mb-1">Start Time</label>
                   <input
+                    id="edit-course-time"
+                    type="time"
+                    required
+                    value={(editingCourse.time.split("•")[1] || "").trim()}
+                    onChange={(e) => {
+                      const days = (editingCourse.time.split("•")[0] || "").trim();
+                      setEditingCourse({ ...editingCourse, time: [days, e.target.value].filter(Boolean).join(" • ") });
+                    }}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="edit-course-room" className="font-bold text-slate-700 block mb-1">Room / Lab</label>
+                  <input
+                    id="edit-course-room"
                     type="text"
                     value={editingCourse.room || ""}
                     onChange={(e) => setEditingCourse({ ...editingCourse, room: e.target.value })}

@@ -128,15 +128,6 @@ export default function AdminDashboardPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <Link
-            href="/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold transition-all flex items-center gap-1.5"
-          >
-            <span aria-hidden="true" className="material-symbols-outlined text-sm text-[#0E3B7D]">open_in_new</span>
-            <span>Public Site</span>
-          </Link>
           {isAdmin ? (
             <Link
               href="/admin/users"
@@ -207,7 +198,7 @@ export default function AdminDashboardPage() {
           </>
         ) : (
           <>
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
+            <div className="bg-white p-5 rounded-2xl border border-[#FFC700]/60 ring-1 ring-[#FFC700]/30 shadow-sm flex items-center gap-4 sm:col-span-2 xl:col-span-1">
               <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
                 <span aria-hidden="true" className="material-symbols-outlined text-2xl">auto_stories</span>
               </div>
@@ -253,6 +244,33 @@ export default function AdminDashboardPage() {
           </>
         )}
       </div>
+
+      {/* Contributor Quick Actions */}
+      {!isAdmin && (
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
+          <h2 className="text-base font-black text-[#09234B] uppercase tracking-wider mb-4">
+            Quick Actions
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {[
+              { href: "/admin/yearbook", icon: "auto_stories", title: "Yearbook Entry", desc: "Submit alumni honors" },
+              { href: "/admin/classes", icon: "menu_book", title: "Classes & Timetables", desc: "Browse course schedules" },
+              { href: "/admin/clubs", icon: "groups", title: "Clubs & Activities", desc: "Propose societies & events" },
+              { href: "/admin/notices", icon: "campaign", title: "Noticeboard", desc: "Messages & your tasks" },
+            ].map((a) => (
+              <Link
+                key={a.href}
+                href={a.href}
+                className="group p-4 rounded-2xl border border-slate-200 hover:border-[#0E3B7D]/50 hover:bg-[#E8F0FE]/40 transition-all"
+              >
+                <span aria-hidden="true" className="material-symbols-outlined text-2xl text-[#0E3B7D]">{a.icon}</span>
+                <p className="text-xs font-black text-[#09234B] mt-2 group-hover:text-[#0E3B7D]">{a.title}</p>
+                <p className="text-[10px] text-slate-500 mt-0.5">{a.desc}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Admin Recent Applications Table */}
       {isAdmin && (

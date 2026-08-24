@@ -1,5 +1,33 @@
 @import "tailwindcss";
 
+/* Dark mode variant driven by a .dark ancestor class (admin portal only).
+   The public website never renders inside .dark so it stays light. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ─── Admin portal pragmatic dark overrides ─────────────────────────────
+   Many admin surfaces use hardcoded Tailwind palette utilities. Rather than
+   rewriting every page, we remap the common ones when the admin shell is in
+   dark mode. Scoped under .dark so public pages are unaffected. */
+.dark {
+  color-scheme: dark;
+}
+.dark .bg-white { background-color: #0f172a; }
+.dark .bg-slate-50 { background-color: #111c33; }
+.dark .bg-slate-100 { background-color: #1b2946; }
+.dark .border-slate-200 { border-color: #243352; }
+.dark .border-slate-100 { border-color: #1b2946; }
+.dark .border-slate-300 { border-color: #2c3d63; }
+.dark .text-slate-900 { color: #e2e8f0; }
+.dark .text-slate-800 { color: #dbe3ef; }
+.dark .text-slate-700 { color: #c3cee0; }
+.dark .text-slate-600 { color: #9fb0cc; }
+.dark .text-slate-500 { color: #8497b8; }
+.dark .hover\:bg-slate-50:hover { background-color: #182542; }
+.dark .hover\:bg-slate-100:hover { background-color: #22345a; }
+.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: #1b2946; }
+.dark .placeholder\:text-slate-400::placeholder { color: #5b6e93; }
+
+
 /* ─── Tailwind v4 Design Tokens (@theme) ──────────────────────── */
 @theme {
   /* Hinthar Brand Identity Colors matching mainLogo.png */

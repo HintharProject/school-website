@@ -287,11 +287,16 @@ export default function YearbookManagementPage() {
             </>
           ) : (
             <button
-              onClick={() => setActiveTab("my_submissions")}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-extrabold text-xs bg-[#0E3B7D] text-white shadow-xs"
+              onClick={() => setActiveTab(activeTab === "my_submissions" ? "published" : "my_submissions")}
+              aria-pressed={activeTab === "my_submissions"}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-extrabold text-xs transition-all cursor-pointer ${
+                activeTab === "my_submissions"
+                  ? "bg-[#0E3B7D] text-white shadow-xs"
+                  : "text-slate-600 hover:text-slate-900 border border-slate-200"
+              }`}
             >
               <span aria-hidden="true" className="material-symbols-outlined text-base">person</span>
-              <span>My Submissions</span>
+              <span>My Submissions ({entries.filter((e) => e.submittedBy === currentUser.id).length})</span>
             </button>
           )}
         </div>
