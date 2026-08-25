@@ -2,23 +2,34 @@
 
 import { getDb, campuses, NewCampus } from "@/lib/db";
 import { eq, desc } from "drizzle-orm";
-import { requireAdmin, logAudit, getServerSession } from "@/lib/auth/rbac";
+import { requireAdmin, logAudit } from "@/lib/auth/rbac";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 
+export interface CampusActionResult {
+  success: boolean;
+  message: string;
+}
+
 const campusSchema = z.object({
-  id: z.string().min(2).max(100),
-  name: z.string().min(2).max(200),
+  id: z.string().trim().min(2).max(100),
+  name: z.string().trim().min(2).max(200),
   city: z.enum(["Yangon", "Mawlamyine"]),
-  tagline: z.string().min(5).max(300),
-  address: z.string().min(5).max(500),
-  phone: z.string().min(5).max(100),
-  email: z.string().email(),
-  officeHours: z.string().default("Mon–Sat: 08:30 AM – 05:00 PM"),
-  gradesServed: z.string().min(2),
+  tagline: z.string().trim().min(5).max(300),
+  address: z.string().trim().min(5).max(500),
+  phone: z.string().trim().min(5).max(100),
+  email: z.string().trim().email(),
+  officeHours: z.string().trim().default("Mon–Sat: 08:30 AM – 05:00 PM"),
+  gradesServed: z.string().trim().min(2),
   facilities: z.array(z.string()).default([]),
-  imageUrl: z.string().min(1),
-  mapUrl: z.string().optional().nullable(),
+  imageUrl: z.string().trim().min(1),
+  mapUrl: z
+    .string()
+    .trim()
+    .url()
+    .optional()
+    .nullable()
+    .or(z.literal("")),
   isActive: z.boolean().default(true),
 });
 
@@ -37,6 +48,55 @@ function safeRevalidate(paths: string[]) {
   }
 }
 
+/** Trims incoming strings / drops empty optionals so stored rows validate cleanly. */
+function normalizeCampusInput(data: unknown) {
+  if (!data || typeof data !== "object") return data;
+  const d = { ...(data as Record<string, unknown>) };
+  for (const key of Object.keys(d)) {
+    if (typeof d[key] === "string") {
+      const trimmed = (d[key] as string).trim();
+      // Empty optional fields become undefined so schema defaults apply.
+      if (!trimmed && (key === "mapUrl" || key === "officeHours")) {
+        delete d[key];
+        continue;
+      }
+      d[key] = trimmed;
+    }
+  }
+  if (Array.isArray(d.facilities)) {
+    d.facilities = (d.facilities as unknown[])
+      .map((f) => String(f ?? "").trim())
+      .filter(Boolean);
+  }
+  return d;
+}
+
+/** Converts a ZodError into a single human-readable sentence. */
+function friendlyZodMessage(err: z.ZodError): string {
+  return err.issues
+    .map((i) => {
+      const field = i.path.join(".") || "(form)";
+      switch (i.message) {
+        case "Invalid email":
+          return `${field} is not a valid email address`;
+        case "Invalid url":
+          return `${field} must be a full URL (https://…)`;
+        default:
+          return `${field}: ${i.message}`;
+      }
+    })
+    .join("; ");
+}
+
+async function auditCampus(
+  actor: Awaited<ReturnType<typeof requireAdmin>>,
+  action: string,
+  id: string,
+  details?: Record<string, unknown>
+) {
+  await logAudit({ actor, action, resource: "campuses", resourceId: id, details });
+}
+
 export async function getCampuses() {
   const db = await getDb();
   const rows = await db
@@ -50,73 +110,106 @@ export async function getCampuses() {
   }));
 }
 
-export async function createCampusAction(data: unknown) {
-  const user = await requireAdmin();
-  const validated = campusSchema.parse(data);
-  const db = await getDb();
+export async function createCampusAction(data: unknown): Promise<CampusActionResult> {
+  let user;
+  try {
+    user = await requireAdmin();
+  } catch {
+    return { success: false, message: "Your session has expired. Please sign in again." };
+  }
 
-  const insertData: NewCampus = {
-    ...validated,
-    facilities: JSON.stringify(validated.facilities),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
+  try {
+    const validated = campusSchema.parse(normalizeCampusInput(data));
+    const db = await getDb();
 
-  await db.insert(campuses).values(insertData);
+    const insertData: NewCampus = {
+      ...validated,
+      mapUrl: validated.mapUrl || undefined,
+      facilities: JSON.stringify(validated.facilities),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
 
-  await logAudit({
-    actor: user,
-    action: "ADMIN_CREATED_CAMPUS",
-    resource: "campuses",
-    resourceId: validated.id,
-    details: { name: validated.name, city: validated.city },
-  });
+    await db.insert(campuses).values(insertData);
 
-  safeRevalidate(["/campuses", "/admin/campuses"]);
-  return { success: true };
+    await auditCampus(user, "ADMIN_CREATED_CAMPUS", validated.id, {
+      name: validated.name,
+      city: validated.city,
+    });
+
+    safeRevalidate(["/campuses", "/admin/campuses"]);
+    return { success: true, message: `Campus "${validated.name}" created.` };
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      console.error("[createCampusAction] validation failed:", err.issues);
+      return { success: false, message: `Please fix these fields — ${friendlyZodMessage(err)}` };
+    }
+    console.error("[createCampusAction] unexpected error:", err);
+    return { success: false, message: "Could not create the campus. Please try again." };
+  }
 }
 
-export async function updateCampusAction(id: string, data: unknown) {
-  const user = await requireAdmin();
-  const validated = campusSchema.partial().parse(data);
-  const db = await getDb();
+export async function updateCampusAction(id: string, data: unknown): Promise<CampusActionResult> {
+  let user;
+  try {
+    user = await requireAdmin();
+  } catch {
+    return { success: false, message: "Your session has expired. Please sign in again." };
+  }
 
-  const updateData: Partial<NewCampus> = {
-    ...validated,
-    facilities: validated.facilities ? JSON.stringify(validated.facilities) : undefined,
-    updatedAt: new Date().toISOString(),
-  };
+  try {
+    const parsed = campusSchema.partial().parse(normalizeCampusInput(data));
+    const db = await getDb();
 
-  await db
-    .update(campuses)
-    .set(updateData)
-    .where(eq(campuses.id, id));
+    const updateData: Partial<NewCampus> = {
+      ...parsed,
+      mapUrl: parsed.mapUrl === "" ? undefined : parsed.mapUrl,
+      facilities: parsed.facilities ? JSON.stringify(parsed.facilities) : undefined,
+      updatedAt: new Date().toISOString(),
+    };
 
-  await logAudit({
-    actor: user,
-    action: "ADMIN_UPDATED_CAMPUS",
-    resource: "campuses",
-    resourceId: id,
-    details: validated,
-  });
+    const updated = await db
+      .update(campuses)
+      .set(updateData)
+      .where(eq(campuses.id, id))
+      .returning({ id: campuses.id });
 
-  safeRevalidate(["/campuses", "/admin/campuses"]);
-  return { success: true };
+    if (updated.length === 0) {
+      return { success: false, message: `Campus "${id}" was not found. It may have been deleted.` };
+    }
+
+    await auditCampus(user, "ADMIN_UPDATED_CAMPUS", id, parsed);
+
+    safeRevalidate(["/campuses", "/admin/campuses"]);
+    return { success: true, message: "Campus updated successfully." };
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      console.error("[updateCampusAction] validation failed:", err.issues);
+      return { success: false, message: `Please fix these fields — ${friendlyZodMessage(err)}` };
+    }
+    console.error(`[updateCampusAction] unexpected error for "${id}":`, err);
+    return { success: false, message: "Could not save the campus changes. Please try again." };
+  }
 }
 
-export async function deleteCampusAction(id: string) {
-  const user = await requireAdmin();
-  const db = await getDb();
+export async function deleteCampusAction(id: string): Promise<CampusActionResult> {
+  let user;
+  try {
+    user = await requireAdmin();
+  } catch {
+    return { success: false, message: "Your session has expired. Please sign in again." };
+  }
 
-  await db.delete(campuses).where(eq(campuses.id, id));
+  try {
+    const db = await getDb();
+    await db.delete(campuses).where(eq(campuses.id, id));
 
-  await logAudit({
-    actor: user,
-    action: "ADMIN_DELETED_CAMPUS",
-    resource: "campuses",
-    resourceId: id,
-  });
+    await auditCampus(user, "ADMIN_DELETED_CAMPUS", id);
 
-  safeRevalidate(["/campuses", "/admin/campuses"]);
-  return { success: true };
+    safeRevalidate(["/campuses", "/admin/campuses"]);
+    return { success: true, message: "Campus deleted." };
+  } catch (err) {
+    console.error(`[deleteCampusAction] unexpected error for "${id}":`, err);
+    return { success: false, message: "Could not delete the campus. Please try again." };
+  }
 }

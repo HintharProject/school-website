@@ -1,7 +1,6 @@
 import Navbar from "./components/Navbar";
 import ChatbotWidget from "./components/ChatbotWidget";
 import HeroSection from "./components/sections/HeroSection";
-import AnnouncementTicker from "./components/sections/AnnouncementTicker";
 import AboutSection from "./components/sections/AboutSection";
 import SpecialisationsSection from "./components/sections/SpecialisationsSection";
 import FaqSection from "./components/sections/FaqSection";
@@ -17,8 +16,9 @@ export default async function HomePage() {
     <>
       <Navbar />
       <main>
+        {/* AnnouncementTicker renders inside HeroSection so the bar
+            stays pinned to the hero's bottom edge within 100vh */}
         <HeroSection highlights={content.heroHighlights} />
-        <AnnouncementTicker messages={content.announcements} />
         <AboutSection />
         <SpecialisationsSection programs={content.programs} />
         <FaqSection faqs={content.faqs} />

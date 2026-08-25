@@ -45,8 +45,10 @@ export default function HeroSection({
           quality={95}
         />
         {/* Balanced cinematic overlays to showcase graduation.webp vividly */}
-        <div className="absolute inset-0 bg-[#06152B]/45" />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#09234B]/85 via-transparent to-[#06152B]/90" />
+        <div className="absolute inset-0 bg-[#06152B]/55" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#09234B]/85 via-[#0A1F42]/40 to-[#06152B]/95" />
+        {/* Center vignette keeps headline/CTAs readable over the photo */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(6,21,43,0.30)_0%,rgba(6,21,43,0.78)_100%)]" />
         {/* Subtle warm gold ambient glow */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[450px] h-[450px] bg-[#FFC700]/15 rounded-full blur-[130px] pointer-events-none" />
       </div>
@@ -75,7 +77,7 @@ export default function HeroSection({
             {/* Prestige Headline */}
             <motion.h1
               variants={itemVariants}
-              className="text-4xl sm:text-5xl md:text-6xl xl:text-[64px] font-black text-white leading-[1.08] tracking-tight mb-5"
+              className="text-4xl sm:text-5xl md:text-6xl xl:text-[64px] font-black text-white leading-[1.08] tracking-tight mb-5 drop-shadow-[0_2px_16px_rgba(4,14,30,0.85)]"
             >
               Shaping Global Scholars.{" "}
               <span className="block mt-1 text-transparent bg-clip-text bg-gradient-to-r from-[#FFC700] via-[#FFE48A] to-[#FFC700]">

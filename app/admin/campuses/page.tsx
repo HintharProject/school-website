@@ -20,7 +20,10 @@ import ImageUploadPicker from "@/app/components/admin/ImageUploadPicker";
 
 export default function AdminCampusesPage() {
   const [campuses, setCampuses] = useState<CampusRecord[]>([]);
-  const [currentUser, setCurrentUser] = useState<UserProfile>(FALLBACK_GUEST_USER);
+  const { data: session } = authClient.useSession();
+  const currentUser: UserProfile = session?.user
+    ? mapUserProfileRecord(session.user)
+    : FALLBACK_GUEST_USER;
   const [isLoaded, setIsLoaded] = useState(false);
   const [selectedCity, setSelectedCity] = useState<"All" | "Yangon" | "Mawlamyine">("All");
   const [searchQuery, setSearchQuery] = useState("");
@@ -48,32 +51,24 @@ export default function AdminCampusesPage() {
     isActive: true,
   });
 
-  const { data: session } = authClient.useSession();
-
-  useEffect(() => {
-    if (session?.user) {
-      setCurrentUser(mapUserProfileRecord(session.user));
-    }
-  }, [session]);
-
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  const loadData = async () => {
-    try {
-      const data = await getCampuses();
-      setCampuses(data.map(mapCampusRecord));
-    } catch (err) {
-      console.warn("Failed to load campuses:", err);
-    } finally {
-      setIsLoaded(true);
-    }
-  };
-
   useEffect(() => {
-    loadData();
+    let cancelled = false;
+    getCampuses()
+      .then((data) => {
+        if (!cancelled) setCampuses(data.map(mapCampusRecord));
+      })
+      .catch((err) => console.warn("Failed to load campuses:", err))
+      .finally(() => {
+        if (!cancelled) setIsLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Filter & Search
@@ -91,16 +86,16 @@ export default function AdminCampusesPage() {
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingCampus) return;
-    try {
-      await updateCampusAction(editingCampus.id, editingCampus);
-      setCampuses((prev) =>
-        prev.map((c) => (c.id === editingCampus.id ? editingCampus : c))
-      );
-      setEditingCampus(null);
-      showToast(`Campus "${editingCampus.name}" updated successfully!`);
-    } catch (err: any) {
-      showToast(`Error: ${err.message || "Failed to update campus."}`);
+    const res = await updateCampusAction(editingCampus.id, editingCampus);
+    if (!res?.success) {
+      showToast(`Error: ${res?.message || "Failed to update campus."}`);
+      return;
     }
+    setCampuses((prev) =>
+      prev.map((c) => (c.id === editingCampus.id ? editingCampus : c))
+    );
+    showToast(res.message);
+    setEditingCampus(null);
   };
 
   // Add Campus
@@ -123,27 +118,27 @@ export default function AdminCampusesPage() {
       mapUrl: formState.mapUrl || undefined,
       isActive: formState.isActive ?? true,
     };
-    try {
-      await createCampusAction(newRecord);
-      setCampuses((prev) => [newRecord, ...prev]);
-      setIsAddModalOpen(false);
-      showToast(`Campus "${newRecord.name}" added successfully!`);
-    } catch (err: any) {
-      showToast(`Error: ${err.message || "Failed to add campus."}`);
+    const res = await createCampusAction(newRecord);
+    if (!res?.success) {
+      showToast(`Error: ${res?.message || "Failed to add campus."}`);
+      return;
     }
+    setCampuses((prev) => [newRecord, ...prev]);
+    setIsAddModalOpen(false);
+    showToast(res.message);
   };
 
   // Delete Campus
   const handleDeleteCampus = async () => {
     if (!deletingCampus) return;
-    try {
-      await deleteCampusAction(deletingCampus.id);
-      setCampuses((prev) => prev.filter((c) => c.id !== deletingCampus.id));
-      setDeletingCampus(null);
-      showToast("Campus deleted.");
-    } catch (err: any) {
-      showToast(`Error: ${err.message || "Failed to delete campus."}`);
+    const res = await deleteCampusAction(deletingCampus.id);
+    if (!res?.success) {
+      showToast(`Error: ${res?.message || "Failed to delete campus."}`);
+      return;
     }
+    setCampuses((prev) => prev.filter((c) => c.id !== deletingCampus.id));
+    setDeletingCampus(null);
+    showToast(res.message);
   };
 
   if (currentUser?.role === "student") {
