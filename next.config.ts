@@ -75,6 +75,16 @@ const nextConfig: NextConfig = {
         source: "/:path*",
         headers: securityHeaders,
       },
+      {
+        // Auth-gated, action-bearing pages must never be served from browser
+        // or CDN caches — stale HTML references stale Server Action IDs.
+        source: "/admin/:path*",
+        headers: [{ key: "Cache-Control", value: "private, no-store, must-revalidate" }],
+      },
+      {
+        source: "/admission",
+        headers: [{ key: "Cache-Control", value: "private, no-store, must-revalidate" }],
+      },
     ];
   },
 };

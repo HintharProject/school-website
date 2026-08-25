@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import AdmissionForm from "./AdmissionForm";
 
+// The admission wizard submits a Server Action; keep the page dynamic so
+// visitors never execute stale action IDs after a redeploy.
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Admissions | Hinthar International School",
   description:
