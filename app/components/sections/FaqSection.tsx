@@ -1,44 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { DEFAULT_FAQS, type FaqItem } from "@/lib/content/defaults";
 
-const faqs = [
-  {
-    id: "curriculum",
-    question: "What curriculums and examination boards are taught at Hinthar?",
-    answer:
-      "We officially follow the Pearson Edexcel International Curriculum, guiding students through Lower Secondary Education (Year 7–9), Pearson Edexcel IGCSE (Year 10–11), and Pearson Edexcel International Advanced Level (IAL / Year 12–13). Our qualifications are recognized worldwide for direct admission to universities in the UK, USA, Australia, Canada, Singapore, and beyond.",
-    defaultOpen: true,
-  },
-  {
-    id: "subjects",
-    question: "What subject pathways are available for IGCSE and IAL?",
-    answer:
-      "Students can choose from specialized streams including STEM & Pure Sciences (Physics, Chemistry, Biology, Pure Mathematics), Engineering & Computer Science (Further Pure Mathematics, Mechanics, Computer Science, ICT), and Business & Commerce (Accounting, Economics, Business Studies).",
-  },
-  {
-    id: "admission_process",
-    question: "How does the admission and placement assessment work?",
-    answer:
-      "Parents can submit an online application via our Admission Portal. After initial review, applicants are scheduled for a friendly placement assessment (Mathematics & English) and a family consultation with our academic leads to ensure proper grade and pathway placement.",
-  },
-  {
-    id: "exam_center",
-    question: "Is Hinthar an approved Pearson Edexcel Examination Center?",
-    answer:
-      "Yes. Our students sit for their official Pearson Edexcel IGCSE and IAL examinations on campus with verified British Council and Pearson standards, accredited invigilators, and fully equipped science practical laboratories.",
-  },
-  {
-    id: "modes",
-    question: "Are classes full-time on campus in Yangon?",
-    answer:
-      "Yes. We offer full-time on-campus learning at our Hlaing Township campus in Yangon equipped with modern multimedia classrooms and STEM laboratories, accompanied by LMS revision resources for students.",
-  },
-];
-
-export default function FaqSection() {
-  const [openId, setOpenId] = useState<string | null>("curriculum");
+export default function FaqSection({ faqs = DEFAULT_FAQS }: { faqs?: FaqItem[] }) {
+  const [openId, setOpenId] = useState<string | null>(
+    faqs.find((f) => f.defaultOpen)?.id ?? null
+  );
 
   const toggle = (id: string) => {
     setOpenId((prev) => (prev === id ? null : id));
@@ -133,6 +103,35 @@ export default function FaqSection() {
               </motion.div>
             );
           })}
+        </div>
+
+        {/* Have More Questions CTA */}
+        <div className="mt-10 md:mt-12 rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-50 to-[#E8F0FE]/60 p-7 md:p-9 text-center shadow-xs">
+          <div className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-[#0E3B7D] text-[#FFC700] mb-4 shadow-md">
+            <span aria-hidden="true" className="material-symbols-outlined">forum</span>
+          </div>
+          <h3 className="text-lg md:text-xl font-black text-[#09234B] tracking-tight">
+            Have more questions?
+          </h3>
+          <p className="text-xs md:text-sm text-slate-600 mt-1.5 mb-5 font-normal">
+            Our admissions team is happy to help — or get instant answers anytime.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Link
+              href="/#contact"
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-[#0E3B7D] hover:bg-[#164E9A] text-white text-xs font-black uppercase tracking-wider shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all"
+            >
+              <span aria-hidden="true" className="material-symbols-outlined text-base">call</span>
+              <span>Contact Us</span>
+            </Link>
+            <Link
+              href="/chatbot"
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-white border border-[#FFC700] text-[#0E3B7D] hover:bg-[#FFC700] hover:text-[#09234B] text-xs font-black uppercase tracking-wider hover:-translate-y-0.5 active:translate-y-0 transition-all"
+            >
+              <span aria-hidden="true" className="material-symbols-outlined text-base">smart_toy</span>
+              <span>Ask Our AI!</span>
+            </Link>
+          </div>
         </div>
       </motion.div>
     </section>

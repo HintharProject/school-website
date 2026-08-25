@@ -1,5 +1,13 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import {
+  getSiteContentMap,
+  type ContactInfoItem,
+} from "@/lib/actions/siteContent";
+import { DEFAULT_CONTACT_INFO } from "@/lib/content/defaults";
 
 const quickLinks = [
   { label: "Home", href: "/" },
@@ -19,17 +27,23 @@ const programs = [
   { label: "University Entrance & Placements", href: "/yearbook" },
 ];
 
-const contactInfo = [
-  {
-    icon: "location_on",
-    text: "4 Campuses in Yangon (Ywarma, Shwe Padauk, Shwe Pone Nyet) & Mawlamyine",
-    href: "/campuses",
-  },
-  { icon: "mail", text: "admissions@hinthar.education", href: "mailto:admissions@hinthar.education" },
-  { icon: "call", text: "+95 9 894 332200 / +95 9 894 332211", href: "tel:+959894332200" },
-];
-
 export default function FooterSection() {
+  const [contactItems, setContactItems] = useState<ContactInfoItem[]>(DEFAULT_CONTACT_INFO);
+
+  useEffect(() => {
+    let cancelled = false;
+    getSiteContentMap()
+      .then((map) => {
+        if (!cancelled && map.contactInfo?.length) {
+          setContactItems(map.contactInfo);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <footer
       id="contact"
@@ -47,6 +61,7 @@ export default function FooterSection() {
                 src="/images/mainLogo.png"
                 alt="Hinthar International School Logo"
                 fill
+                sizes="48px"
                 className="object-contain"
               />
             </div>
@@ -136,8 +151,8 @@ export default function FooterSection() {
             Campus Location
           </h4>
           <div className="space-y-4 text-xs sm:text-sm font-light text-slate-300">
-            {contactInfo.map((item) => (
-              <div key={item.icon} className="flex gap-3.5 group">
+            {contactItems.map((item) => (
+              <div key={item.icon + item.text} className="flex gap-3.5 group">
                 <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center shrink-0 group-hover:bg-[#FFC700] group-hover:text-[#09234B] transition-colors">
                   <span aria-hidden="true" className="material-symbols-outlined text-white text-[18px] group-hover:text-[#09234B] transition-colors">
                     {item.icon}

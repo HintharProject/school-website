@@ -1,13 +1,18 @@
 import type { Metadata } from "next";
-import ChatbotPageView from "./ChatbotPageView";
+import ComingSoon from "../components/ComingSoon";
 
 export const metadata: Metadata = {
-  title: "AI Admissions & Academic Consultation | Hinthar International School",
+  title: "AI Admissions Consultant — Coming Soon | Hinthar International School",
   description:
-    "Get instant 24/7 answers regarding Pearson Edexcel curriculums, grade placements, admissions, and campus facilities at Hinthar International School.",
+    "Our AI Admissions & Academic Consultant is launching soon. In the meantime, contact our admissions team for Pearson Edexcel curriculum, placement, and campus inquiries.",
 };
 
 export default function ChatbotPage() {
-  return <ChatbotPageView />;
+  return (
+    <ComingSoon
+      title="Coming Soon!"
+      description="Our AI Admissions & Academic Consultant is currently under development and will be available shortly. In the meantime, our admissions counselors are ready to help with any questions about Pearson Edexcel programs, placements, or campus life."
+      icon="smart_toy"
+    />
+  );
 }
-

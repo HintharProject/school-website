@@ -10,6 +10,12 @@ import ChatbotWidget from "../components/ChatbotWidget";
 import { CampusRecord, mapCampusRecord } from "../admin/adminStore";
 import { getCampuses } from "@/lib/actions/campuses";
 
+const getMapUrl = (campus: CampusRecord) =>
+  campus.mapUrl ||
+  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+    `${campus.name}, ${campus.address}`
+  )}`;
+
 export default function CampusesView({
   initialData,
 }: {
@@ -219,17 +225,15 @@ export default function CampusesView({
                           <span aria-hidden="true" className="material-symbols-outlined text-base text-[#0E3B7D]">info</span>
                           <span>Details</span>
                         </button>
-                        {campus.mapUrl && (
-                          <a
-                            href={campus.mapUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-3.5 py-2.5 rounded-xl bg-[#E8F0FE] hover:bg-[#0E3B7D] text-[#0E3B7D] hover:text-white text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer"
-                          >
-                            <span aria-hidden="true" className="material-symbols-outlined text-base">map</span>
-                            <span>View Map</span>
-                          </a>
-                        )}
+                        <a
+                          href={getMapUrl(campus)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3.5 py-2.5 rounded-xl bg-[#E8F0FE] hover:bg-[#0E3B7D] text-[#0E3B7D] hover:text-white text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <span aria-hidden="true" className="material-symbols-outlined text-base">map</span>
+                          <span>View Map</span>
+                        </a>
                       </div>
 
                       <Link
@@ -272,17 +276,15 @@ export default function CampusesView({
               <div className="space-y-3 text-xs text-slate-700">
                 <div className="flex items-start justify-between gap-2">
                   <p><strong>Address:</strong> {activeCampusModal.address}</p>
-                  {activeCampusModal.mapUrl && (
-                    <a
-                      href={activeCampusModal.mapUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#E8F0FE] hover:bg-[#0E3B7D] text-[#0E3B7D] hover:text-white font-bold text-[11px] transition-colors shrink-0"
-                    >
-                      <span aria-hidden="true" className="material-symbols-outlined text-xs">map</span>
-                      <span>Open Map</span>
-                    </a>
-                  )}
+                  <a
+                    href={getMapUrl(activeCampusModal)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#E8F0FE] hover:bg-[#0E3B7D] text-[#0E3B7D] hover:text-white font-bold text-[11px] transition-colors shrink-0"
+                  >
+                    <span aria-hidden="true" className="material-symbols-outlined text-xs">map</span>
+                    <span>Open Map</span>
+                  </a>
                 </div>
                 <p><strong>Office Hours:</strong> {activeCampusModal.officeHours}</p>
                 <p><strong>Phone:</strong> {activeCampusModal.phone}</p>

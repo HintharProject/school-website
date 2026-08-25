@@ -61,6 +61,7 @@ export default function AdminSidebar({
         { label: "Classes & Syllabi", href: "/admin/classes", icon: "menu_book" },
         { label: "Clubs & Activities", href: "/admin/clubs", icon: "groups" },
         { label: "Noticeboard", href: "/admin/notices", icon: "campaign" },
+        { label: "Site Content", href: "/admin/content", icon: "tune" },
         { label: "Help & Support", href: "/admin/help", icon: "support_agent" },
       ];
     }

@@ -22,6 +22,21 @@ const campusSchema = z.object({
   isActive: z.boolean().default(true),
 });
 
+/**
+ * Revalidation must never fail an already-committed mutation.
+ * (On Workers, revalidatePath can throw when no incremental cache is configured —
+ * the D1 write has already succeeded at that point, so swallow/cache errors here.)
+ */
+function safeRevalidate(paths: string[]) {
+  for (const p of paths) {
+    try {
+      revalidatePath(p);
+    } catch (err) {
+      console.warn(`revalidatePath(${p}) skipped:`, err);
+    }
+  }
+}
+
 export async function getCampuses() {
   const db = await getDb();
   const rows = await db
@@ -57,8 +72,7 @@ export async function createCampusAction(data: unknown) {
     details: { name: validated.name, city: validated.city },
   });
 
-  revalidatePath("/campuses");
-  revalidatePath("/admin/campuses");
+  safeRevalidate(["/campuses", "/admin/campuses"]);
   return { success: true };
 }
 
@@ -86,8 +100,7 @@ export async function updateCampusAction(id: string, data: unknown) {
     details: validated,
   });
 
-  revalidatePath("/campuses");
-  revalidatePath("/admin/campuses");
+  safeRevalidate(["/campuses", "/admin/campuses"]);
   return { success: true };
 }
 
@@ -104,7 +117,6 @@ export async function deleteCampusAction(id: string) {
     resourceId: id,
   });
 
-  revalidatePath("/campuses");
-  revalidatePath("/admin/campuses");
+  safeRevalidate(["/campuses", "/admin/campuses"]);
   return { success: true };
 }

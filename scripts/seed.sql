@@ -3,7 +3,7 @@
 -- ==============================================================================
 
 -- 1. CAMPUSES SEED
-INSERT INTO `campuses` (`id`, `name`, `city`, `tagline`, `address`, `phone`, `email`, `office_hours`, `grades_served`, `facilities`, `image_url`, `is_active`)
+INSERT INTO `campuses` (`id`, `name`, `city`, `tagline`, `address`, `phone`, `email`, `office_hours`, `grades_served`, `facilities`, `image_url`, `map_url`, `is_active`)
 VALUES
   (
     'ywarma-campus',
@@ -17,6 +17,7 @@ VALUES
     'Year 7–9 · Pearson IGCSE · Pearson IAL',
     '["Pearson Official Examination Center", "Turing High-Performance Computer Lab", "Newton Physics & Franklin Chemistry Labs", "British Council Testing Suite", "Academic Auditorium & British Library"]',
     '/images/heroImg.png',
+    'https://www.google.com/maps/search/?api=1&query=Ywar+Ma+Kyaung+Lane,+Hlaing+Township,+Yangon,+Myanmar',
     1
   ),
   (
@@ -31,6 +32,7 @@ VALUES
     'Pearson IGCSE & Pearson IAL (STEM Specialized)',
     '["AI, IoT & Robotics Studio", "Advanced Molecular Chemistry Lab", "Bio-Science Research Incubator", "Collaborative Study Pods & Seminar Hall", "Student Innovation & Recreation Hub"]',
     '/images/specialisations/stemSpecialisation.png',
+    'https://www.google.com/maps/search/?api=1&query=Shwe+Padauk+Road,+Yangon,+Myanmar',
     1
   ),
   (
@@ -45,6 +47,7 @@ VALUES
     'Lower Secondary (Year 7–9) & Foundation Arts',
     '["Digital Media & Graphic Arts Lab", "Music & Performing Arts Studio", "Badminton & Physical Fitness Arena", "English Language Immersion Lounge", "Junior Science Inquiry Lab"]',
     '/images/specialisations/creativeSpecialisation.png',
+    'https://www.google.com/maps/search/?api=1&query=Shwe+Pone+Nyet+Street,+Yangon,+Myanmar',
     1
   ),
   (
@@ -59,6 +62,7 @@ VALUES
     'Year 7–9 · Pearson IGCSE · Pearson IAL',
     '["Full-Scale Physics, Chem & Bio Labs", "Modern Computer Lab & High-Speed Fiber", "Extensive Curated British Library", "Multi-Purpose Outdoor Sports Arena", "Student Residence & Pastoral Support"]',
     '/images/specialisations/businessSpecialisation.png',
+    'https://www.google.com/maps/search/?api=1&query=Strand+Road,+Mawlamyine,+Mon+State,+Myanmar',
     1
   )
 ON CONFLICT (`id`) DO UPDATE SET
@@ -70,7 +74,8 @@ ON CONFLICT (`id`) DO UPDATE SET
   `email` = excluded.`email`,
   `grades_served` = excluded.`grades_served`,
   `facilities` = excluded.`facilities`,
-  `image_url` = excluded.`image_url`;
+  `image_url` = excluded.`image_url`,
+  `map_url` = excluded.`map_url`;
 
 -- 2. CLASSES & COURSES SEED
 INSERT INTO `classes_courses` (`id`, `name`, `code`, `grade`, `category`, `time`, `instructor`, `room`, `credits`, `description`, `is_active`)

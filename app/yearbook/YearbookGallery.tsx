@@ -32,11 +32,10 @@ const categories = [
   "Competitions",
 ];
 
-const campusFilters = [
+const primaryCampusTabs = [
   { id: "All", label: "All Campuses" },
-  { id: "Yangon", label: "Yangon Campuses" },
-  { id: "Mawlamyine", label: "Mawlamyine Regional" },
-  { id: "Both", label: "Both (Dual Network)" },
+  { id: "Yangon", label: "Yangon" },
+  { id: "Mawlamyine", label: "Mawlamyine" },
 ];
 
 interface RawYearbookRecord {
@@ -116,12 +115,11 @@ export default function YearbookGallery({
       (activeCategory === "University Placements" && Boolean(entry.destination));
 
     const campusInfo = formatCampusBadge(entry.campus);
+    // City tabs include dual-campus ("both") scholars in both Yangon & Mawlamyine
     const matchesCampus =
       activeCampus === "All" ||
       campusInfo.city === activeCampus ||
-      (activeCampus === "Both" && campusInfo.city === "Both") ||
-      (activeCampus === "Yangon" && (campusInfo.city === "Yangon" || campusInfo.city === "Both")) ||
-      (activeCampus === "Mawlamyine" && (campusInfo.city === "Mawlamyine" || campusInfo.city === "Both"));
+      campusInfo.city === "Both";
 
     const searchLower = searchQuery.toLowerCase();
     const matchesSearch =
@@ -156,39 +154,45 @@ export default function YearbookGallery({
 
         {/* Filters */}
         <div className="space-y-4 mb-10">
-          {/* Categories */}
+          {/* Primary Campus Tabs */}
           <div className="flex flex-wrap items-center justify-center gap-2">
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                aria-pressed={activeCategory === cat}
-                className={`px-4 py-2 rounded-full text-xs font-extrabold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                  activeCategory === cat
-                    ? "bg-[#0E3B7D] text-white shadow-sm"
-                    : "bg-white text-slate-600 border border-slate-200 hover:border-slate-300 hover:bg-slate-50"
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
+            {primaryCampusTabs.map((tab) => {
+              const count =
+                tab.id === "All"
+                  ? entries.length
+                  : entries.filter((e) => formatCampusBadge(e.campus).city === tab.id || formatCampusBadge(e.campus).city === "Both").length;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveCampus(tab.id)}
+                  aria-pressed={activeCampus === tab.id}
+                  className={`px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                    activeCampus === tab.id
+                      ? "bg-[#0E3B7D] text-white shadow-md"
+                      : "bg-white text-slate-600 border border-slate-200 hover:border-[#0E3B7D]/40 hover:text-[#0E3B7D]"
+                  }`}
+                >
+                  {tab.label} ({count})
+                </button>
+              );
+            })}
           </div>
 
-          {/* Campus Selector & Search */}
+          {/* Class-Year Sub-Tabs & Search */}
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs max-w-4xl mx-auto">
-            <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
-              {campusFilters.map((cf) => (
+            <div className="flex items-center gap-1 overflow-x-auto w-full sm:w-auto">
+              {categories.map((cat) => (
                 <button
-                  key={cf.id}
-                  onClick={() => setActiveCampus(cf.id)}
-                  aria-pressed={activeCampus === cf.id}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    activeCampus === cf.id
+                  key={cat}
+                  onClick={() => setActiveCategory(cat)}
+                  aria-pressed={activeCategory === cat}
+                  className={`px-3.5 py-2 rounded-xl text-xs whitespace-nowrap transition-all cursor-pointer ${
+                    activeCategory === cat
                       ? "bg-[#FFC700] text-[#09234B] font-black"
                       : "text-slate-600 hover:text-[#0E3B7D]"
                   }`}
                 >
-                  {cf.label}
+                  {cat}
                 </button>
               ))}
             </div>
@@ -271,6 +275,7 @@ export default function YearbookGallery({
                         src={scholar.image}
                         alt={scholar.name}
                         fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-90"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />

@@ -19,6 +19,7 @@ export const DEFAULT_CAMPUSES: CampusRecord[] = [
       "Academic Auditorium & British Library"
     ],
     imageUrl: "/images/heroImg.png",
+    mapUrl: "https://www.google.com/maps/search/?api=1&query=Ywar+Ma+Kyaung+Lane,+Hlaing+Township,+Yangon,+Myanmar",
     isActive: true,
   },
   {
@@ -39,6 +40,7 @@ export const DEFAULT_CAMPUSES: CampusRecord[] = [
       "Student Innovation & Recreation Hub"
     ],
     imageUrl: "/images/specialisations/stemSpecialisation.png",
+    mapUrl: "https://www.google.com/maps/search/?api=1&query=Shwe+Padauk+Road,+Yangon,+Myanmar",
     isActive: true,
   },
   {
@@ -59,6 +61,7 @@ export const DEFAULT_CAMPUSES: CampusRecord[] = [
       "Junior Science Inquiry Lab"
     ],
     imageUrl: "/images/specialisations/creativeSpecialisation.png",
+    mapUrl: "https://www.google.com/maps/search/?api=1&query=Shwe+Pone+Nyet+Street,+Yangon,+Myanmar",
     isActive: true,
   },
   {
@@ -79,6 +82,7 @@ export const DEFAULT_CAMPUSES: CampusRecord[] = [
       "Student Residence & Pastoral Support"
     ],
     imageUrl: "/images/specialisations/businessSpecialisation.png",
+    mapUrl: "https://www.google.com/maps/search/?api=1&query=Strand+Road,+Mawlamyine,+Mon+State,+Myanmar",
     isActive: true,
   },
 ];

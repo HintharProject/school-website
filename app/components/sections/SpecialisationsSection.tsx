@@ -1,9 +1,10 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import Link from "next/link";
 import { motion, Variants } from "framer-motion";
 import { useState } from "react";
+import { DEFAULT_PROGRAMS, type AcademicProgram } from "@/lib/content/defaults";
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -18,75 +19,17 @@ const itemVariants: Variants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.5 } },
 };
 
-interface AcademicProgram {
-  id: string;
-  badge: string;
-  age: string;
-  title: string;
-  icon: string;
-  description: string;
-  highlights: string[];
-  image: string;
-}
-
-const academicPrograms: AcademicProgram[] = [
-  {
-    id: "lower-secondary",
-    badge: "Year 7 – Year 9",
-    age: "Ages 11 – 14",
-    title: "Lower Secondary Education",
-    icon: "auto_stories",
-    description:
-      "Developing critical thinking, independent scientific inquiry, advanced numeracy, and study habits to bridge into Pearson IGCSE.",
-    highlights: [
-      "Advanced Mathematics, Physics, Chemistry & Biology",
-      "English First/Second Language & Literature",
-      "Computer Science & Digital Literacy Projects",
-      "Global Perspectives, Leadership & Debate",
-    ],
-    image: "/images/g4.jpg",
-  },
-  {
-    id: "igcse",
-    badge: "Year 10 – Year 11",
-    age: "Ages 14 – 16",
-    title: "Pearson Edexcel IGCSE",
-    icon: "workspace_premium",
-    description:
-      "Internationally benchmarked UK secondary qualifications with specialized pathways across Pure Sciences, Computing, and Commerce.",
-    highlights: [
-      "Official Pearson Edexcel examination syllabus",
-      "Pure Science, Computing & Business tracks",
-      "Intensive mock exam series & past-paper mastery",
-      "Hands-on scientific laboratory practicals",
-    ],
-    image: "/images/engineering.avif",
-  },
-  {
-    id: "ial",
-    badge: "Year 12 – Year 13",
-    age: "Ages 16 – 18",
-    title: "Pearson Edexcel IAL (A-Level)",
-    icon: "school",
-    description:
-      "Pre-university gold standard qualifications providing direct entrance to top universities in the UK, USA, Australia & Singapore.",
-    highlights: [
-      "Pure Mathematics, Physics, Chemistry & Biology",
-      "Economics, Business Studies & Accounting",
-      "One-on-one university admissions counseling",
-      "Scholarship mentoring & world top scorer track",
-    ],
-    image: "/images/graduation.jpg",
-  },
-];
-
-export default function SpecialisationsSection() {
+export default function SpecialisationsSection({
+  programs = DEFAULT_PROGRAMS,
+}: {
+  programs?: AcademicProgram[];
+}) {
   const [activeTab, setActiveTab] = useState<string>("all");
 
   const filteredPrograms =
     activeTab === "all"
-      ? academicPrograms
-      : academicPrograms.filter((p) => p.id === activeTab);
+      ? programs
+      : programs.filter((p) => p.id === activeTab);
 
   return (
     <section
@@ -120,9 +63,9 @@ export default function SpecialisationsSection() {
         <div className="flex flex-wrap items-center justify-center gap-2.5 mb-12">
           {[
             { id: "all", label: "All Pathways" },
-            { id: "lower-secondary", label: "Lower Secondary (Year 7–9)" },
-            { id: "igcse", label: "Pearson IGCSE (Year 10–11)" },
-            { id: "ial", label: "Pearson IAL (Year 12–13)" },
+            { id: "lower-secondary", label: "Lower Secondary (Year 7â€“9)" },
+            { id: "igcse", label: "Pearson IGCSE (Year 10â€“11)" },
+            { id: "ial", label: "Pearson IAL (Year 12â€“13)" },
           ].map((tab) => (
             <button
               key={tab.id}

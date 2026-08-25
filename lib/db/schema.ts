@@ -580,6 +580,18 @@ export const account = accounts;
 export const verification = verifications;
 export const invitation = invitations;
 
+// Editable site content (hero stats, announcements, FAQs, programs, contact info)
+export const siteContent = sqliteTable("site_content", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(), // JSON-encoded payload
+  updatedBy: text("updated_by"),
+  updatedAt: text("updated_at").notNull(),
+}, (table) => [
+  index("idx_site_content_updated").on(table.updatedAt),
+]);
+
+export const siteContents = siteContent;
+
 // ==============================================================================
 // 4. TYPES
 // ==============================================================================

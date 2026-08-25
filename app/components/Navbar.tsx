@@ -69,6 +69,7 @@ export default function Navbar() {
                 src="/images/mainLogo.png"
                 alt="Hinthar International School Logo"
                 fill
+                sizes="48px"
                 className="object-contain p-0.5"
                 priority
               />
@@ -183,6 +184,7 @@ export default function Navbar() {
                   src="/images/mainLogo.png"
                   alt="Hinthar Logo"
                   fill
+                  sizes="36px"
                   className="object-contain p-0.5"
                 />
               </div>
