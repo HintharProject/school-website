@@ -8,7 +8,7 @@ function applySecurityHeaders(res: NextResponse) {
   return res;
 }
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isAdminRoute = pathname.startsWith("/admin");
   const isAuthRoute = pathname === "/admin/login" || pathname === "/admin/update-password";
