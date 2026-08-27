@@ -15,14 +15,34 @@ import {
 
 let currentLocale: Locale = "en";
 const listeners = new Set<() => void>();
+let hydrated = false;
 
-try {
-  const stored = window.localStorage.getItem(LOCALE_STORAGE_KEY);
-  if (stored === "my" || stored === "en") {
-    currentLocale = stored;
+// Defer locale restore until after hydration to avoid SSR mismatch
+// (server always renders "en"; client may have "my" in storage/cookie).
+if (typeof window !== "undefined") {
+  const restore = () => {
+    if (hydrated) return;
+    hydrated = true;
+    try {
+      const stored =
+        (window.localStorage.getItem(LOCALE_STORAGE_KEY) as Locale | null) ||
+        (document.cookie.match(/(?:^|;\s*)hinthar-locale=(en|my)(?:;|$)/)?.[1] as Locale | null);
+      if ((stored === "my" || stored === "en") && stored !== currentLocale) {
+        currentLocale = stored;
+        listeners.forEach((fn) => fn());
+      }
+    } catch {
+      // ignore
+    }
+  };
+  // run after hydration (next tick, not during render)
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", restore, { once: true });
   }
-} catch {
-  // localStorage unavailable (private mode etc.) — default English
+  // also schedule microtask for SPA navigations
+  queueMicrotask(restore);
+  // fallback for cases where DOMContentLoaded already fired
+  setTimeout(restore, 0);
 }
 
 export function getLocale(): Locale {

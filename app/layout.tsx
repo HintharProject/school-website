@@ -64,6 +64,7 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${inter.variable} ${outfit.variable} scroll-smooth`}
+      suppressHydrationWarning
     >
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -73,7 +74,7 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
         />
       </head>
-      <body className="bg-background text-on-surface overflow-x-hidden antialiased">
+      <body className="bg-background text-on-surface overflow-x-hidden antialiased" suppressHydrationWarning>
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[300] focus:bg-[#09234B] focus:text-white focus:px-4 focus:py-2 focus:rounded-lg focus:text-xs focus:font-bold"
