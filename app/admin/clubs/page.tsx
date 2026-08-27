@@ -14,6 +14,7 @@ import {
   mapUserProfileRecord,
 } from "../adminStore";
 import ImageUploadPicker from "@/app/components/admin/ImageUploadPicker";
+import { isR2AssetUrl } from "@/lib/utils/r2Image";
 import { authClient } from "@/lib/auth/auth-client";
 import {
   getClubs,
@@ -421,6 +422,7 @@ export default function AdminClubsPage() {
                       src={club.image || "/images/engineering.avif"}
                       alt={club.name}
                       fill
+                      unoptimized={isR2AssetUrl(club.image)}
                       className="object-cover opacity-90"
                     />
                     <div className="absolute top-3 left-3 flex gap-2">
@@ -500,6 +502,7 @@ export default function AdminClubsPage() {
                     src={act.image || "/images/engineering.avif"}
                     alt={act.title}
                     fill
+                    unoptimized={isR2AssetUrl(act.image)}
                     className="object-cover opacity-90"
                   />
                   <div className="absolute top-3 left-3 flex gap-2">

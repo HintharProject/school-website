@@ -47,8 +47,16 @@ const securityHeaders = [
   },
 ];
 
+const isDev = process.env.NODE_ENV !== "production";
+
 const nextConfig: NextConfig = {
   images: {
+    // In local dev the Cloudflare Images binding via open-next can intercept
+    // /_next/image and return 400 for valid local files (missing sharp / binding).
+    // Bypass the optimizer locally so preview and static /images/* work reliably.
+    // In production, optimizer is used for static assets; R2 assets are already
+    // marked unoptimized via isR2AssetUrl to avoid 404 via internal fetch.
+    unoptimized: isDev,
     qualities: [75, 95],
     remotePatterns: [
       {

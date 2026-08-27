@@ -84,11 +84,12 @@ export async function POST(req: NextRequest) {
 
     let publicUrl = `/api/assets/${objectKey}`;
 
-    // 1. Attempt Cloudflare R2 Upload
+    // 1. Attempt Cloudflare R2 Upload — check both R2 and hinthar_assets bindings
     try {
       const { getCloudflareContext } = await import("@opennextjs/cloudflare");
-      const ctx = await getCloudflareContext({ async: true });
-      const r2 = (ctx?.env as any)?.R2 as R2Bucket | undefined;
+      const ctx = await getCloudflareContext({ async: true } as any);
+      const env: any = (ctx as any)?.env || {};
+      const r2: R2Bucket | undefined = env.R2 || env.hinthar_assets || env.r2 || undefined;
 
       if (r2) {
         await r2.put(objectKey, arrayBuffer, {
@@ -97,8 +98,9 @@ export async function POST(req: NextRequest) {
           },
         });
         publicUrl = `/api/assets/${objectKey}`;
-      } else if (typeof globalThis !== "undefined" && (globalThis as any).R2) {
-        await (globalThis as any).R2.put(objectKey, arrayBuffer, {
+      } else if (typeof globalThis !== "undefined" && ((globalThis as any).R2 || (globalThis as any).hinthar_assets)) {
+        const gR2: R2Bucket = (globalThis as any).R2 || (globalThis as any).hinthar_assets;
+        await gR2.put(objectKey, arrayBuffer, {
           httpMetadata: { contentType: file.type },
         });
         publicUrl = `/api/assets/${objectKey}`;

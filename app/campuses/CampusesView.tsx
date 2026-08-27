@@ -26,6 +26,15 @@ function loc(campus: CampusRecord, locale: string, field: "name" | "tagline" | "
   return campus[field] as string;
 }
 
+// Fallback for campuses that were saved with missing local files (e.g. /images/specialisations/*, /images/heroImg.png)
+// R2 assets and data: URLs are preserved; anything else pointing to a non-existent public file falls back to g2.
+function safeCampusImage(url: string | undefined): string {
+  if (!url) return "/images/g2.jpg";
+  if (url.startsWith("/api/assets/") || url.startsWith("data:")) return url;
+  if (url.includes("specialisations") || url.includes("heroImg")) return "/images/g2.jpg";
+  return url;
+}
+
 export default function CampusesView({
   initialData,
 }: {
@@ -148,7 +157,7 @@ export default function CampusesView({
                   {/* Campus Header Image — bypass optimizer for R2 assets (prevents 404 via _next/image) */}
                   <div className="relative h-60 w-full overflow-hidden bg-slate-900">
                     <Image
-                      src={campus.imageUrl || "/images/g2.jpg"}
+                      src={safeCampusImage(campus.imageUrl)}
                       alt={loc(campus, locale, "name")}
                       fill
                       unoptimized={isR2AssetUrl(campus.imageUrl)}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import { isR2AssetUrl } from "@/lib/utils/r2Image";
 import {
   YearbookScholar,
   mapYearbookRecord,
@@ -354,6 +355,7 @@ export default function YearbookManagementPage() {
                       src={scholar.image || "/images/g5.jpg"}
                       alt={scholar.name}
                       fill
+                      unoptimized={isR2AssetUrl(scholar.image)}
                       className="object-cover opacity-90"
                     />
                     <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">

@@ -8,6 +8,7 @@ import {
   updateNewsAction,
   deleteNewsAction,
 } from "@/lib/actions/news";
+import { isR2AssetUrl } from "@/lib/utils/r2Image";
 import ImageUploadPicker from "@/app/components/admin/ImageUploadPicker";
 
 interface PostRow {
@@ -289,7 +290,7 @@ export default function AdminNewsPage() {
             >
               <div className="relative w-16 h-12 rounded-lg overflow-hidden bg-slate-100 shrink-0">
                 {post.image ? (
-                  <Image src={post.image} alt="" fill className="object-cover" sizes="64px" />
+                  <Image src={post.image} alt="" fill unoptimized={isR2AssetUrl(post.image)} className="object-cover" sizes="64px" />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-[#0E3B7D] to-[#164E9A]" />
                 )}

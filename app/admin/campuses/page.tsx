@@ -10,6 +10,7 @@ import {
   mapUserProfileRecord,
 } from "../adminStore";
 import { authClient } from "@/lib/auth/auth-client";
+import { isR2AssetUrl } from "@/lib/utils/r2Image";
 import {
   getCampuses,
   createCampusAction,
@@ -245,6 +246,7 @@ export default function AdminCampusesPage() {
                   src={campus.imageUrl || "/images/g2.jpg"}
                   alt={campus.name}
                   fill
+                  unoptimized={isR2AssetUrl(campus.imageUrl)}
                   className="object-cover opacity-90"
                 />
                 <div className="absolute top-4 left-4 flex gap-2">

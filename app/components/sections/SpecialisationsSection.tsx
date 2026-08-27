@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion, Variants } from "framer-motion";
 import { useState } from "react";
 import { DEFAULT_PROGRAMS, type AcademicProgram } from "@/lib/content/defaults";
+import { isR2AssetUrl } from "@/lib/utils/r2Image";
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -103,6 +104,7 @@ export default function SpecialisationsSection({
                   src={prog.image}
                   alt={`${prog.title} Program`}
                   fill
+                  unoptimized={isR2AssetUrl(prog.image)}
                   className="object-cover transition-transform duration-700 group-hover:scale-105"
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 />
