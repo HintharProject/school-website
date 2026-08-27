@@ -20,11 +20,20 @@ import {
   createBulletinAction,
   deleteBulletinAction,
 } from "@/lib/actions/classes";
+import {
+  getSubjectCatalog,
+  upsertSubjectCatalogAction,
+  type SubjectEntry,
+} from "@/lib/actions/siteContent";
+import { DEFAULT_SUBJECT_CATALOG } from "@/lib/content/defaults";
 
 export default function AdminClassesPage() {
-  const [activeTab, setActiveTab] = useState<"courses" | "announcements">("courses");
+  const [activeTab, setActiveTab] = useState<"courses" | "announcements" | "subjects">("courses");
   const [courses, setCourses] = useState<CourseItem[]>([]);
   const [announcements, setAnnouncements] = useState<BulletinNotice[]>([]);
+  const [subjects, setSubjects] = useState<SubjectEntry[]>([]);
+  const [subjectsSaving, setSubjectsSaving] = useState(false);
+  const [newSubjectForm, setNewSubjectForm] = useState({ name: "", track: "STEM" as SubjectEntry["track"], level: "Both" as SubjectEntry["level"], code: "" });
   const [currentUser, setCurrentUser] = useState<UserProfile>(FALLBACK_GUEST_USER);
   const [isLoaded, setIsLoaded] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -74,12 +83,14 @@ export default function AdminClassesPage() {
 
   const loadData = async () => {
     try {
-      const [coursesData, bulletinsData] = await Promise.all([
+      const [coursesData, bulletinsData, subjectsData] = await Promise.all([
         getCourses().catch(() => []),
         getBulletins().catch(() => []),
+        getSubjectCatalog().catch(() => DEFAULT_SUBJECT_CATALOG),
       ]);
       setCourses(coursesData.map(mapCourseRecord));
       setAnnouncements(bulletinsData.map(mapBulletinRecord));
+      setSubjects(subjectsData);
     } catch (err) {
       console.warn("Failed to load classes/bulletins:", err);
     } finally {
@@ -214,6 +225,59 @@ export default function AdminClassesPage() {
     }
   };
 
+  // Actions - Subject Catalog
+  const handleToggleSubjectActive = (id: string) => {
+    setSubjects((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, isActive: !s.isActive } : s))
+    );
+  };
+
+  const handleAddSubject = () => {
+    const name = newSubjectForm.name.trim();
+    if (!name) return;
+    const newEntry: SubjectEntry = {
+      id: `s-${Date.now()}`,
+      name,
+      track: newSubjectForm.track,
+      level: newSubjectForm.level,
+      code: newSubjectForm.code.trim() || undefined,
+      isActive: true,
+    };
+    setSubjects((prev) => [...prev, newEntry]);
+    setNewSubjectForm({ name: "", track: "STEM", level: "Both", code: "" });
+  };
+
+  const handleRemoveSubject = (id: string) => {
+    setSubjects((prev) => prev.filter((s) => s.id !== id));
+  };
+
+  const handleSaveSubjectCatalog = async () => {
+    setSubjectsSaving(true);
+    try {
+      const res = await upsertSubjectCatalogAction(subjects);
+      showToast(res.message);
+    } catch (err: any) {
+      showToast(`Error: ${err.message || "Failed to save subject catalog."}`);
+    } finally {
+      setSubjectsSaving(false);
+    }
+  };
+
+  const handleResetSubjectCatalog = async () => {
+    const confirmed = window.confirm("Reset subject catalog to built-in defaults? This cannot be undone.");
+    if (!confirmed) return;
+    setSubjectsSaving(true);
+    try {
+      await upsertSubjectCatalogAction([]);
+      setSubjects(DEFAULT_SUBJECT_CATALOG);
+      showToast("Subject catalog reset to defaults.");
+    } catch (err: any) {
+      showToast(`Error: ${err.message || "Failed to reset."}`);
+    } finally {
+      setSubjectsSaving(false);
+    }
+  };
+
   const isAdmin = currentUser?.role === "admin";
 
   return (
@@ -263,6 +327,17 @@ export default function AdminClassesPage() {
           >
             <span aria-hidden="true" className="material-symbols-outlined text-base">campaign</span>
             <span>Bulletins ({announcements.length})</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("subjects")}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-extrabold text-xs transition-all cursor-pointer ${
+              activeTab === "subjects"
+                ? "bg-[#FFC700] text-[#09234B] shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <span aria-hidden="true" className="material-symbols-outlined text-base">science</span>
+            <span>Subjects ({subjects.filter((s) => s.isActive).length} active)</span>
           </button>
         </div>
       </div>
@@ -745,7 +820,179 @@ export default function AdminClassesPage() {
         </div>
       )}
 
+      {/* SUBJECTS CATALOG TAB */}
+      {activeTab === "subjects" && (
+        <div className="space-y-4">
+          {/* Subject catalog header */}
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-black text-[#09234B]">Master Subject Catalog</h2>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  These subjects appear as selectable options in the public Admission Form (Step 2) and in the admin Admissions edit modal.
+                  Toggle active/inactive to control visibility, then click <strong>Save Catalog</strong>.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleResetSubjectCatalog}
+                  disabled={subjectsSaving}
+                  className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-all disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span aria-hidden="true" className="material-symbols-outlined text-sm">restart_alt</span>
+                  <span>Reset to Defaults</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveSubjectCatalog}
+                  disabled={subjectsSaving}
+                  className="px-4 py-2 rounded-xl bg-[#0E3B7D] hover:bg-[#164E9A] text-white font-black text-xs transition-all shadow-sm disabled:opacity-60 flex items-center gap-1.5 cursor-pointer"
+                >
+                  {subjectsSaving ? (
+                    <>
+                      <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span aria-hidden="true" className="material-symbols-outlined text-sm">save</span>
+                      <span>Save Catalog</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Subject list */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-500 font-bold border-b border-slate-100">
+                  <tr>
+                    <th className="p-3 pl-5">Subject Name</th>
+                    <th className="p-3">Code</th>
+                    <th className="p-3">Track</th>
+                    <th className="p-3">Level</th>
+                    <th className="p-3 text-center">Active</th>
+                    <th className="p-3 pr-5 text-right">Remove</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                  {subjects.map((s) => (
+                    <tr key={s.id} className={`hover:bg-slate-50/60 transition-colors ${!s.isActive ? "opacity-50" : ""}`}>
+                      <td className="p-3 pl-5 font-semibold text-slate-900">{s.name}</td>
+                      <td className="p-3">
+                        {s.code ? (
+                          <span className="font-mono text-[10px] bg-blue-50 text-[#0E3B7D] px-2 py-0.5 rounded font-bold">{s.code}</span>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          s.track === "STEM" ? "bg-blue-50 text-blue-800" :
+                          s.track === "Business" ? "bg-amber-50 text-amber-800" :
+                          s.track === "Computing" ? "bg-purple-50 text-purple-800" :
+                          s.track === "Languages" ? "bg-emerald-50 text-emerald-800" :
+                          "bg-slate-100 text-slate-600"
+                        }`}>{s.track}</span>
+                      </td>
+                      <td className="p-3">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          s.level === "IGCSE" ? "bg-indigo-50 text-indigo-800" :
+                          s.level === "IAL" ? "bg-rose-50 text-rose-800" :
+                          s.level === "Both" ? "bg-teal-50 text-teal-800" :
+                          "bg-slate-100 text-slate-600"
+                        }`}>{s.level}</span>
+                      </td>
+                      <td className="p-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleSubjectActive(s.id)}
+                          aria-pressed={s.isActive}
+                          className={`w-10 h-5 rounded-full transition-all relative cursor-pointer ${s.isActive ? "bg-[#0E3B7D]" : "bg-slate-300"}`}
+                        >
+                          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${s.isActive ? "left-5" : "left-0.5"}`} />
+                        </button>
+                      </td>
+                      <td className="p-3 pr-5 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveSubject(s.id)}
+                          className="text-slate-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition-colors cursor-pointer"
+                          aria-label={`Remove ${s.name}`}
+                        >
+                          <span aria-hidden="true" className="material-symbols-outlined text-sm">delete</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Add new subject form */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50/50">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-3">Add New Subject to Catalog</p>
+              <div className="flex flex-wrap items-end gap-2">
+                <div className="flex-1 min-w-[140px]">
+                  <input
+                    type="text"
+                    placeholder="Subject name..."
+                    value={newSubjectForm.name}
+                    onChange={(e) => setNewSubjectForm({ ...newSubjectForm, name: e.target.value })}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddSubject(); } }}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+                  />
+                </div>
+                <div>
+                  <input
+                    type="text"
+                    placeholder="Code (e.g. 4PH1)"
+                    value={newSubjectForm.code}
+                    onChange={(e) => setNewSubjectForm({ ...newSubjectForm, code: e.target.value })}
+                    className="w-32 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+                  />
+                </div>
+
+                <select
+                  value={newSubjectForm.track}
+                  onChange={(e) => setNewSubjectForm({ ...newSubjectForm, track: e.target.value as SubjectEntry["track"] })}
+                  className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs"
+                >
+                  <option value="STEM">STEM</option>
+                  <option value="Business">Business</option>
+                  <option value="Computing">Computing</option>
+                  <option value="Languages">Languages</option>
+                  <option value="General">General</option>
+                </select>
+                <select
+                  value={newSubjectForm.level}
+                  onChange={(e) => setNewSubjectForm({ ...newSubjectForm, level: e.target.value as SubjectEntry["level"] })}
+                  className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs"
+                >
+                  <option value="IGCSE">IGCSE</option>
+                  <option value="IAL">IAL</option>
+                  <option value="Both">Both</option>
+                  <option value="Lower Secondary">Lower Secondary</option>
+                </select>
+                <button
+                  type="button"
+                  onClick={handleAddSubject}
+                  disabled={!newSubjectForm.name.trim()}
+                  className="px-4 py-2 bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] font-black text-xs rounded-xl transition-all disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span aria-hidden="true" className="material-symbols-outlined text-sm">add_circle</span>
+                  <span>Add Subject</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* DELETE NOTICES / COURSE CONFIRM */}
+
       {deletingNotice && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl">

@@ -38,6 +38,7 @@ No open public registration is permitted. Accounts are directly provisioned:
 - `/activities` — School events calendar, innovation fairs, examination series, and graduation ceremonies
 - `/classes` — Timetables and syllabi for Lower Secondary (Year 7–9), Pearson IGCSE, and Pearson IAL
 - `/admission` — 4-Step interactive online enrollment wizard (Direct Cloudflare D1 `admissions` table sync + Resend email confirmation)
+- `/portal` — Public Student Portal: applicants track their admission status with their tracking reference (`HIS-YYYY-XXXXXX`) + guardian email (no login; rate-limited lookup in `lib/actions/admissions.ts`)
 - `/admin` & `/admin/login` — Administrative Portal with Better Auth (Password Login at `/admin/login`; Single-Use Invitations in `/admin/users`), Campuses CRUD, Admissions Pipeline, Yearbook Review Queue, Clubs & Activities management.
 
 ## Cloudflare D1 & Drizzle Data Layer

@@ -314,6 +314,67 @@ export async function updateUserStatusAction(id: string, status: string) {
   return { success: true };
 }
 
+export async function updateUserAction(id: string, data: unknown) {
+  const admin = await requireAdmin();
+  const db = await getDb();
+
+  const schema = z.object({
+    name: z.string().trim().min(2).max(200),
+    role: z.enum(["admin", "student"]),
+    title: z.string().trim().max(200).optional().nullable(),
+    campusId: z.string().trim().max(100).optional().nullable(),
+    grade: z.string().trim().max(100).optional().nullable(),
+  });
+
+  const parsed = schema.safeParse(data);
+  if (!parsed.success) {
+    return { success: false as const, error: "Please check name and role fields." };
+  }
+  const validated = parsed.data;
+
+  // Fetch current user to compare role change
+  const existing = await db.select({ role: users.role, status: users.status }).from(users).where(eq(users.id, id)).limit(1);
+  if (!existing.length) return { success: false as const, error: "User not found." };
+
+  const wasAdmin = existing[0].role === "admin" && existing[0].status === "active";
+  const willBeAdmin = validated.role === "admin";
+
+  // Anti-lockout: prevent demoting last active admin
+  if (wasAdmin && !willBeAdmin) {
+    await assertNotLastAdmin(id);
+    const guard = sql`(SELECT COUNT(*) FROM users WHERE role = 'admin' AND status = 'active' AND id != ${id}) > 0`;
+    const result = await db.run(
+      sql`UPDATE users SET name = ${validated.name}, role = ${validated.role}, title = ${validated.title ?? null}, campus_id = ${validated.campusId ?? null}, grade = ${validated.grade ?? null}, updated_at = ${new Date().toISOString()} WHERE id = ${id} AND ${guard}`
+    );
+    if (!result.meta.changes) {
+      return { success: false as const, error: "Cannot demote the last active administrator." };
+    }
+  } else {
+    await db
+      .update(users)
+      .set({
+        name: validated.name,
+        role: validated.role,
+        title: validated.title ?? null,
+        campusId: validated.campusId ?? null,
+        grade: validated.grade ?? null,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, id));
+  }
+
+  await logAudit({
+    actor: admin,
+    action: validated.role !== existing[0].role ? `ADMIN_CHANGED_ROLE_${validated.role.toUpperCase()}` : "ADMIN_UPDATED_USER",
+    resource: "users",
+    resourceId: id,
+    details: { role: validated.role, name: validated.name },
+  });
+
+  revalidatePath("/admin/users");
+  return { success: true as const };
+}
+
 export async function deleteUserAction(id: string) {
   const admin = await requireAdmin();
   const db = await getDb();

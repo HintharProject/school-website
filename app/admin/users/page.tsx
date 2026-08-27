@@ -15,6 +15,7 @@ import {
   getPendingInvitations,
   inviteUserAction,
   updateUserStatusAction,
+  updateUserAction,
   deleteUserAction,
 } from "@/lib/actions/users";
 
@@ -30,6 +31,8 @@ export default function AdminUsersPage() {
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [deletingUser, setDeletingUser] = useState<UserProfile | null>(null);
+  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+  const [editForm, setEditForm] = useState({ fullName: "", role: "student" as "admin" | "student", title: "", campusId: "ywarma-campus", grade: "" });
   const [inviteModalData, setInviteModalData] = useState<{
     name: string;
     email: string;
@@ -190,6 +193,40 @@ export default function AdminUsersPage() {
     }
   };
 
+  const openEdit = (u: UserProfile) => {
+    setEditingUser(u);
+    setEditForm({
+      fullName: u.fullName,
+      role: u.role as "admin" | "student",
+      title: u.title || "",
+      campusId: u.campusId || "ywarma-campus",
+      grade: u.grade || "",
+    });
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    try {
+      const res = await updateUserAction(editingUser.id, {
+        name: editForm.fullName,
+        role: editForm.role,
+        title: editForm.title || null,
+        campusId: editForm.campusId,
+        grade: editForm.grade || null,
+      });
+      if ((res as { success: boolean; error?: string }).success === false) {
+        showToast(`Error: ${(res as { error?: string }).error || "Failed to update."}`);
+        return;
+      }
+      setUsers((prev) => prev.map((p) => (p.id === editingUser.id ? { ...p, fullName: editForm.fullName, role: editForm.role, title: editForm.title, campusId: editForm.campusId, grade: editForm.grade } : p)));
+      showToast(`Updated ${editForm.fullName} (${editForm.role}).`);
+      setEditingUser(null);
+    } catch (err: any) {
+      showToast(`Error: ${err.message || "Failed to update."}`);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Toast Notification */}
@@ -323,14 +360,24 @@ export default function AdminUsersPage() {
                         </button>
                       </td>
                       <td className="p-4 pr-6 text-right">
-                        <button
-                          onClick={() => setDeletingUser(u)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
-                          title="Delete Account"
-                          aria-label={`Delete account for ${u.fullName}`}
-                        >
-                          <span aria-hidden="true" className="material-symbols-outlined text-base">delete</span>
-                        </button>
+                        <div className="inline-flex items-center gap-1">
+                          <button
+                            onClick={() => openEdit(u)}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-[#0E3B7D] hover:bg-blue-50 transition-colors cursor-pointer"
+                            title="Edit account (name/role) — email cannot be changed"
+                            aria-label={`Edit account for ${u.fullName}`}
+                          >
+                            <span aria-hidden="true" className="material-symbols-outlined text-base">edit</span>
+                          </button>
+                          <button
+                            onClick={() => setDeletingUser(u)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                            title="Delete Account"
+                            aria-label={`Delete account for ${u.fullName}`}
+                          >
+                            <span aria-hidden="true" className="material-symbols-outlined text-base">delete</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -541,6 +588,57 @@ export default function AdminUsersPage() {
                 Done
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT USER — name/role/title/campus/grade (email immutable) */}
+      {editingUser && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-4 shadow-2xl">
+            <h3 className="text-lg font-black text-[#09234B]">Edit Account</h3>
+            <p className="text-[11px] text-slate-500">Email cannot be changed — it is the invitation identity. To change email, delete and re-invite.</p>
+            <form onSubmit={handleSaveEdit} className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Email (locked)</label>
+                <input type="text" disabled value={editingUser.email} className="w-full p-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-500" />
+              </div>
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Full Name</label>
+                <input type="text" required value={editForm.fullName} onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Role — promotion / demotion</label>
+                  <select value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value as "admin" | "student" })} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold">
+                    <option value="student">Student Contributor</option>
+                    <option value="admin">School Administrator</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Campus</label>
+                  <select value={editForm.campusId} onChange={(e) => setEditForm({ ...editForm, campusId: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                    {HIERARCHICAL_CAMPUS_OPTIONS.map((c) => (
+                      <option key={c.id} value={c.id}>{c.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Title</label>
+                <input type="text" value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} placeholder="e.g. Senior Teacher" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl" />
+              </div>
+              {editForm.role === "student" && (
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Grade</label>
+                  <input type="text" value={editForm.grade} onChange={(e) => setEditForm({ ...editForm, grade: e.target.value })} placeholder="Pearson IGCSE (Year 10)" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl" />
+                </div>
+              )}
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setEditingUser(null)} className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs">Cancel</button>
+                <button type="submit" className="px-5 py-2 rounded-xl bg-[#0E3B7D] text-white font-bold text-xs">Save Changes</button>
+              </div>
+            </form>
           </div>
         </div>
       )}

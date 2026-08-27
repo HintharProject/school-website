@@ -9,6 +9,7 @@ import FooterSection from "../components/sections/FooterSection";
 import ChatbotWidget from "../components/ChatbotWidget";
 import { CampusRecord, mapCampusRecord } from "../admin/adminStore";
 import { getCampuses } from "@/lib/actions/campuses";
+import { useLocale } from "@/lib/i18n/useT";
 
 const getMapUrl = (campus: CampusRecord) =>
   campus.mapUrl ||
@@ -16,11 +17,20 @@ const getMapUrl = (campus: CampusRecord) =>
     `${campus.name}, ${campus.address}`
   )}`;
 
+function loc(campus: CampusRecord, locale: string, field: "name" | "tagline" | "address") {
+  if (locale === "my") {
+    const my = campus[`${field}My` as keyof CampusRecord] as string | undefined;
+    if (my && my.trim()) return my;
+  }
+  return campus[field] as string;
+}
+
 export default function CampusesView({
   initialData,
 }: {
   initialData?: Parameters<typeof mapCampusRecord>[0][];
 }) {
+  const locale = useLocale();
   const [campuses, setCampuses] = useState<CampusRecord[]>(() =>
     (initialData ?? []).map(mapCampusRecord)
   );
@@ -137,8 +147,8 @@ export default function CampusesView({
                   {/* Campus Header Image */}
                   <div className="relative h-60 w-full overflow-hidden bg-slate-900">
                     <Image
-                      src={campus.imageUrl || "/images/heroImg.png"}
-                      alt={campus.name}
+                      src={campus.imageUrl || "/images/g2.jpg"}
+                      alt={loc(campus, locale, "name")}
                       fill
                       className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-90"
                       sizes="(max-width: 768px) 100vw, 50vw"
@@ -155,10 +165,10 @@ export default function CampusesView({
                     {/* Name & Tagline Overlay */}
                     <div className="absolute bottom-4 left-5 right-5 text-white">
                       <h2 className="text-2xl font-black tracking-tight drop-shadow-md">
-                        {campus.name}
+                        {loc(campus, locale, "name")}
                       </h2>
                       <p className="text-xs sm:text-sm text-[#FFC700] font-semibold line-clamp-1">
-                        {campus.tagline}
+                        {loc(campus, locale, "tagline")}
                       </p>
                     </div>
                   </div>
@@ -166,18 +176,18 @@ export default function CampusesView({
                   {/* Campus Body Details */}
                   <div className="p-6 flex-1 flex flex-col justify-between">
                     <div className="space-y-4">
-                      {/* Grades Served */}
+                      {/* Grades Served — grades stay EN per no-translate rule */}
                       <div className="flex items-center gap-2 text-xs font-bold text-[#0E3B7D] bg-blue-50/80 px-3.5 py-2 rounded-xl border border-blue-100">
                         <span aria-hidden="true" className="material-symbols-outlined text-sm">school</span>
                         <span>{campus.gradesServed}</span>
                       </div>
 
-                      {/* Address */}
+                      {/* Address — bilingual */}
                       <div className="flex items-start gap-2.5 text-xs sm:text-sm text-slate-700">
                         <span aria-hidden="true" className="material-symbols-outlined text-base text-[#0E3B7D] shrink-0 mt-0.5">
                           pin_drop
                         </span>
-                        <span className="font-medium">{campus.address}</span>
+                        <span className="font-medium">{loc(campus, locale, "address")}</span>
                       </div>
 
                       {/* Contact Info */}

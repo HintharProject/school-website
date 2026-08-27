@@ -1,4 +1,4 @@
-﻿import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
 function applySecurityHeaders(res: NextResponse) {
   res.headers.set("X-Frame-Options", "SAMEORIGIN");
@@ -8,7 +8,7 @@ function applySecurityHeaders(res: NextResponse) {
   return res;
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isAdminRoute = pathname.startsWith("/admin");
   const isAuthRoute = pathname === "/admin/login" || pathname === "/admin/update-password";
@@ -76,4 +76,3 @@ export const config = {
     "/((?!_next/static|_next/image|favicon.ico|images|fonts|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif)$).*)",
   ],
 };
-

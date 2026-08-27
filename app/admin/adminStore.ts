@@ -242,9 +242,12 @@ export function mapActivityRecord(d: any): ActivityItem {
 export interface CampusRecord {
   id: string;
   name: string;
+  nameMy?: string;
   city: "Yangon" | "Mawlamyine";
   tagline: string;
+  taglineMy?: string;
   address: string;
+  addressMy?: string;
   phone: string;
   email: string;
   officeHours: string;
@@ -272,15 +275,18 @@ export function mapCampusRecord(d: any): CampusRecord {
   return {
     id: d.id,
     name: d.name,
+    nameMy: d.nameMy || d.name_my || undefined,
     city: d.city,
     tagline: d.tagline || "",
+    taglineMy: d.taglineMy || d.tagline_my || undefined,
     address: d.address || "",
+    addressMy: d.addressMy || d.address_my || undefined,
     phone: d.phone || "",
     email: d.email || "",
     officeHours: d.officeHours || d.office_hours || "Mon–Sat: 08:30 AM – 05:00 PM",
     gradesServed: d.gradesServed || d.grades_served || "",
     facilities: facs,
-    imageUrl: d.imageUrl || d.image_url || "/images/heroImg.png",
+    imageUrl: d.imageUrl || d.image_url || "/images/g2.jpg",
     mapUrl: d.mapUrl || d.map_url || undefined,
     isActive: typeof d.isActive === "boolean" ? d.isActive : typeof d.is_active === "boolean" ? d.is_active : true,
     createdAt: d.createdAt || d.created_at,

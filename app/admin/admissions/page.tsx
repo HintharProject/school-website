@@ -17,6 +17,13 @@ import {
   deleteAdmissionAction,
   submitPublicAdmissionAction,
 } from "@/lib/actions/admissions";
+import {
+  getAdmissionOptions,
+  upsertAdmissionOptionsAction,
+  resetAdmissionOptionsAction,
+  type AdmissionOptions,
+} from "@/lib/actions/siteContent";
+import { DEFAULT_ADMISSION_OPTIONS } from "@/lib/content/defaults";
 
 const statusBadgeClasses: Record<ApplicationStatus, string> = {
   Pending: "bg-amber-100 text-amber-800 border border-amber-200",
@@ -55,6 +62,17 @@ export default function AdminAdmissionsPage() {
     notes: "",
   });
 
+  // Terms & Options catalog (4 lists) — shown in Terms tab
+  const [activeTab, setActiveTab] = useState<"pipeline" | "terms">("pipeline");
+  const [admissionOptions, setAdmissionOptions] = useState<AdmissionOptions>(DEFAULT_ADMISSION_OPTIONS);
+  const [termsSaving, setTermsSaving] = useState(false);
+  const [newOptionInputs, setNewOptionInputs] = useState<Record<keyof AdmissionOptions, string>>({
+    intendedStartTerms: "",
+    studyModes: "",
+    academicStreams: "",
+    relationships: "",
+  });
+
   const { data: session } = authClient.useSession();
 
   useEffect(() => {
@@ -70,8 +88,12 @@ export default function AdminAdmissionsPage() {
 
   const loadData = async () => {
     try {
-      const data = await getAdmissions();
+      const [data, opts] = await Promise.all([
+        getAdmissions(),
+        getAdmissionOptions().catch(() => DEFAULT_ADMISSION_OPTIONS),
+      ]);
       setApplications(data.map(mapAdmissionRecord));
+      setAdmissionOptions(opts);
     } catch (err) {
       console.warn("Failed to load admissions:", err);
     } finally {
@@ -248,6 +270,41 @@ export default function AdminAdmissionsPage() {
     }
   };
 
+  // Terms & Options handlers (single page 4 lists)
+  const handleAddOption = (key: keyof AdmissionOptions) => {
+    const val = (newOptionInputs[key] || "").trim();
+    if (!val) return;
+    setAdmissionOptions((prev) => ({ ...prev, [key]: [...prev[key], val] }));
+    setNewOptionInputs((prev) => ({ ...prev, [key]: "" }));
+  };
+  const handleRemoveOption = (key: keyof AdmissionOptions, idx: number) => {
+    setAdmissionOptions((prev) => ({ ...prev, [key]: prev[key].filter((_, i) => i !== idx) }));
+  };
+  const handleSaveTerms = async () => {
+    setTermsSaving(true);
+    try {
+      const res = await upsertAdmissionOptionsAction(admissionOptions);
+      showToast(res.message);
+    } catch (err: any) {
+      showToast(`Error: ${err.message || "Failed to save terms."}`);
+    } finally {
+      setTermsSaving(false);
+    }
+  };
+  const handleResetTerms = async () => {
+    if (!window.confirm("Reset all admission options to defaults?")) return;
+    setTermsSaving(true);
+    try {
+      await resetAdmissionOptionsAction();
+      setAdmissionOptions(DEFAULT_ADMISSION_OPTIONS);
+      showToast("Admission options reset to defaults.");
+    } catch (err: any) {
+      showToast(`Error: ${err.message || "Failed to reset."}`);
+    } finally {
+      setTermsSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Toast Notification */}
@@ -275,17 +332,46 @@ export default function AdminAdmissionsPage() {
           </p>
         </div>
 
+        <div className="flex items-center gap-2">
+          <a
+            href="/api/admin/admissions/export?format=csv"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-black text-xs uppercase tracking-wider shadow-sm transition-all active:scale-95 whitespace-nowrap cursor-pointer"
+          >
+            <span aria-hidden="true" className="material-symbols-outlined text-base font-bold">download</span>
+            <span>Export CSV</span>
+          </a>
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] font-black text-xs uppercase tracking-wider shadow-sm transition-all active:scale-95 whitespace-nowrap cursor-pointer"
+          >
+            <span aria-hidden="true" className="material-symbols-outlined text-base font-bold">person_add</span>
+            <span>Register Candidate</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Tab switcher */}
+      <div className="flex items-center gap-2 bg-white p-1.5 rounded-2xl border border-slate-200 w-fit shadow-sm">
         <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] font-black text-xs uppercase tracking-wider shadow-sm transition-all active:scale-95 whitespace-nowrap cursor-pointer"
+          onClick={() => setActiveTab("pipeline")}
+          className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === "pipeline" ? "bg-[#0E3B7D] text-white shadow-sm" : "text-slate-600 hover:text-[#0E3B7D] hover:bg-slate-50"}`}
         >
-          <span aria-hidden="true" className="material-symbols-outlined text-base font-bold">person_add</span>
-          <span>Register Candidate</span>
+          <span aria-hidden="true" className="material-symbols-outlined text-sm">group</span>
+          <span>Pipeline ({applications.length})</span>
+        </button>
+        <button
+          onClick={() => setActiveTab("terms")}
+          className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === "terms" ? "bg-[#FFC700] text-[#09234B] shadow-sm" : "text-slate-600 hover:text-[#0E3B7D] hover:bg-slate-50"}`}
+        >
+          <span aria-hidden="true" className="material-symbols-outlined text-sm">tune</span>
+          <span>Terms & Options</span>
         </button>
       </div>
 
-      {/* Metric Counters */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      {activeTab === "pipeline" && (
+        <>
+          {/* Metric Counters */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
           <div className="w-11 h-11 rounded-xl bg-blue-50 text-[#0E3B7D] flex items-center justify-center font-bold">
             <span aria-hidden="true" className="material-symbols-outlined text-xl">folder_shared</span>
@@ -430,6 +516,80 @@ export default function AdminAdmissionsPage() {
           </table>
         </div>
       </div>
+          </>
+        )}
+
+      {activeTab === "terms" && (
+        <div className="space-y-4">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <h2 className="text-base font-black text-[#09234B]">Admission Terms & Options Catalog</h2>
+                <p className="text-[11px] text-slate-500 mt-0.5">These options appear in the public Admission Form (Step 1–3) and in the admin Edit modal. Add/remove entries, then Save.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={handleResetTerms} disabled={termsSaving} className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs disabled:opacity-50 flex items-center gap-1.5 cursor-pointer">
+                  <span aria-hidden="true" className="material-symbols-outlined text-sm">restart_alt</span>
+                  <span>Reset to Defaults</span>
+                </button>
+                <button type="button" onClick={handleSaveTerms} disabled={termsSaving} className="px-4 py-2 rounded-xl bg-[#0E3B7D] hover:bg-[#164E9A] text-white font-black text-xs shadow-sm disabled:opacity-60 flex items-center gap-1.5 cursor-pointer">
+                  {termsSaving ? <><span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /><span>Saving...</span></> : <><span aria-hidden="true" className="material-symbols-outlined text-sm">save</span><span>Save Terms</span></>}
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
+              {(["intendedStartTerms", "studyModes", "academicStreams", "relationships"] as const).map((key) => {
+                const labels: Record<string, string> = {
+                  intendedStartTerms: "Intended Start Terms",
+                  studyModes: "Study Modes",
+                  academicStreams: "Academic Streams",
+                  relationships: "Relationships",
+                };
+                const placeholder: Record<string, string> = {
+                  intendedStartTerms: "e.g. August 2027",
+                  studyModes: "e.g. Evening Classes",
+                  academicStreams: "e.g. Arts & Media",
+                  relationships: "e.g. Aunt",
+                };
+                return (
+                  <div key={key} className="p-4 space-y-3">
+                    <h3 className="text-xs font-black text-[#0E3B7D] uppercase tracking-wider flex items-center gap-1.5">
+                      <span aria-hidden="true" className="material-symbols-outlined text-sm">list</span>
+                      <span>{labels[key]} ({admissionOptions[key].length})</span>
+                    </h3>
+                    <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                      {admissionOptions[key].map((opt, idx) => (
+                        <div key={`${key}-${idx}`} className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs">
+                          <span className="flex-1 font-medium text-slate-800 truncate">{opt}</span>
+                          <button type="button" onClick={() => handleRemoveOption(key, idx)} className="text-slate-400 hover:text-red-600 hover:bg-red-50 p-1 rounded-lg transition-colors cursor-pointer" aria-label={`Remove ${opt}`}>
+                            <span aria-hidden="true" className="material-symbols-outlined text-sm">close</span>
+                          </button>
+                        </div>
+                      ))}
+                      {admissionOptions[key].length === 0 && <p className="text-[11px] text-slate-400 text-center py-2">No entries — add one below.</p>}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={newOptionInputs[key]}
+                        onChange={(e) => setNewOptionInputs((prev) => ({ ...prev, [key]: e.target.value }))}
+                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddOption(key); } }}
+                        placeholder={placeholder[key]}
+                        className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+                      />
+                      <button type="button" onClick={() => handleAddOption(key)} disabled={!newOptionInputs[key].trim()} className="px-3 py-2 bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] font-black text-xs rounded-xl disabled:opacity-50 flex items-center gap-1 cursor-pointer">
+                        <span aria-hidden="true" className="material-symbols-outlined text-sm">add</span>
+                        <span>Add</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* APPLICATION REVIEW MODAL */}
       {selectedApp && (
@@ -592,42 +752,39 @@ export default function AdminAdmissionsPage() {
                   <div>
                     <label className="font-bold text-slate-700 block mb-1">Academic Stream</label>
                     <select
-                      value={editingApp.academicStream || "General Academic"}
+                      value={editingApp.academicStream || admissionOptions.academicStreams[0] || "General Academic"}
                       onChange={(e) => setEditingApp({ ...editingApp, academicStream: e.target.value })}
                       className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
                     >
-                      <option value="Science / STEM & Pre-Med">Science / STEM &amp; Pre-Med</option>
-                      <option value="Engineering & Computing">Engineering &amp; Computing</option>
-                      <option value="Business, Economics & Finance">Business, Economics &amp; Finance</option>
-                      <option value="Creative Arts & Digital Media">Creative Arts &amp; Digital Media</option>
-                      <option value="General Academic">General Academic</option>
+                      {admissionOptions.academicStreams.map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
                     </select>
                   </div>
 
                   <div>
                     <label className="font-bold text-slate-700 block mb-1">Intended Start Term</label>
                     <select
-                      value={editingApp.intendedStartTerm || "Term 1 (August 2026)"}
+                      value={editingApp.intendedStartTerm || admissionOptions.intendedStartTerms[0] || "Term 1 (August 2026)"}
                       onChange={(e) => setEditingApp({ ...editingApp, intendedStartTerm: e.target.value })}
                       className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
                     >
-                      <option value="Term 1 (August 2026)">Term 1 (August 2026)</option>
-                      <option value="Term 2 (January 2027)">Term 2 (January 2027)</option>
-                      <option value="Term 3 (April 2027)">Term 3 (April 2027)</option>
-                      <option value="Immediate Mid-Term Transfer">Immediate Mid-Term Transfer</option>
+                      {admissionOptions.intendedStartTerms.map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
                     </select>
                   </div>
 
                   <div>
                     <label className="font-bold text-slate-700 block mb-1">Study Mode</label>
                     <select
-                      value={editingApp.studyMode || "Full-Time On-Campus"}
+                      value={editingApp.studyMode || admissionOptions.studyModes[0] || "Full-Time On-Campus"}
                       onChange={(e) => setEditingApp({ ...editingApp, studyMode: e.target.value })}
                       className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
                     >
-                      <option value="Full-Time On-Campus">Full-Time On-Campus</option>
-                      <option value="Hybrid / Flexible Learning">Hybrid / Flexible Learning</option>
-                      <option value="Pearson Examination Series Candidate">Pearson Examination Series Candidate</option>
+                      {admissionOptions.studyModes.map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -730,15 +887,13 @@ export default function AdminAdmissionsPage() {
                   <div>
                     <label className="font-bold text-slate-700 block mb-1">Relationship</label>
                     <select
-                      value={editingApp.relationship || "Parent"}
+                      value={editingApp.relationship || admissionOptions.relationships[0] || "Parent"}
                       onChange={(e) => setEditingApp({ ...editingApp, relationship: e.target.value })}
                       className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
                     >
-                      <option value="Father">Father</option>
-                      <option value="Mother">Mother</option>
-                      <option value="Guardian">Guardian</option>
-                      <option value="Parent">Parent</option>
-                      <option value="Other">Other</option>
+                      {admissionOptions.relationships.map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -833,6 +988,69 @@ export default function AdminAdmissionsPage() {
                 </div>
               </div>
 
+              {/* SECTION 5: SUBJECT SELECTION */}
+              <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-[#0E3B7D] font-black uppercase text-[11px] tracking-wider">
+                    <span aria-hidden="true" className="material-symbols-outlined text-base">menu_book</span>
+                    <span>Selected Subjects / Electives</span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full bg-blue-50 text-[#0E3B7D] text-[10px] font-black">
+                    {(editingApp.selectedSubjects ?? []).length} selected
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  Toggle subject preferences for this applicant. Changes are saved with the rest of the form.
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2" role="group" aria-label="Subject selection">
+                  {[
+                    "Pure Mathematics",
+                    "Further Mathematics",
+                    "Physics",
+                    "Chemistry",
+                    "Biology",
+                    "Computer Science",
+                    "Information Technology",
+                    "Economics",
+                    "Accounting",
+                    "Business Studies",
+                    "English Language",
+                    "Global Perspectives",
+                    "Statistics",
+                    "Art & Design",
+                    "Geography",
+                  ].map((subj) => {
+                    const isSelected = (editingApp.selectedSubjects ?? []).includes(subj);
+                    return (
+                      <button
+                        key={subj}
+                        type="button"
+                        aria-pressed={isSelected}
+                        onClick={() => {
+                          const current = editingApp.selectedSubjects ?? [];
+                          setEditingApp({
+                            ...editingApp,
+                            selectedSubjects: isSelected
+                              ? current.filter((s) => s !== subj)
+                              : [...current, subj],
+                          });
+                        }}
+                        className={`flex items-center gap-1.5 p-2 rounded-xl text-left text-[11px] font-semibold border transition-all cursor-pointer ${
+                          isSelected
+                            ? "bg-[#FFF8E1] border-[#FFC700] text-[#09234B]"
+                            : "bg-white border-slate-200 text-slate-600 hover:border-[#0E3B7D]/50"
+                        }`}
+                      >
+                        <span aria-hidden="true" className="material-symbols-outlined text-sm text-[#0E3B7D] shrink-0">
+                          {isSelected ? "check_box" : "check_box_outline_blank"}
+                        </span>
+                        <span className="truncate">{subj}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   type="button"
@@ -852,6 +1070,8 @@ export default function AdminAdmissionsPage() {
           </div>
         </div>
       )}
+
+
 
       {/* ADD CANDIDATE MODAL */}
       {isAddModalOpen && (

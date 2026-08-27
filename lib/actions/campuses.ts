@@ -14,9 +14,12 @@ export interface CampusActionResult {
 const campusSchema = z.object({
   id: z.string().trim().min(2).max(100),
   name: z.string().trim().min(2).max(200),
+  nameMy: z.string().trim().max(200).optional().nullable().or(z.literal("")),
   city: z.enum(["Yangon", "Mawlamyine"]),
   tagline: z.string().trim().min(5).max(300),
+  taglineMy: z.string().trim().max(300).optional().nullable().or(z.literal("")),
   address: z.string().trim().min(5).max(500),
+  addressMy: z.string().trim().max(500).optional().nullable().or(z.literal("")),
   phone: z.string().trim().min(5).max(100),
   email: z.string().trim().email(),
   officeHours: z.string().trim().default("Mon–Sat: 08:30 AM – 05:00 PM"),
@@ -52,12 +55,17 @@ function safeRevalidate(paths: string[]) {
 function normalizeCampusInput(data: unknown) {
   if (!data || typeof data !== "object") return data;
   const d = { ...(data as Record<string, unknown>) };
+  const bilingualMyKeys = ["nameMy", "taglineMy", "addressMy"];
   for (const key of Object.keys(d)) {
     if (typeof d[key] === "string") {
       const trimmed = (d[key] as string).trim();
-      // Empty optional fields become undefined so schema defaults apply.
-      if (!trimmed && (key === "mapUrl" || key === "officeHours")) {
+      // officeHours empty → delete so schema default applies; mapUrl / MY empty → keep as "" so caller can clear / fallback
+      if (!trimmed && key === "officeHours") {
         delete d[key];
+        continue;
+      }
+      if (!trimmed && (key === "mapUrl" || bilingualMyKeys.includes(key))) {
+        d[key] = "";
         continue;
       }
       d[key] = trimmed;
@@ -125,6 +133,9 @@ export async function createCampusAction(data: unknown): Promise<CampusActionRes
     const insertData: NewCampus = {
       ...validated,
       mapUrl: validated.mapUrl || undefined,
+      nameMy: (validated as Record<string, unknown>).nameMy ? (validated as Record<string, unknown>).nameMy as string : undefined,
+      taglineMy: (validated as Record<string, unknown>).taglineMy ? (validated as Record<string, unknown>).taglineMy as string : undefined,
+      addressMy: (validated as Record<string, unknown>).addressMy ? (validated as Record<string, unknown>).addressMy as string : undefined,
       facilities: JSON.stringify(validated.facilities),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -163,10 +174,14 @@ export async function updateCampusAction(id: string, data: unknown): Promise<Cam
 
     const updateData: Partial<NewCampus> = {
       ...parsed,
-      mapUrl: parsed.mapUrl === "" ? undefined : parsed.mapUrl,
+      // empty string means "clear the link" — store null so it disappears from public pages
+      mapUrl: parsed.mapUrl === "" ? null : parsed.mapUrl,
+      nameMy: (parsed as Record<string, unknown>).nameMy === "" ? null : (parsed as Record<string, unknown>).nameMy as string | undefined,
+      taglineMy: (parsed as Record<string, unknown>).taglineMy === "" ? null : (parsed as Record<string, unknown>).taglineMy as string | undefined,
+      addressMy: (parsed as Record<string, unknown>).addressMy === "" ? null : (parsed as Record<string, unknown>).addressMy as string | undefined,
       facilities: parsed.facilities ? JSON.stringify(parsed.facilities) : undefined,
       updatedAt: new Date().toISOString(),
-    };
+    } as Partial<NewCampus>;
 
     const updated = await db
       .update(campuses)

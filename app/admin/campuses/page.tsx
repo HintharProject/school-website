@@ -34,19 +34,22 @@ export default function AdminCampusesPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [deletingCampus, setDeletingCampus] = useState<CampusRecord | null>(null);
 
-  // Form State
+  // Form State — bilingual EN/MY (MY optional, fallback to EN on public site)
   const [formState, setFormState] = useState<Partial<CampusRecord>>({
     id: "",
     name: "",
+    nameMy: "",
     city: "Yangon",
     tagline: "",
+    taglineMy: "",
     address: "",
+    addressMy: "",
     phone: "",
     email: "",
     officeHours: "Mon–Sat: 08:30 AM – 05:00 PM",
     gradesServed: "Year 7–9 · Pearson IGCSE · Pearson IAL",
     facilities: ["Pearson Exam Center", "Science Labs", "Computer Lab"],
-    imageUrl: "/images/heroImg.png",
+    imageUrl: "/images/g2.jpg",
     mapUrl: "",
     isActive: true,
   });
@@ -106,15 +109,18 @@ export default function AdminCampusesPage() {
     const newRecord: CampusRecord = {
       id: newId,
       name: formState.name || "New Campus",
+      nameMy: formState.nameMy || undefined,
       city: (formState.city as "Yangon" | "Mawlamyine") || "Yangon",
       tagline: formState.tagline || "Center of Academic Excellence",
+      taglineMy: formState.taglineMy || undefined,
       address: formState.address || "",
+      addressMy: formState.addressMy || undefined,
       phone: formState.phone || "+95 9 894 332200",
       email: formState.email || "admissions@hinthar.education",
       officeHours: formState.officeHours || "Mon–Sat: 08:30 AM – 05:00 PM",
       gradesServed: formState.gradesServed || "Year 7–9 · Pearson IGCSE · Pearson IAL",
       facilities: formState.facilities || ["Pearson Exam Center", "Science Lab"],
-      imageUrl: formState.imageUrl || "/images/heroImg.png",
+      imageUrl: formState.imageUrl || "/images/g2.jpg",
       mapUrl: formState.mapUrl || undefined,
       isActive: formState.isActive ?? true,
     };
@@ -236,7 +242,7 @@ export default function AdminCampusesPage() {
               {/* Card Image Banner */}
               <div className="relative h-48 w-full bg-slate-900">
                 <Image
-                  src={campus.imageUrl || "/images/heroImg.png"}
+                  src={campus.imageUrl || "/images/g2.jpg"}
                   alt={campus.name}
                   fill
                   className="object-cover opacity-90"
@@ -369,7 +375,7 @@ export default function AdminCampusesPage() {
             <form onSubmit={handleSaveEdit} className="space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Campus Name</label>
+                  <label className="font-bold text-slate-700 block mb-1">Campus Name (EN)</label>
                   <input
                     type="text"
                     required
@@ -392,7 +398,18 @@ export default function AdminCampusesPage() {
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Tagline / Subtitle</label>
+                <label className="font-bold text-slate-700 block mb-1">Campus Name (Burmese) — optional, fallback to EN</label>
+                <input
+                  type="text"
+                  placeholder="ဥပမာ — ရွာမကျောင်း"
+                  value={editingCampus.nameMy || ""}
+                  onChange={(e) => setEditingCampus({ ...editingCampus, nameMy: e.target.value })}
+                  className="w-full p-2.5 bg-amber-50/50 border border-amber-200 rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Tagline / Subtitle (EN)</label>
                 <input
                   type="text"
                   required
@@ -403,13 +420,35 @@ export default function AdminCampusesPage() {
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Full Physical Address</label>
+                <label className="font-bold text-slate-700 block mb-1">Tagline (Burmese) — optional</label>
+                <input
+                  type="text"
+                  placeholder="မြန်မာ ဘာသာဖြင့်"
+                  value={editingCampus.taglineMy || ""}
+                  onChange={(e) => setEditingCampus({ ...editingCampus, taglineMy: e.target.value })}
+                  className="w-full p-2.5 bg-amber-50/50 border border-amber-200 rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Full Physical Address (EN)</label>
                 <textarea
                   rows={2}
                   required
                   value={editingCampus.address}
                   onChange={(e) => setEditingCampus({ ...editingCampus, address: e.target.value })}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Full Address (Burmese) — optional</label>
+                <textarea
+                  rows={2}
+                  placeholder="မြန်မာ လိပ်စာ"
+                  value={editingCampus.addressMy || ""}
+                  onChange={(e) => setEditingCampus({ ...editingCampus, addressMy: e.target.value })}
+                  className="w-full p-2.5 bg-amber-50/50 border border-amber-200 rounded-xl"
                 />
               </div>
 
@@ -624,7 +663,7 @@ export default function AdminCampusesPage() {
               <div>
                 <ImageUploadPicker
                   label="Campus Showcase Photo"
-                  value={formState.imageUrl || "/images/heroImg.png"}
+                  value={formState.imageUrl || "/images/g2.jpg"}
                   onChange={(url) => setFormState({ ...formState, imageUrl: url })}
                   folder="campuses"
                   defaultPresetsCategory="campus"

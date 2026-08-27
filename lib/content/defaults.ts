@@ -151,6 +151,84 @@ export const SITE_CONTENT_KEYS = [
   "faqs",
   "programs",
   "contactInfo",
+  "subjectCatalog",
+  "admissionOptions",
 ] as const;
 
 export type SiteContentKey = (typeof SITE_CONTENT_KEYS)[number];
+
+// ── SUBJECT CATALOG ───────────────────────────────────────────────────────────
+
+export type SubjectLevel = "IGCSE" | "IAL" | "Both" | "Lower Secondary";
+export type SubjectTrack = "STEM" | "Business" | "Computing" | "Languages" | "General";
+
+export interface SubjectEntry {
+  id: string;
+  name: string;
+  track: SubjectTrack;
+  level: SubjectLevel;
+  code?: string;
+  isActive: boolean;
+}
+
+export const DEFAULT_SUBJECT_CATALOG: SubjectEntry[] = [
+  { id: "s-pure-math",   name: "Pure Mathematics",     track: "STEM",      level: "Both",  code: "4PM1",  isActive: true },
+  { id: "s-further-math",name: "Further Mathematics",  track: "STEM",      level: "IAL",   code: "YFM01", isActive: true },
+  { id: "s-physics",     name: "Physics",               track: "STEM",      level: "Both",  code: "4PH1",  isActive: true },
+  { id: "s-chemistry",   name: "Chemistry",             track: "STEM",      level: "Both",  code: "4CH1",  isActive: true },
+  { id: "s-biology",     name: "Biology",               track: "STEM",      level: "Both",  code: "4BI1",  isActive: true },
+  { id: "s-cs",          name: "Computer Science",      track: "Computing", level: "Both",  code: "4CP1",  isActive: true },
+  { id: "s-ict",         name: "Information Technology",track: "Computing", level: "IGCSE", code: "4IT1",  isActive: true },
+  { id: "s-econ",        name: "Economics",             track: "Business",  level: "Both",  code: "4EC1",  isActive: true },
+  { id: "s-acc",         name: "Accounting",            track: "Business",  level: "Both",  code: "4AC1",  isActive: true },
+  { id: "s-business",    name: "Business Studies",      track: "Business",  level: "Both",  code: "4BS1",  isActive: true },
+  { id: "s-eng",         name: "English Language",      track: "Languages", level: "Both",  code: "4EA1",  isActive: true },
+  { id: "s-gp",          name: "Global Perspectives",   track: "General",   level: "IGCSE", code: "4GP1",  isActive: true },
+  { id: "s-stats",       name: "Statistics",            track: "STEM",      level: "IAL",   code: "YST01", isActive: true },
+  { id: "s-art",         name: "Art & Design",          track: "General",   level: "IGCSE", code: "4AD1",  isActive: false },
+  { id: "s-geo",         name: "Geography",             track: "General",   level: "Both",  code: "4GE1",  isActive: true },
+];
+
+// ── ADMISSION OPTIONS CATALOG (4 lists) ─────────────────────────────────────
+export interface AdmissionOptions {
+  intendedStartTerms: string[];
+  studyModes: string[];
+  academicStreams: string[];
+  relationships: string[];
+}
+
+export const DEFAULT_ADMISSION_OPTIONS: AdmissionOptions = {
+  intendedStartTerms: [
+    "August 2026",
+    "January 2027",
+    "Immediate Placement",
+    "Term 1 (August 2026)",
+    "Term 2 (January 2027)",
+    "Term 3 (April 2027)",
+    "Immediate Mid-Term Transfer",
+  ],
+  studyModes: [
+    "Full-Time On-Campus",
+    "Hybrid / Supplementary",
+    "Hybrid / Flexible Learning",
+    "Pearson Examination Series Candidate",
+  ],
+  academicStreams: [
+    "Science / STEM & Pre-Med",
+    "Engineering & Computing",
+    "Business, Economics & Finance",
+    "Creative Arts & Digital Media",
+    "General Academic",
+    "STEM & Pure Sciences",
+    "Computing & IT",
+    "Business & Commerce",
+  ],
+  relationships: [
+    "Father",
+    "Mother",
+    "Parent",
+    "Legal Guardian",
+    "Guardian",
+    "Other",
+  ],
+};

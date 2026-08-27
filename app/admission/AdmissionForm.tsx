@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import FooterSection from "../components/sections/FooterSection";
 import { submitPublicAdmissionAction } from "@/lib/actions/admissions";
+import { getSubjectCatalog, getAdmissionOptions, type SubjectEntry, type AdmissionOptions } from "@/lib/actions/siteContent";
+import { DEFAULT_SUBJECT_CATALOG, DEFAULT_ADMISSION_OPTIONS } from "@/lib/content/defaults";
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
@@ -15,6 +17,30 @@ export default function AdmissionForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [emailSent, setEmailSent] = useState(false);
+  const [availableSubjects, setAvailableSubjects] = useState<SubjectEntry[]>(() =>
+    DEFAULT_SUBJECT_CATALOG.filter((s) => s.isActive)
+  );
+  const [admissionOptions, setAdmissionOptions] = useState<AdmissionOptions>(DEFAULT_ADMISSION_OPTIONS);
+
+  useEffect(() => {
+    let mounted = true;
+    getSubjectCatalog()
+      .then((catalog) => {
+        if (mounted && Array.isArray(catalog) && catalog.length > 0) {
+          const active = catalog.filter((s) => s.isActive);
+          if (active.length > 0) setAvailableSubjects(active);
+        }
+      })
+      .catch(() => {});
+    getAdmissionOptions()
+      .then((opts) => {
+        if (mounted && opts) setAdmissionOptions(opts);
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const [formData, setFormData] = useState({
     // Step 1: Student Details
@@ -134,11 +160,22 @@ export default function AdmissionForm() {
         howHeard: formData.howHeard || "School Website",
       });
 
-      if (!result.success || !result.applicationId) {
-        setSubmitError(
-          (result as { error?: string }).error ||
-            "Your application could not be submitted. Please check your connection and try again."
-        );
+      if (!result.success || !("applicationId" in result) || !result.applicationId) {
+        // Collect field errors into a readable message if available
+        const fieldErrors = "fieldErrors" in result ? result.fieldErrors : null;
+        let errorMsg = ("error" in result && result.error)
+          ? result.error
+          : "Your application could not be submitted. Please check your connection and try again.";
+        if (fieldErrors) {
+          const fieldMsgs = Object.entries(fieldErrors)
+            .flatMap(([field, msgs]) =>
+              Array.isArray(msgs) ? msgs.map((m) => `${field}: ${m}`) : []
+            )
+            .slice(0, 3)
+            .join(" • ");
+          if (fieldMsgs) errorMsg = `Validation failed — ${fieldMsgs}`;
+        }
+        setSubmitError(errorMsg);
         setIsSubmitting(false);
         window.scrollTo({ top: 0, behavior: "smooth" });
         return;
@@ -148,13 +185,15 @@ export default function AdmissionForm() {
       setEmailSent(result.emailSent === true);
       setCurrentStep(5);
       window.scrollTo({ top: 0, behavior: "smooth" });
-    } catch {
+    } catch (err) {
+      console.error("[AdmissionForm] submit error:", err);
       setSubmitError("Your application could not be submitted. Please check your connection and try again.");
       window.scrollTo({ top: 0, behavior: "smooth" });
     } finally {
       setIsSubmitting(false);
     }
   };
+
 
   const nextStep = () => {
     setCurrentStep((prev) => Math.min(prev + 1, 5) as Step);
@@ -390,20 +429,8 @@ export default function AdmissionForm() {
                   Select Target Electives / Subjects
                 </span>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5" role="group" aria-label="Select Target Electives / Subjects">
-                  {[
-                    "Pure Mathematics",
-                    "Further Mathematics",
-                    "Physics",
-                    "Chemistry",
-                    "Biology",
-                    "Computer Science",
-                    "Information Technology",
-                    "Economics",
-                    "Accounting",
-                    "Business Studies",
-                    "English Language",
-                    "Global Perspectives",
-                  ].map((subj) => {
+                  {availableSubjects.map((entry) => {
+                    const subj = entry.name;
                     const isSelected = formData.selectedSubjects.includes(subj);
                     return (
                       <button
@@ -439,9 +466,9 @@ export default function AdmissionForm() {
                     onChange={(e) => setFormData({ ...formData, intendedStartTerm: e.target.value })}
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900"
                   >
-                    <option value="August 2026">Term 1: August 2026</option>
-                    <option value="January 2027">Term 2: January 2027</option>
-                    <option value="Immediate Placement">Immediate Placement / Mid-Year</option>
+                    {admissionOptions.intendedStartTerms.map((opt) => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
                   </select>
                 </div>
                 <div className="space-y-1.5">
@@ -454,8 +481,9 @@ export default function AdmissionForm() {
                     onChange={(e) => setFormData({ ...formData, studyMode: e.target.value })}
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900"
                   >
-                    <option value="Full-Time On-Campus">Full-Time On-Campus (Hlaing)</option>
-                    <option value="Hybrid / Supplementary">Hybrid &amp; Supplementary Labs</option>
+                    {admissionOptions.studyModes.map((opt) => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -518,9 +546,9 @@ export default function AdmissionForm() {
                     onChange={(e) => setFormData({ ...formData, relationship: e.target.value })}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0E3B7D] outline-none transition-all text-sm text-slate-900"
                   >
-                    <option value="Father">Father</option>
-                    <option value="Mother">Mother</option>
-                    <option value="Legal Guardian">Legal Guardian</option>
+                    {admissionOptions.relationships.map((opt) => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -743,7 +771,7 @@ export default function AdmissionForm() {
                   {submittedId}
                 </div>
                 <p className="text-[11px] text-slate-500">
-                  Please keep this reference code handy for placement assessment and registration updates.
+                  Keep this reference code — use it in the Student Portal to track your application status anytime.
                 </p>
               </div>
 
@@ -789,8 +817,15 @@ export default function AdmissionForm() {
                   <span>Print Receipt</span>
                 </button>
                 <a
+                  href={`/portal?ref=${encodeURIComponent(submittedId)}`}
+                  className="px-6 py-2.5 bg-[#0E3B7D] text-white rounded-full text-xs font-bold uppercase tracking-wider shadow-md hover:bg-[#164E9A] transition-all inline-flex items-center gap-1.5"
+                >
+                  <span aria-hidden="true" className="material-symbols-outlined text-sm">manage_accounts</span>
+                  <span>Track Application Status</span>
+                </a>
+                <a
                   href="/"
-                  className="px-6 py-2.5 bg-[#0E3B7D] text-white rounded-full text-xs font-bold uppercase tracking-wider shadow-md hover:bg-[#164E9A] transition-all"
+                  className="px-6 py-2.5 border border-slate-300 text-slate-700 rounded-full text-xs font-bold uppercase tracking-wider hover:bg-slate-100 transition-all"
                 >
                   Return to Home
                 </a>

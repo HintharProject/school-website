@@ -20,6 +20,7 @@ const emailTypeEnum = z.enum([
   "assessment_scheduled",
   "admission_status_updated",
   "general_notice",
+  "newsletter_welcome",
 ]);
 
 export const emailPayloadSchema = z.object({
@@ -63,6 +64,11 @@ function headerBlock(title: string, subtitle: string): string {
 function buildBody(payload: EmailPayload): { subject: string; html: string } {
   const recipientName = payload.recipientName || "Parent / Guardian";
   const studentName = payload.studentName || "Applicant";
+  const siteUrl = (
+    process.env.BETTER_AUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "https://hinthar.thawyezaw.workers.dev"
+  ).replace(/\/$/, "");
   const applicationId = payload.applicationId || "HIS-APP";
   const grade = payload.grade || "Pearson Edexcel Track";
 
@@ -91,6 +97,7 @@ function buildBody(payload: EmailPayload): { subject: string; html: string } {
             <li>Our Admissions Committee will review the submitted academic records within 24–48 business hours.</li>
             <li>You will receive an email invitation to schedule a diagnostic placement assessment and campus tour.</li>
             <li>Keep your Application Reference ID (<strong>${escapeHtml(applicationId)}</strong>) for all future communications.</li>
+            <li>Track your application status anytime at the Student Portal: <strong>${siteUrl}/portal</strong> (use your Reference ID and this email address).</li>
           </ul>
         </div>
         ${FOOTER_HTML}
@@ -124,6 +131,31 @@ function buildBody(payload: EmailPayload): { subject: string; html: string } {
           }
           <p style="font-size:13px;color:#475569;">
             Please arrive 15 minutes before the scheduled time. Applicants should bring previous school transcripts, identification documents, and standard writing stationery.
+          </p>
+        </div>
+        ${FOOTER_HTML}
+      </div>`,
+    };
+  }
+
+  if (payload.type === "newsletter_welcome") {
+    return {
+      subject: `Welcome to the Hinthar Newsletter`,
+      html: `
+      <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:600px;margin:0 auto;background-color:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;">
+        ${headerBlock("You're Subscribed", "Hinthar International School Newsletter")}
+        <div style="padding:28px;">
+          <p style="font-size:14px;color:#334155;">Dear ${escapeHtml(recipientName)},</p>
+          <p style="font-size:13px;color:#475569;line-height:1.7;">
+            Thank you for subscribing to updates from <strong>Hinthar International School</strong>. You will now
+            receive admission announcements, examination timetables, school events, and student achievement stories.
+          </p>
+          <div style="text-align:center;margin:24px 0;">
+            <a href="${siteUrl}/admission" style="display:inline-block;background-color:#0E3B7D;color:#ffffff;font-size:13px;font-weight:800;padding:12px 28px;border-radius:9999px;text-transform:uppercase;letter-spacing:0.5px;text-decoration:none;">Start an Application</a>
+          </div>
+          <p style="font-size:12px;color:#94a3b8;">
+            You received this email because you subscribed at our website. To unsubscribe, reply to this email with
+            &ldquo;UNSUBSCRIBE&rdquo;.
           </p>
         </div>
         ${FOOTER_HTML}

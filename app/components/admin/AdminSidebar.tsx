@@ -49,35 +49,65 @@ export default function AdminSidebar({
 
   const isAdmin = (activeRole?.role ?? "") === "admin";
 
-  // Dynamic Navigation Items based on Access Level
-  const getNavItems = () => {
-    if (isAdmin) {
-      return [
-        { label: "Admin Dashboard", href: "/admin", icon: "dashboard" },
-        { label: "User Accounts", href: "/admin/users", icon: "manage_accounts" },
-        { label: "Campuses (4)", href: "/admin/campuses", icon: "location_city" },
-        { label: "Admissions Review", href: "/admin/admissions", icon: "school" },
-        { label: "Yearbook & Honors", href: "/admin/yearbook", icon: "auto_stories" },
+  // Admin: 4 accordion groups (all collapsed by default), Noticeboard merged into News & Notices
+  type NavGroup = { id: string; label: string; icon: string; items: { label: string; href: string; icon: string }[] };
+  const adminGroups: NavGroup[] = [
+    {
+      id: "admissions",
+      label: "Admissions",
+      icon: "school",
+      items: [{ label: "Admissions Review", href: "/admin/admissions", icon: "school" }],
+    },
+    {
+      id: "academics",
+      label: "Academics",
+      icon: "menu_book",
+      items: [
         { label: "Classes & Syllabi", href: "/admin/classes", icon: "menu_book" },
         { label: "Clubs & Activities", href: "/admin/clubs", icon: "groups" },
-        { label: "Noticeboard", href: "/admin/notices", icon: "campaign" },
+        { label: "Yearbook & Honors", href: "/admin/yearbook", icon: "auto_stories" },
+        { label: "News & Notices", href: "/admin/news", icon: "newspaper" },
+      ],
+    },
+    {
+      id: "campusPeople",
+      label: "Campuses & People",
+      icon: "location_city",
+      items: [
+        { label: "Campuses (4)", href: "/admin/campuses", icon: "location_city" },
+        { label: "Staff Directory", href: "/admin/staff", icon: "badge" },
+        { label: "Testimonials", href: "/admin/testimonials", icon: "reviews" },
+        { label: "User Accounts", href: "/admin/users", icon: "manage_accounts" },
+      ],
+    },
+    {
+      id: "site",
+      label: "Site",
+      icon: "tune",
+      items: [
+        { label: "Admin Dashboard", href: "/admin", icon: "dashboard" },
         { label: "Site Content", href: "/admin/content", icon: "tune" },
         { label: "Help & Support", href: "/admin/help", icon: "support_agent" },
-      ];
-    }
+      ],
+    },
+  ];
 
-    // Student Contributor View
-    return [
-      { label: "Contributor Hub", href: "/admin", icon: "dashboard" },
-      { label: "Yearbook Entry", href: "/admin/yearbook", icon: "auto_stories" },
-      { label: "Classes & Timetables", href: "/admin/classes", icon: "menu_book" },
-      { label: "Clubs & Activities", href: "/admin/clubs", icon: "groups" },
-      { label: "Noticeboard", href: "/admin/notices", icon: "campaign" },
-      { label: "Help & Support", href: "/admin/help", icon: "support_agent" },
-    ];
-  };
+  // Student Contributor View — keep flat limited 6
+  const studentItems = [
+    { label: "Contributor Hub", href: "/admin", icon: "dashboard" },
+    { label: "Yearbook Entry", href: "/admin/yearbook", icon: "auto_stories" },
+    { label: "Classes & Timetables", href: "/admin/classes", icon: "menu_book" },
+    { label: "Clubs & Activities", href: "/admin/clubs", icon: "groups" },
+    { label: "Noticeboard", href: "/admin/notices", icon: "campaign" },
+    { label: "Help & Support", href: "/admin/help", icon: "support_agent" },
+  ];
 
-  const navItems = getNavItems();
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+
+  const toggleGroup = (id: string) => setOpenGroups((prev) => ({ ...prev, [id]: !prev[id] }));
+
+  const isGroupActive = (group: NavGroup) =>
+    group.items.some((it) => (it.href === "/admin" ? pathname === "/admin" : pathname.startsWith(it.href)));
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
@@ -109,38 +139,86 @@ export default function AdminSidebar({
       </div>
 
       {/* Navigation Links */}
-      <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1.5" aria-label="Portal navigation">
-        {navItems.map((item) => {
-          const isActive =
-            item.href === "/admin"
-              ? pathname === "/admin"
-              : pathname.startsWith(item.href);
+      <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-3" aria-label="Portal navigation">
+        {isAdmin ? (
+          adminGroups.map((group) => {
+            const expanded = !!openGroups[group.id];
+            const groupActive = isGroupActive(group);
+            return (
+              <div key={group.id} className="space-y-1">
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.id)}
+                  aria-expanded={expanded}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-colors cursor-pointer ${
+                    groupActive ? "bg-white/10 text-white" : "text-slate-300 hover:bg-white/10 hover:text-white"
+                  }`}
+                >
+                  <span className="flex items-center gap-2.5">
+                    <span aria-hidden="true" className="material-symbols-outlined text-base text-[#FFC700]">
+                      {group.icon}
+                    </span>
+                    <span>{group.label}</span>
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    className={`material-symbols-outlined text-sm transition-transform ${expanded ? "rotate-180" : ""}`}
+                  >
+                    expand_more
+                  </span>
+                </button>
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => {
-                if (window.innerWidth < 1024) onClose?.();
-              }}
-              className={`flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 text-xs font-bold uppercase tracking-wider ${
-                isActive
-                  ? "bg-[#FFC700] text-[#09234B] shadow-md font-black"
-                  : "text-slate-200 hover:bg-white/10 hover:text-white"
-              }`}
-            >
-              <span
-                aria-hidden="true"
-                className={`material-symbols-outlined text-lg ${
-                  isActive ? "text-[#09234B] font-bold" : "text-[#FFC700]"
-                }`}
-              >
-                {item.icon}
-              </span>
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
+                <div className={`space-y-1 pl-1 overflow-hidden transition-all ${expanded ? "max-h-96 opacity-100" : "max-h-0 opacity-0 pointer-events-none"}`}>
+                  {group.items.map((item) => {
+                    const isActive = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => {
+                          if (window.innerWidth < 1024) onClose?.();
+                        }}
+                        className={`flex items-center gap-2.5 px-3 py-2 ml-2 rounded-lg text-xs font-bold transition-all ${
+                          isActive
+                            ? "bg-[#FFC700] text-[#09234B] shadow-sm"
+                            : "text-slate-300 hover:bg-white/10 hover:text-white"
+                        }`}
+                      >
+                        <span aria-hidden="true" className={`material-symbols-outlined text-base ${isActive ? "text-[#09234B]" : "text-white/70"}`}>
+                          {item.icon}
+                        </span>
+                        <span className="truncate">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="space-y-1.5">
+            {studentItems.map((item) => {
+              const isActive = item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => {
+                    if (window.innerWidth < 1024) onClose?.();
+                  }}
+                  className={`flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 text-xs font-bold uppercase tracking-wider ${
+                    isActive ? "bg-[#FFC700] text-[#09234B] shadow-md font-black" : "text-slate-200 hover:bg-white/10 hover:text-white"
+                  }`}
+                >
+                  <span aria-hidden="true" className={`material-symbols-outlined text-lg ${isActive ? "text-[#09234B] font-bold" : "text-[#FFC700]"}`}>
+                    {item.icon}
+                  </span>
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </nav>
 
       {/* Profile Box with Dropdown (moved from header top-right) */}

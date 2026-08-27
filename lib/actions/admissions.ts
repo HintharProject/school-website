@@ -94,7 +94,7 @@ export async function submitPublicAdmissionAction(data: unknown) {
         previousSchool: validated.previousSchool ?? null,
         parentName: validated.parentName ?? null,
         relationship: validated.relationship ?? "Parent",
-        parentEmail: validated.parentEmail,
+        parentEmail: validated.parentEmail.toLowerCase(), // normalize for portal lookup
         parentPhone: validated.parentPhone,
         address: validated.address ?? null,
         emergencyContact: validated.emergencyContact ?? null,
@@ -275,4 +275,142 @@ export async function deleteAdmissionAction(id: string) {
 
   revalidatePath("/admin/admissions");
   return { success: true };
+}
+
+// ---------------------------------------------------------------------------
+// Student Portal — public application status lookup (no login required).
+// Access requires an exact match of the tracking reference AND the guardian
+// email used during submission, so application data cannot be enumerated.
+// ---------------------------------------------------------------------------
+
+export interface AdmissionStatusView {
+  applicationId: string;
+  studentName: string;
+  grade: string;
+  status: "Pending" | "Assessment Scheduled" | "Approved" | "Declined";
+  submittedDate: string;
+  assessmentDate: string | null;
+  updatedAt: string;
+  // Extended details for portal "full details" card (names/grades/subjects stay EN per no-translate rule)
+  academicStream?: string | null;
+  intendedStartTerm?: string | null;
+  studyMode?: string | null;
+  selectedSubjects?: string[];
+  parentName?: string | null;
+}
+
+const statusLookupSchema = z.object({
+  applicationId: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^HIS-\d{4}-\d{6}$/, "Reference codes look like HIS-2026-123456."),
+  parentEmail: z.string().trim().toLowerCase().email(),
+});
+
+// Best-effort per-isolate throttle: max 10 lookups per IP per 10 minutes.
+const lookupAttempts = new Map<string, { count: number; resetAt: number }>();
+const LOOKUP_LIMIT = 10;
+const LOOKUP_WINDOW_MS = 10 * 60 * 1000;
+
+function isRateLimited(key: string): boolean {
+  const now = Date.now();
+  const entry = lookupAttempts.get(key);
+  if (!entry || entry.resetAt < now) {
+    lookupAttempts.set(key, { count: 1, resetAt: now + LOOKUP_WINDOW_MS });
+    return false;
+  }
+  entry.count += 1;
+  return entry.count > LOOKUP_LIMIT;
+}
+
+export async function checkAdmissionStatusAction(
+  data: unknown
+): Promise<{ success: boolean; error?: string; application?: AdmissionStatusView }> {
+  const parsed = statusLookupSchema.safeParse(data);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: "Please enter a valid reference code (e.g. HIS-2026-123456) and the guardian email used to apply.",
+    };
+  }
+
+  const { applicationId, parentEmail } = parsed.data;
+
+  try {
+    const { headers } = await import("next/headers");
+    const ip =
+      (await headers()).get("cf-connecting-ip") ||
+      (await headers()).get("x-forwarded-for")?.split(",")[0].trim() ||
+      "unknown";
+    if (isRateLimited(`${ip}:${applicationId}`)) {
+      return { success: false, error: "Too many lookup attempts. Please try again in a few minutes." };
+    }
+  } catch {
+    // headers unavailable in some contexts — proceed without throttling
+  }
+
+  const db = await getDb();
+
+  const rows = await db
+    .select({
+      applicationId: admissions.id,
+      studentName: admissions.studentName,
+      grade: admissions.grade,
+      status: admissions.status,
+      submittedDate: admissions.submittedDate,
+      assessmentDate: admissions.assessmentDate,
+      updatedAt: admissions.updatedAt,
+      parentEmail: admissions.parentEmail,
+      academicStream: admissions.academicStream,
+      intendedStartTerm: admissions.intendedStartTerm,
+      studyMode: admissions.studyMode,
+      selectedSubjects: admissions.selectedSubjects,
+      parentName: admissions.parentName,
+    })
+    .from(admissions)
+    .where(eq(admissions.id, applicationId))
+    .limit(1);
+
+  const row = rows[0];
+  // Same generic response for "no such application" and "wrong email" so
+  // valid reference codes cannot be probed with arbitrary emails.
+  if (!row || row.parentEmail?.trim().toLowerCase() !== parentEmail) {
+    return { success: false, error: "No application found for that reference code and guardian email combination." };
+  }
+
+  const statusSchema = z.enum(["Pending", "Assessment Scheduled", "Approved", "Declined"]);
+  const statusParsed = statusSchema.safeParse(row.status);
+
+  const subjects = (() => {
+    const raw = row.selectedSubjects as unknown;
+    if (Array.isArray(raw)) return raw as string[];
+    if (typeof raw === "string" && raw.length > 2) {
+      try {
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? (parsed as string[]) : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  })();
+
+  return {
+    success: true,
+    application: {
+      applicationId: row.applicationId,
+      studentName: row.studentName,
+      grade: row.grade,
+      status: statusParsed.success ? statusParsed.data : "Pending",
+      submittedDate: row.submittedDate,
+      assessmentDate: row.assessmentDate ?? null,
+      updatedAt: row.updatedAt,
+      academicStream: row.academicStream ?? null,
+      intendedStartTerm: row.intendedStartTerm ?? null,
+      studyMode: row.studyMode ?? null,
+      selectedSubjects: subjects,
+      parentName: row.parentName ?? null,
+    },
+  };
 }

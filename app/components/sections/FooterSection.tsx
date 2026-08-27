@@ -8,26 +8,97 @@ import {
   type ContactInfoItem,
 } from "@/lib/actions/siteContent";
 import { DEFAULT_CONTACT_INFO } from "@/lib/content/defaults";
+import { useT } from "@/lib/i18n/useT";
+import { subscribeNewsletterAction } from "@/lib/actions/newsletter";
+import type { TranslateKey } from "@/lib/i18n";
 
-const quickLinks = [
-  { label: "Home", href: "/" },
-  { label: "Our Campuses (4)", href: "/campuses" },
-  { label: "About Us", href: "/#about" },
-  { label: "Classes & Syllabi", href: "/classes" },
-  { label: "Admissions", href: "/admission" },
-  { label: "Clubs & Life", href: "/clubs" },
-  { label: "Yearbook & Honors", href: "/yearbook" },
-  { label: "AI Consultation", href: "/chatbot" },
+const quickLinks: { labelKey: TranslateKey; href: string }[] = [
+  { labelKey: "nav.home", href: "/" },
+  { labelKey: "nav.campuses", href: "/campuses" },
+  { labelKey: "nav.about", href: "/#about" },
+  { labelKey: "nav.classes", href: "/classes" },
+  { labelKey: "nav.admission", href: "/admission" },
+  { labelKey: "nav.clubs", href: "/clubs" },
+  { labelKey: "nav.yearbook", href: "/yearbook" },
+  { labelKey: "nav.news", href: "/news" },
+  { labelKey: "nav.staff", href: "/staff" },
+  { labelKey: "footer.aiConsultation", href: "/chatbot" },
 ];
 
-const programs = [
-  { label: "Lower Secondary (Year 7–9)", href: "/classes" },
-  { label: "Pearson Edexcel IGCSE (Year 10–11)", href: "/classes" },
-  { label: "Pearson Edexcel IAL (Year 12–13)", href: "/classes" },
-  { label: "University Entrance & Placements", href: "/yearbook" },
+const programs: { labelKey: TranslateKey; fallback: string; href: string }[] = [
+  { labelKey: "nav.classes", fallback: "Lower Secondary (Year 7–9)", href: "/classes" },
+  { labelKey: "nav.classes", fallback: "Pearson Edexcel IGCSE (Year 10–11)", href: "/classes" },
+  { labelKey: "nav.classes", fallback: "Pearson Edexcel IAL (Year 12–13)", href: "/classes" },
+  { labelKey: "nav.yearbook", fallback: "University Entrance & Placements", href: "/yearbook" },
 ];
+
+function NewsletterSignup() {
+  const t = useT();
+  const [email, setEmail] = useState("");
+  const [state, setState] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [message, setMessage] = useState<string | null>(null);
+
+  const handleSubscribe = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (state === "loading") return;
+    setState("loading");
+    setMessage(null);
+
+    try {
+      const result = await subscribeNewsletterAction({ email, source: "footer" });
+      if (result.success) {
+        setState("done");
+        setMessage(result.message || "Subscribed!");
+        setEmail("");
+      } else {
+        setState("error");
+        setMessage(result.error || "Subscription failed. Please try again.");
+      }
+    } catch {
+      setState("error");
+      setMessage("Subscription failed. Please try again.");
+    }
+  };
+
+  return (
+    <div className="pt-2 space-y-2">
+      <h5 className="text-[11px] font-black text-[#FFC700] uppercase tracking-[0.18em]">
+        {t("footer.newsletterTitle")}
+      </h5>
+      <p className="text-[11px] text-slate-400 font-light leading-relaxed">
+        {t("footer.newsletterSubtitle")}
+      </p>
+      <form onSubmit={handleSubscribe} className="flex gap-2">
+        <input
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder={t("footer.emailPlaceholder")}
+          className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-white/10 border border-white/15 text-xs text-white placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-[#FFC700]/60 transition-all"
+        />
+        <button
+          type="submit"
+          disabled={state === "loading"}
+          className="px-3.5 py-2 rounded-lg bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] text-[10px] font-black uppercase tracking-wider shadow-sm active:scale-95 transition-all disabled:opacity-60 cursor-pointer whitespace-nowrap"
+        >
+          {state === "loading" ? t("footer.subscribing") : t("footer.subscribe")}
+        </button>
+      </form>
+      {message && (
+        <p
+          role="status"
+          className={`text-[11px] font-semibold ${state === "error" ? "text-red-300" : "text-emerald-300"}`}
+        >
+          {message}
+        </p>
+      )}
+    </div>
+  );
+}
 
 export default function FooterSection() {
+  const t = useT();
   const [contactItems, setContactItems] = useState<ContactInfoItem[]>(DEFAULT_CONTACT_INFO);
 
   useEffect(() => {
@@ -77,6 +148,7 @@ export default function FooterSection() {
           <p className="text-slate-300 text-xs sm:text-sm leading-relaxed font-light">
             Delivering world-class Pearson Edexcel qualifications from Lower Secondary (Year 7–9) to International A-Level in Yangon, Myanmar.
           </p>
+          <NewsletterSignup />
           <div className="flex gap-2.5 pt-1">
             {[
               { icon: "public", label: "Official Site", href: "https://hinthar.education/" },
@@ -100,16 +172,16 @@ export default function FooterSection() {
         {/* Quick Links */}
         <div className="space-y-4">
           <h4 className="text-xs font-black text-[#FFC700] uppercase tracking-[0.18em]">
-            Navigation
+            {t("footer.quickLinks")}
           </h4>
           <ul className="space-y-2.5 text-xs sm:text-sm font-light text-slate-300">
             {quickLinks.map((link) => (
-              <li key={link.label}>
+              <li key={link.href + link.labelKey}>
                 <Link
                   href={link.href}
                   className="hover:text-[#FFC700] hover:translate-x-1 inline-block transition-all"
                 >
-                  {link.label}
+                  {t(link.labelKey)}
                 </Link>
               </li>
             ))}
@@ -119,28 +191,36 @@ export default function FooterSection() {
         {/* Programs */}
         <div className="space-y-4">
           <h4 className="text-xs font-black text-[#FFC700] uppercase tracking-[0.18em]">
-            Curriculums &amp; Portals
+            {t("footer.curriculumsPortals")}
           </h4>
           <ul className="space-y-2.5 text-xs sm:text-sm font-light text-slate-300">
-            {programs.map((prog) => (
-              <li key={prog.label}>
+            {programs.map((prog, i) => (
+              <li key={`${prog.labelKey}-${i}`}>
                 <Link
                   href={prog.href}
                   className="hover:text-[#FFC700] hover:translate-x-1 inline-block transition-all"
                 >
-                  {prog.label}
+                  {prog.fallback}
                 </Link>
               </li>
             ))}
           </ul>
 
-          <div className="pt-3 border-t border-white/10">
+          <div className="pt-3 border-t border-white/10 space-y-2.5">
+            <Link
+              href="/portal"
+              className="hover:text-[#FFC700] inline-flex items-center gap-1.5 text-xs font-bold text-slate-300 hover:translate-x-1 transition-all"
+            >
+              <span aria-hidden="true" className="material-symbols-outlined text-xs text-[#FFC700]">manage_accounts</span>
+              <span>{t("footer.studentPortalLink")}</span>
+            </Link>
+            <br />
             <Link
               href="/admin/login"
               className="hover:text-[#FFC700] inline-flex items-center gap-1.5 text-xs font-bold text-slate-300 hover:translate-x-1 transition-all"
             >
               <span aria-hidden="true" className="material-symbols-outlined text-xs text-[#FFC700]">admin_panel_settings</span>
-              <span>Staff / Faculty Portal</span>
+              <span>{t("footer.staffPortalLink")}</span>
             </Link>
           </div>
         </div>
@@ -148,7 +228,7 @@ export default function FooterSection() {
         {/* Contact Info */}
         <div className="space-y-4">
           <h4 className="text-xs font-black text-[#FFC700] uppercase tracking-[0.18em]">
-            Campus Location
+            {t("footer.campusLocation")}
           </h4>
           <div className="space-y-4 text-xs sm:text-sm font-light text-slate-300">
             {contactItems.map((item) => (
@@ -173,7 +253,7 @@ export default function FooterSection() {
 
       {/* Copyright */}
       <div className="max-w-[1280px] mx-auto px-6 md:px-8 mt-14 pt-6 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4 text-xs font-light text-slate-400">
-        <p>© {new Date().getFullYear()} Hinthar International School. Pearson Edexcel Examination Center, Yangon.</p>
+        <p>© {new Date().getFullYear()} Hinthar International School. Pearson Edexcel Examination Center, Yangon. {t("footer.rights")}</p>
         <div className="flex gap-6">
           <span className="text-slate-400">Academic Excellence &amp; Character</span>
         </div>

@@ -12,10 +12,10 @@ export interface PresetImage {
 // Curated internal school presets for rapid selection
 export const SCHOOL_PRESET_IMAGES: PresetImage[] = [
   // Campus & Facility Presets
-  { label: "Ywarma Flagship Campus", url: "/images/heroImg.png", category: "campus" },
-  { label: "STEM & Robotics Innovation Center", url: "/images/specialisations/stemSpecialisation.png", category: "campus" },
-  { label: "Creative Arts & Lower Secondary Wing", url: "/images/specialisations/creativeSpecialisation.png", category: "campus" },
-  { label: "Mawlamyine Regional Campus", url: "/images/specialisations/businessSpecialisation.png", category: "campus" },
+  { label: "Ywarma Flagship Campus", url: "/images/g2.jpg", category: "campus" },
+  { label: "STEM & Robotics Innovation Center", url: "/images/engineering.avif", category: "campus" },
+  { label: "Creative Arts & Lower Secondary Wing", url: "/images/g8.jpg", category: "campus" },
+  { label: "Mawlamyine Regional Campus", url: "/images/g7.jpg", category: "campus" },
 
   // Scholar & Student Portrait Presets
   { label: "Scholar Portrait — Male 1", url: "/images/g4.jpg", category: "scholar" },
@@ -42,7 +42,7 @@ interface ImageUploadPickerProps {
   label?: string;
   value: string;
   onChange: (url: string) => void;
-  folder?: "campuses" | "yearbook" | "clubs" | "activities" | "avatars" | "general";
+  folder?: "campuses" | "yearbook" | "clubs" | "activities" | "avatars" | "general" | "news" | "staff" | "testimonials";
   aspectRatio?: "banner" | "portrait" | "square";
   helperText?: string;
   defaultPresetsCategory?: "campus" | "scholar" | "club" | "avatar";

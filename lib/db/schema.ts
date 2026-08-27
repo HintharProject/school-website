@@ -132,15 +132,18 @@ export const invitations = sqliteTable(
 // 2. SCHOOL APPLICATION DOMAIN ENTITIES
 // ==============================================================================
 
-// Campuses Table
+// Campuses Table — bilingual EN/MY for public fields (MY optional, fallback to EN)
 export const campuses = sqliteTable(
   "campuses",
   {
     id: text("id").primaryKey(), // "ywarma-campus", "shwe-padauk-campus", etc.
     name: text("name").notNull(),
+    nameMy: text("name_my"),
     city: text("city").notNull(), // "Yangon" | "Mawlamyine"
     tagline: text("tagline").notNull(),
+    taglineMy: text("tagline_my"),
     address: text("address").notNull(),
+    addressMy: text("address_my"),
     phone: text("phone").notNull(),
     email: text("email").notNull(),
     officeHours: text("office_hours").notNull().default("Mon–Sat: 08:30 AM – 05:00 PM"),
@@ -256,7 +259,7 @@ export const admissions = sqliteTable(
   ]
 );
 
-// Clubs Table
+// Clubs Table — bilingual EN/MY for description (name stays EN per no-translate rule)
 export const clubs = sqliteTable(
   "clubs",
   {
@@ -268,6 +271,7 @@ export const clubs = sqliteTable(
     meetingTime: text("meeting_time").notNull(),
     leadership: text("leadership").notNull(),
     description: text("description").notNull(),
+    descriptionMy: text("description_my"),
     image: text("image").notNull().default("/images/g2.jpg"),
     campus: text("campus").default("both-campuses"),
     status: text("status").notNull().default("published"), // "published" | "pending_review" | "archived"
@@ -592,6 +596,111 @@ export const siteContent = sqliteTable("site_content", {
 
 export const siteContents = siteContent;
 
+// News / Blog / Announcements (admin-managed public posts) — bilingual EN/MY (MY optional)
+export const newsPosts = sqliteTable(
+  "news_posts",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    title: text("title").notNull(),
+    titleMy: text("title_my"),
+    slug: text("slug").notNull().unique(),
+    excerpt: text("excerpt"),
+    excerptMy: text("excerpt_my"),
+    body: text("body").notNull(),
+    bodyMy: text("body_my"),
+    category: text("category").notNull().default("Announcement"),
+    image: text("image"),
+    status: text("status").notNull().default("published"), // "published" | "draft" | "archived"
+    publishedAt: text("published_at"),
+    createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
+  },
+  (table) => [
+    index("idx_news_status").on(table.status),
+    index("idx_news_published").on(table.publishedAt),
+  ]
+);
+
+// Staff & Teacher Directory (public profiles, admin-managed) — bilingual EN/MY (name stays EN, other fields MY optional)
+export const staffProfiles = sqliteTable(
+  "staff_profiles",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    name: text("name").notNull(),
+    role: text("role").notNull(),
+    roleMy: text("role_my"),
+    department: text("department").notNull().default("General"),
+    departmentMy: text("department_my"),
+    qualifications: text("qualifications"),
+    qualificationsMy: text("qualifications_my"),
+    bio: text("bio"),
+    bioMy: text("bio_my"),
+    email: text("email"),
+    phone: text("phone"),
+    image: text("image"),
+    campusId: text("campus_id").notNull().default("both-campuses"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    status: text("status").notNull().default("published"), // "published" | "archived"
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
+  },
+  (table) => [
+    index("idx_staff_status").on(table.status),
+    index("idx_staff_sort").on(table.sortOrder),
+  ]
+);
+
+// Testimonials from parents / alumni (homepage carousel, admin-managed) — bilingual EN/MY (authorName stays EN)
+export const testimonials = sqliteTable(
+  "testimonials",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    authorName: text("author_name").notNull(),
+    authorRole: text("author_role"),
+    authorRoleMy: text("author_role_my"),
+    quote: text("quote").notNull(),
+    quoteMy: text("quote_my"),
+    image: text("image"),
+    rating: integer("rating"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    status: text("status").notNull().default("published"), // "published" | "archived"
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
+  },
+  (table) => [
+    index("idx_testimonials_status").on(table.status),
+    index("idx_testimonials_sort").on(table.sortOrder),
+  ]
+);
+
+// Newsletter subscribers (public footer signup)
+export const newsletterSubscribers = sqliteTable(
+  "newsletter_subscribers",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    email: text("email").notNull().unique(),
+    status: text("status").notNull().default("active"), // "active" | "unsubscribed"
+    source: text("source").notNull().default("footer"),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
+  },
+  (table) => [uniqueIndex("idx_newsletter_email").on(table.email)]
+);
+
 // ==============================================================================
 // 4. TYPES
 // ==============================================================================
@@ -634,3 +743,15 @@ export type NewNoticeRead = typeof noticeReads.$inferInsert;
 
 export type FileAsset = typeof fileAssets.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;
+
+export type NewsPost = typeof newsPosts.$inferSelect;
+export type NewNewsPost = typeof newsPosts.$inferInsert;
+
+export type StaffProfile = typeof staffProfiles.$inferSelect;
+export type NewStaffProfile = typeof staffProfiles.$inferInsert;
+
+export type Testimonial = typeof testimonials.$inferSelect;
+export type NewTestimonial = typeof testimonials.$inferInsert;
+
+export type NewsletterSubscriber = typeof newsletterSubscribers.$inferSelect;
+export type NewNewsletterSubscriber = typeof newsletterSubscribers.$inferInsert;
