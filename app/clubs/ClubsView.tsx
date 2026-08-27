@@ -7,6 +7,7 @@ import FooterSection from "../components/sections/FooterSection";
 import ChatbotWidget from "../components/ChatbotWidget";
 import { formatCampusBadge } from "../admin/adminStore";
 import { getClubs } from "@/lib/actions/clubs";
+import { isR2AssetUrl } from "@/lib/utils/r2Image";
 
 interface ClubItem {
   id: number;
@@ -210,6 +211,7 @@ export default function ClubsView({ initialData }: { initialData?: RawClubRecord
                       src={club.image}
                       alt={club.name}
                       fill
+                      unoptimized={isR2AssetUrl(club.image)}
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                       className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-90"
                     />

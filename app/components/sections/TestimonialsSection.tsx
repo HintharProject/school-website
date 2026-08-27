@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useT } from "@/lib/i18n/useT";
 import type { PublicTestimonial } from "@/lib/actions/testimonials";
+import { isR2AssetUrl } from "@/lib/utils/r2Image";
 
 export default function TestimonialsSection({ items }: { items: PublicTestimonial[] }) {
   const t = useT();
@@ -45,7 +46,7 @@ export default function TestimonialsSection({ items }: { items: PublicTestimonia
               <figcaption className="flex items-center gap-3 pt-4 mt-4 border-t border-slate-100">
                 <div className="relative w-10 h-10 rounded-full overflow-hidden bg-slate-100 ring-2 ring-[#FFC700]/50 shrink-0">
                   {item.image ? (
-                    <Image src={item.image} alt={item.authorName} fill className="object-cover" sizes="40px" />
+                    <Image src={item.image} alt={item.authorName} fill unoptimized={isR2AssetUrl(item.image)} className="object-cover" sizes="40px" />
                   ) : (
                     <div className="w-full h-full bg-[#0E3B7D] flex items-center justify-center text-white text-xs font-black">
                       {item.authorName.slice(0, 1).toUpperCase()}

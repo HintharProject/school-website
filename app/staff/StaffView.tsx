@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { useT } from "@/lib/i18n/useT";
 import type { PublicStaffMember } from "@/lib/actions/staff";
+import { isR2AssetUrl } from "@/lib/utils/r2Image";
 
 const DEPARTMENT_ICONS: Record<string, string> = {
   Leadership: "workspace_premium",
@@ -56,6 +57,7 @@ export default function StaffView({ staff }: { staff: PublicStaffMember[] }) {
                     src={member.image}
                     alt={member.name}
                     fill
+                    unoptimized={isR2AssetUrl(member.image)}
                     className="object-cover object-top group-hover:scale-105 transition-transform duration-500"
                     sizes="(max-width: 640px) 100vw, 300px"
                   />
@@ -104,6 +106,7 @@ export default function StaffView({ staff }: { staff: PublicStaffMember[] }) {
                   src={selected.image}
                   alt={selected.name}
                   fill
+                  unoptimized={isR2AssetUrl(selected.image)}
                   className="object-cover object-top"
                   sizes="520px"
                 />

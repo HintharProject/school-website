@@ -10,6 +10,7 @@ import ChatbotWidget from "../components/ChatbotWidget";
 import { CampusRecord, mapCampusRecord } from "../admin/adminStore";
 import { getCampuses } from "@/lib/actions/campuses";
 import { useLocale } from "@/lib/i18n/useT";
+import { isR2AssetUrl } from "@/lib/utils/r2Image";
 
 const getMapUrl = (campus: CampusRecord) =>
   campus.mapUrl ||
@@ -144,12 +145,13 @@ export default function CampusesView({
                   transition={{ duration: 0.3 }}
                   className="bg-white rounded-3xl overflow-hidden border border-slate-200/80 shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col group"
                 >
-                  {/* Campus Header Image */}
+                  {/* Campus Header Image — bypass optimizer for R2 assets (prevents 404 via _next/image) */}
                   <div className="relative h-60 w-full overflow-hidden bg-slate-900">
                     <Image
                       src={campus.imageUrl || "/images/g2.jpg"}
                       alt={loc(campus, locale, "name")}
                       fill
+                      unoptimized={isR2AssetUrl(campus.imageUrl)}
                       className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-90"
                       sizes="(max-width: 768px) 100vw, 50vw"
                     />

@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/useT";
 import type { PublicNewsItem } from "@/lib/actions/news";
+import { isR2AssetUrl } from "@/lib/utils/r2Image";
 
 type ArticleData = PublicNewsItem & { body: string };
 
@@ -74,6 +75,7 @@ export default function ArticleView({ post }: { post: ArticleData }) {
             src={post.image}
             alt={post.title}
             fill
+            unoptimized={isR2AssetUrl(post.image)}
             className="object-cover"
             sizes="(max-width: 820px) 100vw, 820px"
             priority

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -12,7 +12,6 @@ interface NavItem {
   href: string;
 }
 
-// Primary navigation — always visible on desktop
 const mainNavItems: NavItem[] = [
   { labelKey: "nav.home", href: "/" },
   { labelKey: "nav.campuses", href: "/campuses" },
@@ -21,8 +20,6 @@ const mainNavItems: NavItem[] = [
   { labelKey: "nav.clubs", href: "/clubs" },
 ];
 
-// Secondary navigation — collapsed into "Explore" dropdown on desktop,
-// still shown flat in the mobile drawer
 const moreNavItems: NavItem[] = [
   { labelKey: "nav.yearbook", href: "/yearbook" },
   { labelKey: "nav.news", href: "/news" },
@@ -41,6 +38,7 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
   const pathname = usePathname();
   const isHomePage = pathname === "/";
   const t = useT();
@@ -48,6 +46,9 @@ export default function Navbar() {
   const isTransparent = isHomePage && !isScrolled;
   const moreIsActive = moreNavItems.some((i) => isActivePath(pathname, i.href));
 
+  const closeMobile = useCallback(() => setMobileOpen(false), []);
+
+  // Header scroll state
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -55,13 +56,47 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Body scroll lock + scrollbar gutter compensation
   useEffect(() => {
-    if (mobileOpen) document.body.style.overflow = "hidden";
-    else document.body.style.overflow = "";
+    if (!mobileOpen) return;
+    const scrollbarW = window.innerWidth - document.documentElement.clientWidth;
+    const prevOverflow = document.body.style.overflow;
+    const prevPaddingRight = document.body.style.paddingRight;
+    document.body.style.overflow = "hidden";
+    if (scrollbarW > 0) document.body.style.paddingRight = `${scrollbarW}px`;
+    // prevent iOS elastic scroll bounce
+    document.documentElement.style.overscrollBehavior = "none";
     return () => {
-      document.body.style.overflow = "";
+      document.body.style.overflow = prevOverflow;
+      document.body.style.paddingRight = prevPaddingRight;
+      document.documentElement.style.overscrollBehavior = "";
     };
   }, [mobileOpen]);
+
+  // Auto-focus close button when drawer opens (accessibility)
+  useEffect(() => {
+    if (mobileOpen) {
+      const id = window.setTimeout(() => closeBtnRef.current?.focus(), 120);
+      return () => window.clearTimeout(id);
+    }
+  }, [mobileOpen]);
+
+  // Close mobile on breakpoint up to desktop (lg: 1024px)
+  useEffect(() => {
+    const mql = window.matchMedia("(min-width: 1024px)");
+    const onChange = (e: MediaQueryListEvent | MediaQueryList) => {
+      if ((e as MediaQueryListEvent).matches) setMobileOpen(false);
+    };
+    // initial check
+    if (mql.matches) setMobileOpen(false);
+    // modern + legacy
+    if (mql.addEventListener) mql.addEventListener("change", onChange as (e: MediaQueryListEvent) => void);
+    else mql.addListener(onChange as () => void);
+    return () => {
+      if (mql.removeEventListener) mql.removeEventListener("change", onChange as (e: MediaQueryListEvent) => void);
+      else mql.removeListener(onChange as () => void);
+    };
+  }, []);
 
   // Close "More" dropdown on outside click / Escape / route change
   useEffect(() => {
@@ -69,7 +104,10 @@ export default function Navbar() {
       if (moreRef.current && !moreRef.current.contains(e.target as Node)) setMoreOpen(false);
     }
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setMoreOpen(false);
+      if (e.key === "Escape") {
+        if (mobileOpen) closeMobile();
+        setMoreOpen(false);
+      }
     }
     document.addEventListener("mousedown", onClickOutside);
     document.addEventListener("keydown", onKey);
@@ -77,29 +115,30 @@ export default function Navbar() {
       document.removeEventListener("mousedown", onClickOutside);
       document.removeEventListener("keydown", onKey);
     };
-  }, []);
+  }, [mobileOpen, closeMobile]);
 
   useEffect(() => {
     setMoreOpen(false);
+    setMobileOpen(false);
   }, [pathname]);
 
   return (
     <>
       <header
         id="main-header"
-        className={`fixed top-0 left-0 w-full z-[100] transition-all duration-300 ${
+        className={`fixed top-0 left-0 w-full z-[100] transition-all duration-300 supports-[padding:max(0px)]:pt-[env(safe-area-inset-top)] ${
           isTransparent
-            ? "py-3 md:py-4 bg-gradient-to-b from-[#09234b]/90 via-[#09234b]/40 to-transparent border-b border-transparent"
-            : "py-2.5 bg-white/95 backdrop-blur-md shadow-md border-b border-slate-200"
+            ? "py-2.5 sm:py-3 md:py-4 bg-gradient-to-b from-[#09234b]/90 via-[#09234b]/40 to-transparent border-b border-transparent"
+            : "py-2 sm:py-2.5 bg-white/95 backdrop-blur-md shadow-md border-b border-slate-200"
         }`}
       >
-        <div className="max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-3 lg:gap-4">
-          {/* Logo — fixed, never shrinks */}
+        <div className="max-w-[1360px] mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 flex items-center gap-2 sm:gap-3 lg:gap-4 min-h-[44px]">
+          {/* Logo — compact on mobile, no overflow */}
           <Link
             href="/"
-            className="flex items-center gap-2.5 sm:gap-3 group cursor-pointer shrink-0 min-w-0"
+            className="flex items-center gap-2 sm:gap-3 group shrink-0 min-w-0"
           >
-            <div className="relative h-10 w-10 sm:h-11 sm:w-11 md:h-11 md:w-11 shrink-0 transition-transform duration-300 group-hover:scale-105 rounded-full overflow-hidden bg-white shadow-sm ring-2 ring-[#FFC700]/80">
+            <div className="relative h-9 w-9 sm:h-10 sm:w-10 md:h-11 md:w-11 shrink-0 transition-transform duration-300 group-hover:scale-105 rounded-full overflow-hidden bg-white shadow-sm ring-2 ring-[#FFC700]/80">
               <Image
                 src="/images/mainLogo.png"
                 alt="Hinthar International School Logo"
@@ -111,20 +150,21 @@ export default function Navbar() {
             </div>
             <div className="flex flex-col min-w-0">
               <span
-                className={`font-black text-[15px] sm:text-[17px] md:text-lg tracking-tight leading-tight truncate transition-colors duration-300 ${
+                className={`font-black tracking-tight leading-none truncate transition-colors duration-300 text-[13px] sm:text-[15px] md:text-[17px] ${
                   isTransparent ? "text-white [text-shadow:0_1px_8px_rgba(0,0,0,0.35)]" : "text-[#0E3B7D]"
                 }`}
               >
                 Hinthar International
               </span>
               <span
-                className={`hidden sm:flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors duration-300 ${
+                className={`hidden sm:flex items-center gap-1.5 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider leading-none mt-0.5 transition-colors duration-300 ${
                   isTransparent ? "text-[#FFC700]" : "text-[#164E9A]"
                 }`}
               >
                 <span>Pearson Edexcel</span>
                 <span className="text-[8px] opacity-60">•</span>
-                <span>Year 7–9 · IGCSE · IAL</span>
+                <span className="hidden md:inline">Year 7–9 · IGCSE · IAL</span>
+                <span className="md:hidden">IGCSE · IAL</span>
               </span>
             </div>
           </Link>
@@ -170,7 +210,7 @@ export default function Navbar() {
                 onClick={() => setMoreOpen((v) => !v)}
                 aria-expanded={moreOpen}
                 aria-haspopup="menu"
-                className={`inline-flex items-center gap-1 pl-3 pr-2 py-1.5 rounded-full text-[11px] font-bold tracking-wider uppercase transition-all duration-200 whitespace-nowrap cursor-pointer ${
+                className={`inline-flex items-center gap-1 pl-3 pr-2 py-1.5 rounded-full text-[11px] font-bold tracking-wider uppercase transition-all duration-200 whitespace-nowrap cursor-pointer touch-manipulation ${
                   moreIsActive
                     ? isTransparent
                       ? "bg-white/20 text-white ring-1 ring-white/30"
@@ -231,31 +271,35 @@ export default function Navbar() {
             </div>
           </nav>
 
-          {/* Actions — never shrink, always visible */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto lg:ml-4">
-            <LanguageToggle className="hidden sm:inline-flex" />
-
+          {/* Desktop actions — hidden on mobile, moved to drawer */}
+          <div className="hidden lg:flex items-center gap-2.5 shrink-0 ml-4">
+            <LanguageToggle />
             <Link
               href="/admission"
-              className="inline-flex items-center gap-1 sm:gap-1.5 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-full text-[11px] sm:text-xs font-extrabold tracking-wider uppercase transition-all duration-200 bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] shadow-md hover:shadow-lg active:scale-95 whitespace-nowrap border border-[#FFC700] shrink-0"
+              className="inline-flex items-center justify-center gap-1.5 min-h-10 px-5 py-2.5 rounded-full text-xs font-extrabold tracking-wider uppercase transition-all duration-200 bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] shadow-md hover:shadow-lg active:scale-95 whitespace-nowrap border border-[#FFC700] shrink-0 touch-manipulation"
             >
-              <span className="hidden sm:inline">{t("nav.applyNow")}</span>
-              <span className="sm:hidden">Apply</span>
-              <span aria-hidden="true" className="material-symbols-outlined text-sm font-bold">
+              <span>{t("nav.applyNow")}</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-sm font-bold leading-none">
                 arrow_forward
               </span>
             </Link>
+          </div>
 
+          {/* Mobile hamburger — only visible below lg */}
+          <div className="flex items-center lg:hidden shrink-0 ml-auto">
             <button
               id="menu-toggle"
               onClick={() => setMobileOpen(true)}
-              className={`p-2 focus:outline-none lg:hidden rounded-xl transition-colors shrink-0 ${
-                isTransparent ? "text-white hover:bg-white/15" : "text-[#0E3B7D] hover:bg-slate-100"
+              className={`inline-flex items-center justify-center h-10 w-10 sm:h-11 sm:w-11 shrink-0 rounded-xl transition-colors touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC700] ${
+                isTransparent
+                  ? "text-white hover:bg-white/15 active:bg-white/20"
+                  : "text-[#0E3B7D] hover:bg-slate-100 active:bg-slate-200"
               }`}
               aria-label="Open navigation menu"
               aria-expanded={mobileOpen}
+              aria-controls="mobile-menu"
             >
-              <span aria-hidden="true" className="material-symbols-outlined text-[28px]">
+              <span aria-hidden="true" className="material-symbols-outlined text-[26px] sm:text-[28px] leading-none">
                 menu
               </span>
             </button>
@@ -263,65 +307,100 @@ export default function Navbar() {
         </div>
       </header>
 
-      {/* Mobile Navigation Drawer — unchanged structure, grouped for clarity */}
+      {/* Mobile Navigation Drawer */}
       <div
         id="mobile-menu-overlay"
-        className={`fixed inset-0 z-[110] transition-all duration-300 ${
+        aria-hidden={!mobileOpen}
+        className={`fixed inset-0 z-[110] lg:hidden transition-[visibility,opacity] duration-300 ${
           mobileOpen ? "visible opacity-100" : "invisible opacity-0 pointer-events-none"
         }`}
         onClick={(e) => {
-          if (e.target === e.currentTarget) setMobileOpen(false);
+          if (e.target === e.currentTarget) closeMobile();
         }}
       >
-        <div className="absolute inset-0 bg-[#09234B]/60 backdrop-blur-sm" />
+        {/* Backdrop */}
+        <button
+          type="button"
+          aria-label="Close navigation menu"
+          tabIndex={mobileOpen ? 0 : -1}
+          onClick={closeMobile}
+          className="absolute inset-0 bg-[#09234B]/60 backdrop-blur-sm supports-[backdrop-filter]:bg-[#09234B]/55 cursor-default"
+        />
+
+        {/* Drawer panel */}
         <div
           id="mobile-menu"
-          className={`absolute top-0 right-0 h-full w-[86%] max-w-sm bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out ${
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navigation menu"
+          className={`absolute top-0 right-0 h-[100dvh] max-h-[100dvh] w-[88%] max-w-[340px] sm:max-w-sm bg-white shadow-2xl flex flex-col will-change-transform transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${
             mobileOpen ? "translate-x-0" : "translate-x-full"
           }`}
+          style={{
+            paddingTop: "env(safe-area-inset-top)",
+            paddingRight: "env(safe-area-inset-right)",
+            paddingBottom: "env(safe-area-inset-bottom)",
+          }}
         >
-          <div className="p-5 flex justify-between items-center border-b border-slate-200 bg-slate-50 shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="relative w-9 h-9 rounded-full overflow-hidden bg-white ring-2 ring-[#FFC700] shrink-0">
-                <Image src="/images/mainLogo.png" alt="Hinthar Logo" fill sizes="36px" className="object-contain p-0.5" />
+          {/* Drawer header — sticky */}
+          <div className="sticky top-0 z-10 flex items-center justify-between gap-3 px-4 sm:px-5 py-4 border-b border-slate-200 bg-slate-50/95 backdrop-blur supports-[backdrop-filter]:bg-slate-50/80 shrink-0">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden bg-white ring-2 ring-[#FFC700] shrink-0">
+                <Image src="/images/mainLogo.png" alt="Hinthar Logo" fill sizes="40px" className="object-contain p-0.5" />
               </div>
-              <div className="flex flex-col">
-                <span className="font-extrabold text-sm text-[#0E3B7D] tracking-tight">Hinthar School</span>
-                <span className="text-[10px] font-bold text-[#FFC700] uppercase tracking-wider">Pearson Edexcel Center</span>
+              <div className="flex flex-col min-w-0">
+                <span className="font-extrabold text-sm sm:text-[15px] text-[#0E3B7D] tracking-tight leading-none truncate">
+                  Hinthar School
+                </span>
+                <span className="text-[10px] font-bold text-[#0E3B7D]/70 uppercase tracking-wider leading-none mt-0.5">
+                  Pearson Edexcel Center
+                </span>
               </div>
             </div>
             <button
-              onClick={() => setMobileOpen(false)}
-              className="text-slate-500 hover:text-[#0E3B7D] p-1.5 rounded-lg hover:bg-slate-200 transition-colors"
+              ref={closeBtnRef}
+              onClick={closeMobile}
+              className="inline-flex items-center justify-center h-10 w-10 -mr-1 rounded-xl text-slate-500 hover:text-[#0E3B7D] hover:bg-slate-200 active:bg-slate-300 transition-colors shrink-0 touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC700]"
               aria-label="Close menu"
             >
-              <span aria-hidden="true" className="material-symbols-outlined text-2xl">
+              <span aria-hidden="true" className="material-symbols-outlined text-2xl leading-none">
                 close
               </span>
             </button>
           </div>
 
-          <nav className="flex-1 overflow-y-auto p-5 space-y-1">
-            <div className="flex items-center justify-between px-3 mb-2">
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{t("nav.menuPortals")}</p>
+          {/* Scrollable nav */}
+          <nav
+            aria-label="Mobile"
+            className="flex-1 overflow-y-auto overscroll-contain px-3 sm:px-5 py-4 space-y-1"
+            style={{ WebkitOverflowScrolling: "touch" } as React.CSSProperties}
+          >
+            {/* Language — mobile-only (moved from header) */}
+            <div className="flex items-center justify-between gap-3 px-2 py-3 mb-2 rounded-xl bg-slate-50 border border-slate-200">
+              <p className="text-[11px] font-black text-slate-600 uppercase tracking-widest flex items-center gap-1.5">
+                <span aria-hidden="true" className="material-symbols-outlined text-sm text-[#0E3B7D]">translate</span>
+                Language
+              </p>
               <LanguageToggle />
             </div>
+            <p className="px-2 pb-1 text-[11px] font-bold text-slate-400 uppercase tracking-widest">{t("nav.menuPortals")}</p>
 
             {/* Main */}
-            <p className="px-3 pt-2 pb-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">Main</p>
+            <p className="px-2 pt-3 pb-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Main</p>
             {mainNavItems.map((item) => {
               const active = isActivePath(pathname, item.href);
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  onClick={() => setMobileOpen(false)}
-                  className={`flex items-center justify-between py-3 px-4 rounded-xl text-xs font-bold tracking-wider uppercase transition-all ${
-                    active ? "bg-[#0E3B7D] text-white shadow-sm" : "text-slate-700 hover:bg-slate-100 hover:text-[#0E3B7D]"
+                  onClick={closeMobile}
+                  aria-current={active ? "page" : undefined}
+                  className={`flex items-center justify-between gap-3 min-h-11 px-4 rounded-xl text-xs font-bold tracking-wider uppercase transition-all touch-manipulation active:scale-[0.99] ${
+                    active ? "bg-[#0E3B7D] text-white shadow-sm" : "text-slate-700 hover:bg-slate-100 hover:text-[#0E3B7D] active:bg-slate-200"
                   }`}
                 >
-                  <span>{t(item.labelKey)}</span>
-                  <span aria-hidden="true" className="material-symbols-outlined text-xs opacity-60">
+                  <span className="truncate">{t(item.labelKey)}</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-[18px] opacity-60 shrink-0 leading-none">
                     arrow_forward
                   </span>
                 </Link>
@@ -329,58 +408,64 @@ export default function Navbar() {
             })}
 
             {/* Explore */}
-            <p className="px-3 pt-4 pb-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">Explore</p>
+            <p className="px-2 pt-5 pb-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Explore</p>
             {moreNavItems.map((item) => {
               const active = isActivePath(pathname, item.href);
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  onClick={() => setMobileOpen(false)}
-                  className={`flex items-center justify-between py-3 px-4 rounded-xl text-xs font-bold tracking-wider uppercase transition-all ${
-                    active ? "bg-[#0E3B7D] text-white shadow-sm" : "text-slate-700 hover:bg-slate-100 hover:text-[#0E3B7D]"
+                  onClick={closeMobile}
+                  aria-current={active ? "page" : undefined}
+                  className={`flex items-center justify-between gap-3 min-h-11 px-4 rounded-xl text-xs font-bold tracking-wider uppercase transition-all touch-manipulation active:scale-[0.99] ${
+                    active ? "bg-[#0E3B7D] text-white shadow-sm" : "text-slate-700 hover:bg-slate-100 hover:text-[#0E3B7D] active:bg-slate-200"
                   }`}
                 >
-                  <span>{t(item.labelKey)}</span>
-                  <span aria-hidden="true" className="material-symbols-outlined text-xs opacity-60">
+                  <span className="truncate">{t(item.labelKey)}</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-[18px] opacity-60 shrink-0 leading-none">
                     arrow_forward
                   </span>
                 </Link>
               );
             })}
 
-            <div className="pt-6 mt-6 border-t border-slate-200 space-y-2.5">
+            {/* Mobile CTAs */}
+            <div className="pt-6 mt-6 border-t border-slate-200 space-y-2.5 pb-2">
               <Link
                 href="/admission"
-                onClick={() => setMobileOpen(false)}
-                className="flex items-center justify-center gap-2 w-full bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] py-3 rounded-xl text-xs font-extrabold tracking-wider uppercase shadow-md active:scale-95 transition-all"
+                onClick={closeMobile}
+                className="flex items-center justify-center gap-2 w-full min-h-11 bg-[#FFC700] hover:bg-[#E6B300] active:bg-[#D4A600] text-[#09234B] px-4 py-3 rounded-xl text-xs font-extrabold tracking-wider uppercase shadow-md active:scale-[0.98] transition-all touch-manipulation"
               >
                 <span>{t("nav.applyForAdmission")}</span>
-                <span aria-hidden="true" className="material-symbols-outlined text-base font-bold">
+                <span aria-hidden="true" className="material-symbols-outlined text-base font-bold leading-none">
                   arrow_forward
                 </span>
               </Link>
               <Link
                 href="/portal"
-                onClick={() => setMobileOpen(false)}
-                className="flex items-center justify-center gap-2 w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl text-xs font-bold tracking-wider uppercase border border-slate-200 hover:text-[#0E3B7D] transition-all"
+                onClick={closeMobile}
+                className="flex items-center justify-center gap-2 w-full min-h-11 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 px-4 py-3 rounded-xl text-xs font-bold tracking-wider uppercase border border-slate-200 hover:text-[#0E3B7D] active:scale-[0.98] transition-all touch-manipulation"
               >
-                <span aria-hidden="true" className="material-symbols-outlined text-base">
+                <span aria-hidden="true" className="material-symbols-outlined text-base leading-none">
                   manage_accounts
                 </span>
                 <span>{t("nav.studentPortal")}</span>
               </Link>
               <Link
                 href="/admin/login"
-                onClick={() => setMobileOpen(false)}
-                className="flex items-center justify-center gap-2 w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl text-xs font-bold tracking-wider uppercase border border-slate-200 hover:text-[#0E3B7D] transition-all"
+                onClick={closeMobile}
+                className="flex items-center justify-center gap-2 w-full min-h-11 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 px-4 py-3 rounded-xl text-xs font-bold tracking-wider uppercase border border-slate-200 hover:text-[#0E3B7D] active:scale-[0.98] transition-all touch-manipulation"
               >
-                <span aria-hidden="true" className="material-symbols-outlined text-base">
+                <span aria-hidden="true" className="material-symbols-outlined text-base leading-none">
                   admin_panel_settings
                 </span>
                 <span>{t("nav.staffAdminPortal")}</span>
               </Link>
             </div>
+
+            <p className="px-2 pt-4 pb-2 text-center text-[10px] font-medium text-slate-400">
+              © {new Date().getFullYear()} Hinthar International School
+            </p>
           </nav>
         </div>
       </div>

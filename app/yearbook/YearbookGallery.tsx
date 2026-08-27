@@ -8,6 +8,7 @@ import FooterSection from "../components/sections/FooterSection";
 import ChatbotWidget from "../components/ChatbotWidget";
 import { formatCampusBadge } from "../admin/adminStore";
 import { getYearbook } from "@/lib/actions/yearbook";
+import { isR2AssetUrl } from "@/lib/utils/r2Image";
 
 interface YearbookEntry {
   id: number;
@@ -275,6 +276,7 @@ export default function YearbookGallery({
                         src={scholar.image}
                         alt={scholar.name}
                         fill
+                        unoptimized={isR2AssetUrl(scholar.image)}
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-90"
                       />

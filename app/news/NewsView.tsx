@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/useT";
 import type { PublicNewsItem } from "@/lib/actions/news";
+import { isR2AssetUrl } from "@/lib/utils/r2Image";
 
 const CATEGORY_COLORS: Record<string, string> = {
   Announcement: "bg-[#E8F0FE] text-[#0E3B7D] border-[#0E3B7D]/20",
@@ -63,6 +64,7 @@ export default function NewsView({ posts }: { posts: PublicNewsItem[] }) {
                     src={post.image}
                     alt={post.title}
                     fill
+                    unoptimized={isR2AssetUrl(post.image)}
                     className="object-cover group-hover:scale-105 transition-transform duration-500"
                     sizes="(max-width: 768px) 100vw, 380px"
                   />

@@ -7,6 +7,7 @@ import Navbar from "../components/Navbar";
 import FooterSection from "../components/sections/FooterSection";
 import ChatbotWidget from "../components/ChatbotWidget";
 import { getActivities } from "@/lib/actions/activities";
+import { isR2AssetUrl } from "@/lib/utils/r2Image";
 
 interface SchoolEvent {
   id: number;
@@ -165,6 +166,7 @@ export default function ActivitiesView({ initialData }: { initialData?: RawActiv
                       src={ev.image}
                       alt={ev.title}
                       fill
+                      unoptimized={isR2AssetUrl(ev.image)}
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                       className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-90"
                     />
@@ -217,6 +219,7 @@ export default function ActivitiesView({ initialData }: { initialData?: RawActiv
                     src={ev.image}
                     alt={ev.title}
                     fill
+                    unoptimized={isR2AssetUrl(ev.image)}
                     sizes="(max-width: 768px) 100vw, 50vw"
                     className="object-cover opacity-90"
                   />
