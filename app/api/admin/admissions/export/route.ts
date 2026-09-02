@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const db = await getDb();
-    let rows = await db.select().from(admissions).orderBy(desc(admissions.createdAt));
+    let rows = await db.select().from(admissions).orderBy(desc(admissions.createdAt)).limit(1000);
 
     if (statusFilter) {
       rows = rows.filter((r) => r.status.toLowerCase() === statusFilter.toLowerCase());

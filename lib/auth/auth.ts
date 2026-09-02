@@ -3,14 +3,22 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import * as schema from "@/lib/db/schema";
 import { getDb } from "@/lib/db";
 
+declare global {
+  var __betterAuthInstance: ReturnType<typeof betterAuth> | undefined;
+}
+
 /**
  * Creates or retrieves the Better Auth instance.
- * Supports Cloudflare D1 via Drizzle Adapter with secure sessions and closed registration.
+ * Caches the instance globally to avoid repeated initialization costs.
  */
 export async function getAuth(explicitDb?: D1Database) {
+  if (globalThis.__betterAuthInstance) {
+    return globalThis.__betterAuthInstance;
+  }
+
   const db = await getDb(explicitDb);
 
-  return betterAuth({
+  const auth = betterAuth({
     database: drizzleAdapter(db, {
       provider: "sqlite",
       schema: {
@@ -81,4 +89,7 @@ export async function getAuth(explicitDb?: D1Database) {
       cookiePrefix: "hinthar",
     },
   });
+
+  globalThis.__betterAuthInstance = auth as any;
+  return auth;
 }
