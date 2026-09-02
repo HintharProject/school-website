@@ -22,9 +22,7 @@ const campusSchema = z.object({
   addressMy: z.string().trim().max(500).optional().nullable().or(z.literal("")),
   phone: z.string().trim().min(5).max(100),
   email: z.string().trim().email(),
-  officeHours: z.string().trim().default("Mon–Sat: 08:30 AM – 05:00 PM"),
   gradesServed: z.string().trim().min(2),
-  facilities: z.array(z.string()).default([]),
   imageUrl: z.string().trim().min(1),
   mapUrl: z
     .string()
@@ -59,22 +57,12 @@ function normalizeCampusInput(data: unknown) {
   for (const key of Object.keys(d)) {
     if (typeof d[key] === "string") {
       const trimmed = (d[key] as string).trim();
-      // officeHours empty → delete so schema default applies; mapUrl / MY empty → keep as "" so caller can clear / fallback
-      if (!trimmed && key === "officeHours") {
-        delete d[key];
-        continue;
-      }
       if (!trimmed && (key === "mapUrl" || bilingualMyKeys.includes(key))) {
         d[key] = "";
         continue;
       }
       d[key] = trimmed;
     }
-  }
-  if (Array.isArray(d.facilities)) {
-    d.facilities = (d.facilities as unknown[])
-      .map((f) => String(f ?? "").trim())
-      .filter(Boolean);
   }
   return d;
 }
@@ -112,10 +100,7 @@ export async function getCampuses() {
     .from(campuses)
     .orderBy(desc(campuses.city));
 
-  return rows.map((r) => ({
-    ...r,
-    facilities: typeof r.facilities === "string" ? JSON.parse(r.facilities || "[]") : r.facilities,
-  }));
+  return rows;
 }
 
 export async function createCampusAction(data: unknown): Promise<CampusActionResult> {
@@ -136,7 +121,6 @@ export async function createCampusAction(data: unknown): Promise<CampusActionRes
       nameMy: (validated as Record<string, unknown>).nameMy ? (validated as Record<string, unknown>).nameMy as string : undefined,
       taglineMy: (validated as Record<string, unknown>).taglineMy ? (validated as Record<string, unknown>).taglineMy as string : undefined,
       addressMy: (validated as Record<string, unknown>).addressMy ? (validated as Record<string, unknown>).addressMy as string : undefined,
-      facilities: JSON.stringify(validated.facilities),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -179,7 +163,6 @@ export async function updateCampusAction(id: string, data: unknown): Promise<Cam
       nameMy: (parsed as Record<string, unknown>).nameMy === "" ? null : (parsed as Record<string, unknown>).nameMy as string | undefined,
       taglineMy: (parsed as Record<string, unknown>).taglineMy === "" ? null : (parsed as Record<string, unknown>).taglineMy as string | undefined,
       addressMy: (parsed as Record<string, unknown>).addressMy === "" ? null : (parsed as Record<string, unknown>).addressMy as string | undefined,
-      facilities: parsed.facilities ? JSON.stringify(parsed.facilities) : undefined,
       updatedAt: new Date().toISOString(),
     } as Partial<NewCampus>;
 

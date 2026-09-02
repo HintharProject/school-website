@@ -47,9 +47,7 @@ export default function AdminCampusesPage() {
     addressMy: "",
     phone: "",
     email: "",
-    officeHours: "Mon–Sat: 08:30 AM – 05:00 PM",
     gradesServed: "Year 7–9 · Pearson IGCSE · Pearson IAL",
-    facilities: ["Pearson Exam Center", "Science Labs", "Computer Lab"],
     imageUrl: "/images/g2.jpg",
     mapUrl: "",
     isActive: true,
@@ -118,9 +116,7 @@ export default function AdminCampusesPage() {
       addressMy: formState.addressMy || undefined,
       phone: formState.phone || "+95 9 894 332200",
       email: formState.email || "admissions@hinthar.education",
-      officeHours: formState.officeHours || "Mon–Sat: 08:30 AM – 05:00 PM",
       gradesServed: formState.gradesServed || "Year 7–9 · Pearson IGCSE · Pearson IAL",
-      facilities: formState.facilities || ["Pearson Exam Center", "Science Lab"],
       imageUrl: formState.imageUrl || "/images/g2.jpg",
       mapUrl: formState.mapUrl || undefined,
       isActive: formState.isActive ?? true,
@@ -297,28 +293,6 @@ export default function AdminCampusesPage() {
                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-xs">
                   <span className="font-bold text-[#09234B] block mb-0.5">Curriculum &amp; Grades:</span>
                   <span className="text-slate-600">{campus.gradesServed}</span>
-                </div>
-
-                {/* Facilities Pills */}
-                <div>
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
-                    Campus Facilities ({campus.facilities?.length || 0})
-                  </span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {campus.facilities?.slice(0, 4).map((f, idx) => (
-                      <span
-                        key={idx}
-                        className="px-2.5 py-1 rounded-lg bg-blue-50 text-[#0E3B7D] text-[11px] font-bold"
-                      >
-                        {f}
-                      </span>
-                    ))}
-                    {(campus.facilities?.length || 0) > 4 && (
-                      <span className="px-2 py-1 rounded-lg bg-slate-100 text-slate-600 text-[11px] font-bold">
-                        +{(campus.facilities?.length || 0) - 4} more
-                      </span>
-                    )}
-                  </div>
                 </div>
               </div>
             </div>

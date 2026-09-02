@@ -29,6 +29,13 @@
       "when": 1787630652070,
       "tag": "0003_magenta_spiral",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1788000000000,
+      "tag": "0007_drop_campus_office_hours_facilities",
+      "breakpoints": true
     }
   ]
 }

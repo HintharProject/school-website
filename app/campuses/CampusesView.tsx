@@ -212,28 +212,6 @@ export default function CampusesView({
                           <span className="font-semibold truncate">{campus.email}</span>
                         </div>
                       </div>
-
-                      {/* Key Facilities Badges */}
-                      <div>
-                        <p className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 mb-2">
-                          Campus Highlights &amp; Facilities
-                        </p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {campus.facilities?.slice(0, 4).map((facility, idx) => (
-                            <span
-                              key={idx}
-                              className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-semibold"
-                            >
-                              {facility}
-                            </span>
-                          ))}
-                          {(campus.facilities?.length || 0) > 4 && (
-                            <span className="px-2.5 py-1 rounded-lg bg-[#E8F0FE] text-[#0E3B7D] text-xs font-bold">
-                              +{(campus.facilities?.length || 0) - 4} more
-                            </span>
-                          )}
-                        </div>
-                      </div>
                     </div>
 
                     {/* Action Buttons */}
@@ -307,22 +285,9 @@ export default function CampusesView({
                     <span>Open Map</span>
                   </a>
                 </div>
-                <p><strong>Office Hours:</strong> {activeCampusModal.officeHours}</p>
                 <p><strong>Phone:</strong> {activeCampusModal.phone}</p>
                 <p><strong>Email:</strong> {activeCampusModal.email}</p>
                 <p><strong>Programs:</strong> {activeCampusModal.gradesServed}</p>
-
-                <div>
-                  <strong className="block mb-2 font-bold text-[#09234B]">All Accredited Facilities:</strong>
-                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {activeCampusModal.facilities?.map((f, idx) => (
-                      <li key={idx} className="flex items-center gap-2 bg-slate-50 p-2 rounded-xl">
-                        <span aria-hidden="true" className="material-symbols-outlined text-sm text-[#0E3B7D]">check_circle</span>
-                        <span>{f}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">

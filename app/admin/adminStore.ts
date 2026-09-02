@@ -250,9 +250,7 @@ export interface CampusRecord {
   addressMy?: string;
   phone: string;
   email: string;
-  officeHours: string;
   gradesServed: string;
-  facilities: string[];
   imageUrl: string;
   mapUrl?: string;
   isActive: boolean;
@@ -261,17 +259,6 @@ export interface CampusRecord {
 }
 
 export function mapCampusRecord(d: any): CampusRecord {
-  let facs: string[] = [];
-  if (Array.isArray(d.facilities)) {
-    facs = d.facilities;
-  } else if (typeof d.facilities === "string") {
-    try {
-      facs = JSON.parse(d.facilities);
-    } catch {
-      facs = [];
-    }
-  }
-
   return {
     id: d.id,
     name: d.name,
@@ -283,9 +270,7 @@ export function mapCampusRecord(d: any): CampusRecord {
     addressMy: d.addressMy || d.address_my || undefined,
     phone: d.phone || "",
     email: d.email || "",
-    officeHours: d.officeHours || d.office_hours || "Mon–Sat: 08:30 AM – 05:00 PM",
     gradesServed: d.gradesServed || d.grades_served || "",
-    facilities: facs,
     imageUrl: d.imageUrl || d.image_url || "/images/g2.jpg",
     mapUrl: d.mapUrl || d.map_url || undefined,
     isActive: typeof d.isActive === "boolean" ? d.isActive : typeof d.is_active === "boolean" ? d.is_active : true,

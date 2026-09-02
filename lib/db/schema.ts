@@ -146,9 +146,7 @@ export const campuses = sqliteTable(
     addressMy: text("address_my"),
     phone: text("phone").notNull(),
     email: text("email").notNull(),
-    officeHours: text("office_hours").notNull().default("Mon–Sat: 08:30 AM – 05:00 PM"),
     gradesServed: text("grades_served").notNull(),
-    facilities: text("facilities").notNull().default("[]"), // JSON string array
     imageUrl: text("image_url").notNull(),
     mapUrl: text("map_url"),
     isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
