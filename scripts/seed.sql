@@ -3,7 +3,7 @@
 -- ==============================================================================
 
 -- 1. CAMPUSES SEED
-INSERT INTO `campuses` (`id`, `name`, `city`, `tagline`, `address`, `phone`, `email`, `office_hours`, `grades_served`, `facilities`, `image_url`, `map_url`, `is_active`)
+INSERT INTO `campuses` (`id`, `name`, `city`, `tagline`, `address`, `phone`, `email`, `grades_served`, `image_url`, `map_url`, `is_active`)
 VALUES
   (
     'ywarma-campus',
@@ -13,9 +13,7 @@ VALUES
     'No. 23B, Ywar Ma Kyaung Lane, Hlaing Township, Yangon, Myanmar (11051)',
     '+95 9 894 332200 / +95 9 894 332211',
     'ywarma.admissions@hinthar.education',
-    'Mon–Sat: 08:30 AM – 05:00 PM',
     'Year 7–9 · Pearson IGCSE · Pearson IAL',
-    '["Pearson Official Examination Center", "Turing High-Performance Computer Lab", "Newton Physics & Franklin Chemistry Labs", "British Council Testing Suite", "Academic Auditorium & British Library"]',
     '/images/g2.jpg',
     'https://www.google.com/maps/search/?api=1&query=Ywar+Ma+Kyaung+Lane,+Hlaing+Township,+Yangon,+Myanmar',
     1
@@ -28,9 +26,7 @@ VALUES
     'Shwe Padauk Road, Yangon, Myanmar',
     '+95 9 894 332222',
     'shwepadauk@hinthar.education',
-    'Mon–Sat: 08:30 AM – 05:00 PM',
     'Pearson IGCSE & Pearson IAL (STEM Specialized)',
-    '["AI, IoT & Robotics Studio", "Advanced Molecular Chemistry Lab", "Bio-Science Research Incubator", "Collaborative Study Pods & Seminar Hall", "Student Innovation & Recreation Hub"]',
     '/images/engineering.avif',
     'https://www.google.com/maps/search/?api=1&query=Shwe+Padauk+Road,+Yangon,+Myanmar',
     1
@@ -43,9 +39,7 @@ VALUES
     'Shwe Pone Nyet Street, Yangon, Myanmar',
     '+95 9 894 332233',
     'shweponenyet@hinthar.education',
-    'Mon–Sat: 08:30 AM – 05:00 PM',
     'Lower Secondary (Year 7–9) & Foundation Arts',
-    '["Digital Media & Graphic Arts Lab", "Music & Performing Arts Studio", "Badminton & Physical Fitness Arena", "English Language Immersion Lounge", "Junior Science Inquiry Lab"]',
     '/images/g8.jpg',
     'https://www.google.com/maps/search/?api=1&query=Shwe+Pone+Nyet+Street,+Yangon,+Myanmar',
     1
@@ -58,9 +52,7 @@ VALUES
     'Main Strand Road, Mawlamyine, Mon State, Myanmar',
     '+95 9 894 332288 / +95 32 202 888',
     'mawlamyine@hinthar.education',
-    'Mon–Sat: 08:30 AM – 05:00 PM',
     'Year 7–9 · Pearson IGCSE · Pearson IAL',
-    '["Full-Scale Physics, Chem & Bio Labs", "Modern Computer Lab & High-Speed Fiber", "Extensive Curated British Library", "Multi-Purpose Outdoor Sports Arena", "Student Residence & Pastoral Support"]',
     '/images/g7.jpg',
     'https://www.google.com/maps/search/?api=1&query=Strand+Road,+Mawlamyine,+Mon+State,+Myanmar',
     1
@@ -73,7 +65,6 @@ ON CONFLICT (`id`) DO UPDATE SET
   `phone` = excluded.`phone`,
   `email` = excluded.`email`,
   `grades_served` = excluded.`grades_served`,
-  `facilities` = excluded.`facilities`,
   `image_url` = excluded.`image_url`,
   `map_url` = excluded.`map_url`;
 

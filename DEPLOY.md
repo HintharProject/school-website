@@ -65,9 +65,14 @@ Migration history:
 | `0004_community_modules.sql`  | Community content modules                         |
 | `0005_bilingual_public_content.sql` | Bilingual public content fields            |
 | `0006_add_campuses_map_url.sql` | Campus map links                              |
-| `0007_drop_campus_office_hours_facilities.sql` | Campus schema cleanup              |
-| `0008_admission_and_galleries.sql` | Admission documents, upload limits, campus/club galleries |
+| `0007_drop_campus_office_hours_facilities.sql` | Campus schema cleanup (no-op on remote if legacy columns already absent) |
+| `0008_admission_and_galleries.sql` | Admission upload limits (idempotent; column adds may already exist on remote) |
 | `0009_yearbook_batches.sql`   | Regional Yearbook batches and legacy data backfill |
+
+If a remote migration fails with `duplicate column` or `no such column`, the production
+database likely drifted from a partial earlier apply. The migration files are written to
+be idempotent where SQLite allows it. After applying, run `scripts/verify-remote-d1.sql`
+in the D1 console to confirm schema.
 
 ## 4. Build & deploy
 
