@@ -27,17 +27,17 @@ No open public registration is permitted. Accounts are directly provisioned:
    - Anti-Lockout: Invariant guard prevents deleting or deactivating the sole remaining active administrator.
 2. **Student Contributor (`student`)**:
    - Authorized student leaders and club representatives (e.g. `linmyat.thu@student.hinthar.education`).
-   - Authority: Submit and edit their own Alumni Yearbook entries (into a Pending Review queue for Admin approval), submit new Club / Society proposals (into a Pending Review queue for Admin approval), submit Activity proposals tied to their Clubs, and view/edit Class Timetables.
+   - Authority: Submit and edit their own Alumni Yearbook entries in an active regional batch (into a Pending Review queue for Admin approval), submit new Club / Society proposals (into a Pending Review queue for Admin approval), submit Activity proposals tied to their Clubs, and view/edit Class Timetables.
    - Restrictions: Strictly no access to admissions records, user management, or direct unmoderated publishing.
 
 ## Core Modules & URLs
 - `/` — Main School Landing Page (Pearson Edexcel continuum, 4 campuses highlights, leadership, FAQs)
 - `/campuses` — Dedicated showcase for **4 Campuses** (**3 in Yangon: Ywarma, Shwe Padauk, Shwe Pone Nyet** & **1 in Mawlamyine**)
-- `/yearbook` — Alumni Yearbook Gallery (Class of 2026, 2025, 2024, distinctions, university destinations)
+- `/yearbook` — Alumni Yearbook grouped by Yangon/Mawlamyine and admin-managed regional batches
 - `/clubs` — Extracurricular societies (Robotics & AI, Debate/MUN, Science, Arts & Media, Sports)
 - `/activities` — School events calendar, innovation fairs, examination series, and graduation ceremonies
 - `/classes` — Timetables and syllabi for Lower Secondary (Year 7–9), Pearson IGCSE, and Pearson IAL
-- `/admission` — 4-Step interactive online enrollment wizard (Direct Cloudflare D1 `admissions` table sync + Resend email confirmation)
+- `/admission` — 4-Step enrollment wizard with admin-configurable subjects/terms, three required R2 document uploads, D1 sync, and Resend confirmation
 - `/portal` — Public Student Portal: applicants track their admission status with their tracking reference (`HIS-YYYY-XXXXXX`) + guardian email (no login; rate-limited lookup in `lib/actions/admissions.ts`)
 - `/admin` & `/admin/login` — Administrative Portal with Better Auth (Password Login at `/admin/login`; Single-Use Invitations in `/admin/users`), Campuses CRUD, Admissions Pipeline, Yearbook Review Queue, Clubs & Activities management.
 
@@ -46,7 +46,7 @@ No open public registration is permitted. Accounts are directly provisioned:
 - **R2 Storage Binding**: `R2` (Bucket: `hinthar-assets`)
 - **Drizzle Schema**: [`lib/db/schema.ts`](lib/db/schema.ts)
   - `user`, `session`, `account`, `verification`, `invitation`
-  - `campuses`, `classes_courses`, `bulletin_notices`, `admissions`, `clubs`, `activities`, `yearbook_alumni`, `file_assets`, `audit_logs`
+  - `campuses`, `classes_courses`, `bulletin_notices`, `admissions`, `admission_upload_limits`, `clubs`, `activities`, `yearbook_batches`, `yearbook_alumni`, `file_assets`, `site_content`, `audit_logs`
 - **Clients & Server Actions**:
   - [`lib/db/index.ts`](lib/db/index.ts) — Drizzle D1 client singleton.
   - [`lib/auth/auth.ts`](lib/auth/auth.ts) — Better Auth instance.

@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { checkAdmissionStatusAction, AdmissionStatusView } from "@/lib/actions/admissions";
+import { portalUrl } from "@/lib/routes/public";
 
 const STATUS_STEPS = [
   { key: "submitted", label: "Application Received", icon: "mark_email_read", desc: "Your application has been received." },
@@ -29,9 +30,12 @@ function stepState(app: AdmissionStatusView | null, step: (typeof STATUS_STEPS)[
 }
 
 export default function PortalClient() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const [applicationId, setApplicationId] = useState(searchParams.get("ref") || "");
-  const [parentEmail, setParentEmail] = useState("");
+  const queryId = searchParams.get("id") || searchParams.get("ref") || "";
+  const queryEmail = searchParams.get("email") || "";
+  const [applicationId, setApplicationId] = useState(queryId);
+  const [parentEmail, setParentEmail] = useState(queryEmail);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [application, setApplication] = useState<AdmissionStatusView | null>(null);
@@ -39,17 +43,7 @@ export default function PortalClient() {
 
   const formRef = useRef<HTMLFormElement>(null);
   const resultRef = useRef<HTMLDivElement>(null);
-
-  // Remember last successful lookup (MY optional — stored locally, fallback to EN if empty)
-  useEffect(() => {
-    if (searchParams.get("ref")) setApplicationId(searchParams.get("ref") || "");
-    try {
-      const savedId = localStorage.getItem("portal:lastRef");
-      const savedEmail = localStorage.getItem("portal:lastEmail");
-      if (savedId && !searchParams.get("ref")) setApplicationId(savedId);
-      if (savedEmail) setParentEmail(savedEmail);
-    } catch {}
-  }, [searchParams]);
+  const autoLookupKey = useRef<string | null>(null);
 
   const handleLookup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,6 +63,10 @@ export default function PortalClient() {
         setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
       } else {
         setApplication(result.application);
+        router.replace(portalUrl({
+          id: applicationId,
+          email: parentEmail,
+        }), { scroll: false });
         try {
           localStorage.setItem("portal:lastRef", applicationId.trim().toUpperCase());
           localStorage.setItem("portal:lastEmail", parentEmail.trim().toLowerCase());
@@ -83,6 +81,15 @@ export default function PortalClient() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!queryId || !queryEmail) return;
+    const key = `${queryId}:${queryEmail}`;
+    if (autoLookupKey.current === key) return;
+    autoLookupKey.current = key;
+    const timer = window.setTimeout(() => formRef.current?.requestSubmit(), 0);
+    return () => window.clearTimeout(timer);
+  }, [queryEmail, queryId]);
 
   const decision = application?.status === "Approved" ? "approved" : application?.status === "Declined" ? "declined" : null;
 

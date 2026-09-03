@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/migrate-local.mjs",
     "dev": "next dev",
     "build": "next build",
     "build:cloudflare": "opennextjs-cloudflare build",
@@ -14,7 +15,7 @@
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate:local": "wrangler d1 migrations apply hinthar-db --local",
+    "db:migrate:local": "node scripts/migrate-local.mjs",
     "db:migrate:prod": "wrangler d1 migrations apply hinthar-db --remote",
     "d1:seed:local": "wrangler d1 execute hinthar-db --local --file=scripts/seed.sql",
     "d1:seed:prod": "wrangler d1 execute hinthar-db --remote --file=scripts/seed.sql",

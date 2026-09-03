@@ -14,6 +14,7 @@ import {
   mapUserProfileRecord,
 } from "../adminStore";
 import ImageUploadPicker from "@/app/components/admin/ImageUploadPicker";
+import GalleryUploadPicker from "@/app/components/admin/GalleryUploadPicker";
 import { isR2AssetUrl } from "@/lib/utils/r2Image";
 import { authClient } from "@/lib/auth/auth-client";
 import {
@@ -91,6 +92,7 @@ export default function AdminClubsPage() {
     leadership: "Student Lead: Lead | Advisor: Faculty Lead",
     description: "",
     image: "/images/engineering.avif",
+    galleryUrls: [] as string[],
     campus: "both-campuses",
   });
 
@@ -185,6 +187,7 @@ export default function AdminClubsPage() {
         leadership: "Student Lead: Lead | Advisor: Faculty Lead",
         description: "",
         image: "/images/engineering.avif",
+        galleryUrls: [],
         campus: "both-campuses",
       });
       loadData();
@@ -645,6 +648,13 @@ export default function AdminClubsPage() {
                   folder="clubs"
                   defaultPresetsCategory="club"
                 />
+                <div className="mt-4">
+                  <GalleryUploadPicker
+                    value={clubForm.galleryUrls}
+                    onChange={(galleryUrls) => setClubForm({ ...clubForm, galleryUrls })}
+                    folder="clubs"
+                  />
+                </div>
               </div>
 
               <div className="flex justify-end gap-3 pt-3">
@@ -756,6 +766,13 @@ export default function AdminClubsPage() {
                   folder="clubs"
                   defaultPresetsCategory="club"
                 />
+                <div className="mt-4">
+                  <GalleryUploadPicker
+                    value={editingClub.galleryUrls || []}
+                    onChange={(galleryUrls) => setEditingClub({ ...editingClub, galleryUrls })}
+                    folder="clubs"
+                  />
+                </div>
               </div>
 
               <div className="flex justify-end gap-3 pt-3">

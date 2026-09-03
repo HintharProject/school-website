@@ -298,9 +298,12 @@ export async function getAdmissionOptions(): Promise<AdmissionOptions> {
     const rows = await db.select().from(siteContent).where(eq(siteContent.key, "admissionOptions"));
     if (rows[0]?.value) {
       const parsed = JSON.parse(rows[0].value) as Partial<AdmissionOptions>;
-      if (parsed.intendedStartTerms && parsed.studyModes && parsed.academicStreams && parsed.relationships) {
-        return parsed as AdmissionOptions;
-      }
+      return {
+        intendedStartTerms: parsed.intendedStartTerms?.length ? parsed.intendedStartTerms : DEFAULT_ADMISSION_OPTIONS.intendedStartTerms,
+        studyModes: parsed.studyModes?.length ? parsed.studyModes : DEFAULT_ADMISSION_OPTIONS.studyModes,
+        academicStreams: parsed.academicStreams?.length ? parsed.academicStreams : DEFAULT_ADMISSION_OPTIONS.academicStreams,
+        relationships: parsed.relationships?.length ? parsed.relationships : DEFAULT_ADMISSION_OPTIONS.relationships,
+      };
     }
   } catch (err) {
     console.warn("getAdmissionOptions note:", err);

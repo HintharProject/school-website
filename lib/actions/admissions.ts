@@ -6,6 +6,7 @@ import { requireAdmin, logAudit } from "@/lib/auth/rbac";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { sendAdmissionEmail } from "@/lib/email/email";
+import { getAdmissionOptions, getSubjectCatalog } from "@/lib/actions/siteContent";
 
 const admissionSchema = z.object({
   studentName: z.string().min(2).max(200),
@@ -13,9 +14,17 @@ const admissionSchema = z.object({
   gender: z.enum(["Male", "Female", "Other"]).optional().nullable(),
   nationality: z.string().default("Myanmar").optional().nullable(),
   grade: z.string().min(2),
-  programLevel: z.string().optional().nullable(),
+  programLevel: z.enum(["lower_secondary", "igcse", "ial"]).optional().nullable(),
+  finishedGrade: z.string().min(2).max(50).optional().nullable(),
+  suggestedEntryYear: z.string().min(2).max(30).optional().nullable(),
+  preferredRegion: z.enum(["Yangon", "Mawlamyine"]).optional().nullable(),
   academicStream: z.string().optional().nullable(),
   selectedSubjects: z.array(z.string()).default([]),
+  documentUrls: z.array(z.object({
+    type: z.enum(["identity", "report", "photo"]),
+    url: z.string().startsWith("/api/assets/admissions/"),
+    filename: z.string().min(1).max(255),
+  })).length(3).default([]),
   intendedStartTerm: z.string().optional().nullable(),
   studyMode: z.string().default("Full-Time On-Campus").optional().nullable(),
   previousSchool: z.string().optional().nullable(),
@@ -42,6 +51,19 @@ function parseSubjects(raw: unknown): string[] {
   return [];
 }
 
+function parseDocuments(raw: unknown) {
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === "string" && raw.length > 0) {
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
 export async function getAdmissions() {
   await requireAdmin();
   const db = await getDb();
@@ -53,11 +75,14 @@ export async function getAdmissions() {
   return rows.map((r) => ({
     ...r,
     selectedSubjects: parseSubjects(r.selectedSubjects),
+    documentUrls: parseDocuments(r.documentUrls),
   }));
 }
 
 function generateApplicationId(): string {
-  const secureNum = Math.floor(100000 + Math.random() * 900000);
+  const random = new Uint32Array(1);
+  crypto.getRandomValues(random);
+  const secureNum = 100000 + (random[0] % 900000);
   return `HIS-2026-${secureNum}`;
 }
 
@@ -71,6 +96,21 @@ export async function submitPublicAdmissionAction(data: unknown) {
     };
   }
   const validated = validatedResult.data;
+  const [subjects, options] = await Promise.all([getSubjectCatalog(), getAdmissionOptions()]);
+  const activeSubjectNames = new Set(subjects.filter((subject) => {
+    if (!subject.isActive) return false;
+    if (validated.programLevel === "lower_secondary") return subject.level === "Lower Secondary";
+    return subject.level === "Both" || subject.level === (validated.programLevel === "ial" ? "IAL" : "IGCSE");
+  }).map((subject) => subject.name));
+  if (validated.selectedSubjects.some((subject) => !activeSubjectNames.has(subject))) {
+    return { success: false as const, error: "One or more selected subjects are no longer available. Please refresh and choose again." };
+  }
+  if (validated.intendedStartTerm && !options.intendedStartTerms.includes(validated.intendedStartTerm)) {
+    return { success: false as const, error: "The selected starting term is no longer available. Please refresh and choose again." };
+  }
+  if (validated.academicStream && !options.academicStreams.includes(validated.academicStream)) {
+    return { success: false as const, error: "The selected academic stream is no longer available." };
+  }
   const db = await getDb();
 
   // Insert with collision-safe retry (unique primary key)
@@ -87,8 +127,12 @@ export async function submitPublicAdmissionAction(data: unknown) {
         nationality: validated.nationality ?? "Myanmar",
         grade: validated.grade,
         programLevel: validated.programLevel ?? null,
+        finishedGrade: validated.finishedGrade ?? null,
+        suggestedEntryYear: validated.suggestedEntryYear ?? null,
+        preferredRegion: validated.preferredRegion ?? null,
         academicStream: validated.academicStream ?? null,
         selectedSubjects: JSON.stringify(validated.selectedSubjects),
+        documentUrls: JSON.stringify(validated.documentUrls),
         intendedStartTerm: validated.intendedStartTerm ?? null,
         studyMode: validated.studyMode ?? "Full-Time On-Campus",
         previousSchool: validated.previousSchool ?? null,
@@ -107,8 +151,8 @@ export async function submitPublicAdmissionAction(data: unknown) {
         updatedAt: new Date().toISOString(),
       });
       inserted = true;
-    } catch (err: any) {
-      const msg = String(err?.message || "");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
       if (!msg.includes("UNIQUE") && !msg.includes("constraint")) {
         throw err;
       }
@@ -235,6 +279,7 @@ export async function updateAdmissionDetailsAction(id: string, data: unknown) {
   const updateData: Partial<NewAdmission> = {
     ...validated,
     selectedSubjects: validated.selectedSubjects ? JSON.stringify(validated.selectedSubjects) : undefined,
+    documentUrls: validated.documentUrls ? JSON.stringify(validated.documentUrls) : undefined,
     updatedAt: new Date().toISOString(),
   };
 

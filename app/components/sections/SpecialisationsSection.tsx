@@ -64,9 +64,9 @@ export default function SpecialisationsSection({
         <div className="flex flex-wrap items-center justify-center gap-2.5 mb-12">
           {[
             { id: "all", label: "All Pathways" },
-            { id: "lower-secondary", label: "Lower Secondary (Year 7â€“9)" },
-            { id: "igcse", label: "Pearson IGCSE (Year 10â€“11)" },
-            { id: "ial", label: "Pearson IAL (Year 12â€“13)" },
+            { id: "lower-secondary", label: "Lower Secondary (Year 7–9)" },
+            { id: "igcse", label: "Pearson IGCSE (Year 10–11)" },
+            { id: "ial", label: "Pearson IAL (Year 12–13)" },
           ].map((tab) => (
             <button
               key={tab.id}

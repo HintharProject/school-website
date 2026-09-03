@@ -21,6 +21,7 @@ const clubSchema = z.object({
   leadership: z.string().min(2),
   description: z.string().min(5),
   image: z.string().default("/images/g2.jpg"),
+  galleryUrls: z.array(z.string().min(1)).max(12).default([]),
   campus: z.string().default("both-campuses"),
   isActive: z.boolean().default(true),
 });
@@ -58,6 +59,7 @@ export async function createClubAction(data: unknown) {
 
   const insertData: NewClub = {
     ...validated,
+    galleryUrls: JSON.stringify(validated.galleryUrls),
     status,
     submittedBy: user.id,
     createdAt: new Date().toISOString(),
@@ -98,6 +100,7 @@ export async function updateClubAction(id: number, data: unknown) {
 
   const updateData: Partial<NewClub> = {
     ...validated,
+    galleryUrls: validated.galleryUrls ? JSON.stringify(validated.galleryUrls) : undefined,
     updatedAt: new Date().toISOString(),
   };
   if (resetToReview) {

@@ -1,6 +1,8 @@
 "use client";
 
 // ── APPLICATION STATUS ────────────────────────────────────────────────────────
+/* eslint-disable @typescript-eslint/no-explicit-any -- These adapters normalize records returned by D1, Better Auth, and legacy seed data. */
+
 export type ApplicationStatus = "Pending" | "Assessment Scheduled" | "Approved" | "Declined";
 
 // ── ADMISSION APPLICATION (camelCase UI type) ─────────────────────────────────
@@ -12,8 +14,12 @@ export interface AdmissionApplication {
   nationality?: string;
   grade: string;
   programLevel?: string;
+  finishedGrade?: string;
+  suggestedEntryYear?: string;
+  preferredRegion?: "Yangon" | "Mawlamyine";
   academicStream?: string;
   selectedSubjects?: string[];
+  documentUrls?: { type: "identity" | "report" | "photo"; url: string; filename: string }[];
   intendedStartTerm?: string;
   studyMode?: string;
   previousSchool?: string;
@@ -43,6 +49,15 @@ export function mapAdmissionRecord(d: any): AdmissionApplication {
     }
   }
 
+  let documents = d.documentUrls || d.document_urls || [];
+  if (typeof documents === "string") {
+    try {
+      documents = JSON.parse(documents);
+    } catch {
+      documents = [];
+    }
+  }
+
   return {
     id: d.id,
     studentName: d.studentName || d.student_name || "Applicant",
@@ -51,8 +66,12 @@ export function mapAdmissionRecord(d: any): AdmissionApplication {
     nationality: d.nationality ?? undefined,
     grade: d.grade || "IGCSE",
     programLevel: d.programLevel ?? d.program_level ?? undefined,
+    finishedGrade: d.finishedGrade ?? d.finished_grade ?? undefined,
+    suggestedEntryYear: d.suggestedEntryYear ?? d.suggested_entry_year ?? undefined,
+    preferredRegion: d.preferredRegion ?? d.preferred_region ?? undefined,
     academicStream: d.academicStream ?? d.academic_stream ?? undefined,
     selectedSubjects: subjects,
+    documentUrls: Array.isArray(documents) ? documents : [],
     intendedStartTerm: d.intendedStartTerm ?? d.intended_start_term ?? undefined,
     studyMode: d.studyMode ?? d.study_mode ?? undefined,
     previousSchool: d.previousSchool ?? d.previous_school ?? undefined,
@@ -75,7 +94,9 @@ export function mapAdmissionRecord(d: any): AdmissionApplication {
 export interface YearbookScholar {
   id: number;
   name: string;
-  category: "Class of 2026" | "Class of 2025" | "Class of 2024" | "University Placements" | "Competitions";
+  batchId: string;
+  batchName: string;
+  batchRegion: "Yangon" | "Mawlamyine";
   role: string;
   destination: string;
   subjects: string;
@@ -93,7 +114,9 @@ export function mapYearbookRecord(d: any): YearbookScholar {
   return {
     id: Number(d.id),
     name: d.name,
-    category: d.category,
+    batchId: d.batchId ?? d.batch_id ?? "",
+    batchName: d.batchName ?? d.batch_name ?? d.category ?? "Yearbook",
+    batchRegion: (d.batchRegion ?? d.batch_region ?? "Yangon") as "Yangon" | "Mawlamyine",
     role: d.role || "",
     destination: d.destination || "",
     subjects: d.subjects || "",
@@ -170,6 +193,7 @@ export interface ClubItem {
   leadership: string;
   description: string;
   image: string;
+  galleryUrls?: string[];
   campus?: string;
   status?: "published" | "pending_review" | "archived";
   submittedBy?: string;
@@ -178,6 +202,7 @@ export interface ClubItem {
 }
 
 export function mapClubRecord(d: any): ClubItem {
+  const gallery = d.galleryUrls ?? d.gallery_urls ?? [];
   return {
     id: Number(d.id),
     name: d.name,
@@ -188,6 +213,9 @@ export function mapClubRecord(d: any): ClubItem {
     leadership: d.leadership || "",
     description: d.description || "",
     image: d.image || "/images/engineering.avif",
+    galleryUrls: Array.isArray(gallery) ? gallery : (() => {
+      try { return JSON.parse(gallery); } catch { return []; }
+    })(),
     campus: d.campus || "both-campuses",
     status: d.status || "published",
     submittedBy: d.submittedBy ?? d.submitted_by,
@@ -252,6 +280,7 @@ export interface CampusRecord {
   email: string;
   gradesServed: string;
   imageUrl: string;
+  galleryUrls?: string[];
   mapUrl?: string;
   isActive: boolean;
   createdAt?: string;
@@ -259,6 +288,7 @@ export interface CampusRecord {
 }
 
 export function mapCampusRecord(d: any): CampusRecord {
+  const gallery = d.galleryUrls ?? d.gallery_urls ?? [];
   return {
     id: d.id,
     name: d.name,
@@ -272,6 +302,9 @@ export function mapCampusRecord(d: any): CampusRecord {
     email: d.email || "",
     gradesServed: d.gradesServed || d.grades_served || "",
     imageUrl: d.imageUrl || d.image_url || "/images/g2.jpg",
+    galleryUrls: Array.isArray(gallery) ? gallery : (() => {
+      try { return JSON.parse(gallery); } catch { return []; }
+    })(),
     mapUrl: d.mapUrl || d.map_url || undefined,
     isActive: typeof d.isActive === "boolean" ? d.isActive : typeof d.is_active === "boolean" ? d.is_active : true,
     createdAt: d.createdAt || d.created_at,

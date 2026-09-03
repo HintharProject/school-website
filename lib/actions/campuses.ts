@@ -24,6 +24,7 @@ const campusSchema = z.object({
   email: z.string().trim().email(),
   gradesServed: z.string().trim().min(2),
   imageUrl: z.string().trim().min(1),
+  galleryUrls: z.array(z.string().trim().min(1)).max(12).default([]),
   mapUrl: z
     .string()
     .trim()
@@ -117,6 +118,7 @@ export async function createCampusAction(data: unknown): Promise<CampusActionRes
 
     const insertData: NewCampus = {
       ...validated,
+      galleryUrls: JSON.stringify(validated.galleryUrls),
       mapUrl: validated.mapUrl || undefined,
       nameMy: (validated as Record<string, unknown>).nameMy ? (validated as Record<string, unknown>).nameMy as string : undefined,
       taglineMy: (validated as Record<string, unknown>).taglineMy ? (validated as Record<string, unknown>).taglineMy as string : undefined,
@@ -158,6 +160,7 @@ export async function updateCampusAction(id: string, data: unknown): Promise<Cam
 
     const updateData: Partial<NewCampus> = {
       ...parsed,
+      galleryUrls: parsed.galleryUrls ? JSON.stringify(parsed.galleryUrls) : undefined,
       // empty string means "clear the link" — store null so it disappears from public pages
       mapUrl: parsed.mapUrl === "" ? null : parsed.mapUrl,
       nameMy: (parsed as Record<string, unknown>).nameMy === "" ? null : (parsed as Record<string, unknown>).nameMy as string | undefined,

@@ -1,13 +1,12 @@
 "use client";
 
-import Image from "next/image";
 import { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import FooterSection from "../components/sections/FooterSection";
 import ChatbotWidget from "../components/ChatbotWidget";
 import { formatCampusBadge } from "../admin/adminStore";
 import { getClubs } from "@/lib/actions/clubs";
-import { isR2AssetUrl } from "@/lib/utils/r2Image";
+import ImageCarousel from "../components/ImageCarousel";
 
 interface ClubItem {
   id: number;
@@ -21,6 +20,7 @@ interface ClubItem {
   leadership: string;
   description: string;
   image: string;
+  galleryUrls: string[];
   campus?: string;
 }
 
@@ -42,6 +42,8 @@ interface RawClubRecord {
   leadership?: string;
   description: string;
   image?: string;
+  galleryUrls?: string[] | string;
+  gallery_urls?: string[] | string;
   campus?: string | null;
   status?: string;
 }
@@ -51,6 +53,18 @@ function mapClub(c: RawClubRecord): ClubItem {
   if (c.category.includes("Debate")) cat = "debate";
   else if (c.category.includes("Sports")) cat = "sports";
   else if (c.category.includes("Creative") || c.category.includes("Arts")) cat = "arts";
+
+  const rawGallery = c.galleryUrls ?? c.gallery_urls ?? [];
+  let galleryUrls: string[] = [];
+  if (Array.isArray(rawGallery)) galleryUrls = rawGallery;
+  else {
+    try {
+      const parsed = JSON.parse(rawGallery);
+      galleryUrls = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      galleryUrls = [];
+    }
+  }
 
   return {
     id: Number(c.id),
@@ -64,6 +78,7 @@ function mapClub(c: RawClubRecord): ClubItem {
     leadership: c.leadership || "Student Council Lead",
     description: c.description,
     image: c.image || "/images/g2.jpg",
+    galleryUrls,
     campus: c.campus || "both-campuses",
   };
 }
@@ -207,13 +222,10 @@ export default function ClubsView({ initialData }: { initialData?: RawClubRecord
               >
                 <div>
                   <div className="relative h-48 w-full bg-slate-900 overflow-hidden">
-                    <Image
-                      src={club.image}
+                    <ImageCarousel
+                      images={[club.image, ...club.galleryUrls]}
                       alt={club.name}
-                      fill
-                      unoptimized={isR2AssetUrl(club.image)}
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-90"
+                      className="h-full w-full opacity-90"
                     />
                     <div className="absolute top-3 left-3 flex gap-2">
                       <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#09234B]/80 text-[#FFC700] backdrop-blur-sm">

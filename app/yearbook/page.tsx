@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import YearbookGallery from "./YearbookGallery";
-import { getYearbook } from "@/lib/actions/yearbook";
+import { getYearbook, getYearbookBatches } from "@/lib/actions/yearbook";
 
 export const dynamic = "force-dynamic";
 
@@ -12,11 +12,15 @@ export const metadata: Metadata = {
 
 export default async function YearbookPage() {
   let initialData: Awaited<ReturnType<typeof getYearbook>> = [];
+  let initialBatches: Awaited<ReturnType<typeof getYearbookBatches>> = [];
   try {
-    initialData = await getYearbook();
+    [initialData, initialBatches] = await Promise.all([
+      getYearbook(),
+      getYearbookBatches(),
+    ]);
   } catch (err) {
     console.warn("Yearbook SSR fetch note:", err);
   }
 
-  return <YearbookGallery initialData={initialData} />;
+  return <YearbookGallery initialData={initialData} initialBatches={initialBatches} />;
 }

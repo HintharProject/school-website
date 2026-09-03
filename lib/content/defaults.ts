@@ -172,6 +172,11 @@ export interface SubjectEntry {
 }
 
 export const DEFAULT_SUBJECT_CATALOG: SubjectEntry[] = [
+  { id: "ls-math",       name: "Mathematics",            track: "STEM",      level: "Lower Secondary", isActive: true },
+  { id: "ls-science",    name: "Integrated Science",     track: "STEM",      level: "Lower Secondary", isActive: true },
+  { id: "ls-english",    name: "English Language",       track: "Languages", level: "Lower Secondary", isActive: true },
+  { id: "ls-computing",  name: "Computing & Digital Literacy", track: "Computing", level: "Lower Secondary", isActive: true },
+  { id: "ls-global",     name: "Global Perspectives",   track: "General",   level: "Lower Secondary", isActive: true },
   { id: "s-pure-math",   name: "Pure Mathematics",     track: "STEM",      level: "Both",  code: "4PM1",  isActive: true },
   { id: "s-further-math",name: "Further Mathematics",  track: "STEM",      level: "IAL",   code: "YFM01", isActive: true },
   { id: "s-physics",     name: "Physics",               track: "STEM",      level: "Both",  code: "4PH1",  isActive: true },

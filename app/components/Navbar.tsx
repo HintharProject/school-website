@@ -15,19 +15,18 @@ interface NavItem {
 const mainNavItems: NavItem[] = [
   { labelKey: "nav.home", href: "/" },
   { labelKey: "nav.campuses", href: "/campuses" },
-  { labelKey: "nav.classes", href: "/classes" },
-  { labelKey: "nav.activities", href: "/activities" },
+  { labelKey: "nav.yearbook", href: "/yearbook" },
   { labelKey: "nav.clubs", href: "/clubs" },
 ];
 
 const moreNavItems: NavItem[] = [
-  { labelKey: "nav.yearbook", href: "/yearbook" },
+  { labelKey: "nav.classes", href: "/classes" },
+  { labelKey: "nav.activities", href: "/activities" },
   { labelKey: "nav.news", href: "/news" },
   { labelKey: "nav.staff", href: "/staff" },
   { labelKey: "footer.aiConsultation", href: "/chatbot" },
+  { labelKey: "nav.studentPortal", href: "/portal" },
 ];
-
-const allNavItems: NavItem[] = [...mainNavItems, ...moreNavItems];
 
 function isActivePath(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -87,8 +86,6 @@ export default function Navbar() {
     const onChange = (e: MediaQueryListEvent | MediaQueryList) => {
       if ((e as MediaQueryListEvent).matches) setMobileOpen(false);
     };
-    // initial check
-    if (mql.matches) setMobileOpen(false);
     // modern + legacy
     if (mql.addEventListener) mql.addEventListener("change", onChange as (e: MediaQueryListEvent) => void);
     else mql.addListener(onChange as () => void);
@@ -118,8 +115,11 @@ export default function Navbar() {
   }, [mobileOpen, closeMobile]);
 
   useEffect(() => {
-    setMoreOpen(false);
-    setMobileOpen(false);
+    const timer = window.setTimeout(() => {
+      setMoreOpen(false);
+      setMobileOpen(false);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [pathname]);
 
   return (
@@ -440,26 +440,6 @@ export default function Navbar() {
                 <span aria-hidden="true" className="material-symbols-outlined text-base font-bold leading-none">
                   arrow_forward
                 </span>
-              </Link>
-              <Link
-                href="/portal"
-                onClick={closeMobile}
-                className="flex items-center justify-center gap-2 w-full min-h-11 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 px-4 py-3 rounded-xl text-xs font-bold tracking-wider uppercase border border-slate-200 hover:text-[#0E3B7D] active:scale-[0.98] transition-all touch-manipulation"
-              >
-                <span aria-hidden="true" className="material-symbols-outlined text-base leading-none">
-                  manage_accounts
-                </span>
-                <span>{t("nav.studentPortal")}</span>
-              </Link>
-              <Link
-                href="/admin/login"
-                onClick={closeMobile}
-                className="flex items-center justify-center gap-2 w-full min-h-11 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 px-4 py-3 rounded-xl text-xs font-bold tracking-wider uppercase border border-slate-200 hover:text-[#0E3B7D] active:scale-[0.98] transition-all touch-manipulation"
-              >
-                <span aria-hidden="true" className="material-symbols-outlined text-base leading-none">
-                  admin_panel_settings
-                </span>
-                <span>{t("nav.staffAdminPortal")}</span>
               </Link>
             </div>
 

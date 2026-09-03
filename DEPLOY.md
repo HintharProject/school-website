@@ -34,11 +34,24 @@ npx wrangler secret put RESEND_FROM
 > because antivirus ransomware shields block `workerd.exe` writes under the
 > Desktop folder (SQLITE_READONLY).
 
-## 3. Database migrations (apply BEFORE first deploy of a new migration)
+## 3. Database migrations
+
+Local migrations run automatically through `predev`. They can also be applied explicitly:
 
 ```bash
-npm run db:migrate:prod     # applies drizzle/*.sql to remote D1
-npm run d1:seed:prod        # optional: seed campuses/courses/clubs/etc.
+npm run db:migrate:local
+npm run dev
+```
+
+The local migration script uses the same `%LOCALAPPDATA%\hinthar-dev\wrangler-state`
+directory as `next.config.ts`, avoiding schema drift between Wrangler and Next.js.
+
+Apply remote migrations **before** the first production deploy that uses them:
+
+```bash
+npm run db:migrate:prod
+npm run d1:seed:prod        # optional
+npm run deploy
 ```
 
 Migration history:
@@ -49,6 +62,12 @@ Migration history:
 | `0001_fuzzy_black_bird.sql`   | Schema additions                                |
 | `0002_sparkling_harry_osborn.sql` | Schema additions                            |
 | `0003_magenta_spiral.sql`     | **`site_content` table (admin-editable homepage content)** |
+| `0004_community_modules.sql`  | Community content modules                         |
+| `0005_bilingual_public_content.sql` | Bilingual public content fields            |
+| `0006_add_campuses_map_url.sql` | Campus map links                              |
+| `0007_drop_campus_office_hours_facilities.sql` | Campus schema cleanup              |
+| `0008_admission_and_galleries.sql` | Admission documents, upload limits, campus/club galleries |
+| `0009_yearbook_batches.sql`   | Regional Yearbook batches and legacy data backfill |
 
 ## 4. Build & deploy
 
@@ -77,6 +96,6 @@ All public data is managed from the Admin Portal:
 | Campus cards & maps                   | Admin → Campuses                    |
 | Class timetables & bulletin notices   | Admin → Classes & Syllabi           |
 | Clubs & activities                    | Admin → Clubs & Activities          |
-| Yearbook entries                      | Admin → Yearbook & Honors           |
-| Admissions pipeline                   | Admin → Admissions Review           |
+| Regional Yearbook batches and entries | Admin → Yearbook                    |
+| Admissions pipeline, subjects, and starting terms | Admin → Admissions Review |
 | User accounts & invitations           | Admin → User Accounts               |

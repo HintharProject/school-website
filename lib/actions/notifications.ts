@@ -111,7 +111,7 @@ export async function getAdminNotificationsAction(): Promise<AdminNotificationRe
       notifs.push({
         id: `yb_${yb.id}`,
         title: "Yearbook Entry Submitted",
-        desc: `${yb.name} submitted ${yb.category} profile for review`,
+        desc: `${yb.name} submitted a Yearbook profile for review`,
         time: formatRelativeTime(yb.createdAt),
         icon: "auto_stories",
         href: "/admin/yearbook",

@@ -148,6 +148,7 @@ export const campuses = sqliteTable(
     email: text("email").notNull(),
     gradesServed: text("grades_served").notNull(),
     imageUrl: text("image_url").notNull(),
+    galleryUrls: text("gallery_urls").notNull().default("[]"),
     mapUrl: text("map_url"),
     isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
     createdAt: text("created_at")
@@ -226,8 +227,12 @@ export const admissions = sqliteTable(
     nationality: text("nationality").default("Myanmar"),
     grade: text("grade").notNull(),
     programLevel: text("program_level"),
+    finishedGrade: text("finished_grade"),
+    suggestedEntryYear: text("suggested_entry_year"),
+    preferredRegion: text("preferred_region"),
     academicStream: text("academic_stream"),
     selectedSubjects: text("selected_subjects").default("[]"), // JSON string array
+    documentUrls: text("document_urls").default("[]"), // JSON string array
     intendedStartTerm: text("intended_start_term"),
     studyMode: text("study_mode").default("Full-Time On-Campus"),
     previousSchool: text("previous_school"),
@@ -271,6 +276,7 @@ export const clubs = sqliteTable(
     description: text("description").notNull(),
     descriptionMy: text("description_my"),
     image: text("image").notNull().default("/images/g2.jpg"),
+    galleryUrls: text("gallery_urls").notNull().default("[]"),
     campus: text("campus").default("both-campuses"),
     status: text("status").notNull().default("published"), // "published" | "pending_review" | "archived"
     submittedBy: text("submitted_by").references(() => users.id, { onDelete: "set null" }),
@@ -325,13 +331,33 @@ export const activities = sqliteTable(
   ]
 );
 
+// Region-specific, administrator-managed Yearbook batches
+export const yearbookBatches = sqliteTable(
+  "yearbook_batches",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    region: text("region").notNull(), // "Yangon" | "Mawlamyine"
+    sortOrder: integer("sort_order").notNull().default(0),
+    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index("idx_yearbook_batches_region").on(table.region),
+    index("idx_yearbook_batches_active").on(table.isActive),
+    uniqueIndex("idx_yearbook_batches_region_name").on(table.region, table.name),
+  ]
+);
+
 // Yearbook & Alumni Table
 export const yearbookAlumni = sqliteTable(
   "yearbook_alumni",
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
     name: text("name").notNull(),
-    category: text("category").notNull(), // "Class of 2026" | "Class of 2025" | "Class of 2024" | "University Placements" | "Competitions"
+    category: text("category").notNull(), // Legacy batch label retained for migration compatibility
+    batchId: text("batch_id").references(() => yearbookBatches.id, { onDelete: "restrict" }),
     role: text("role").notNull(),
     destination: text("destination"),
     subjects: text("subjects"),
@@ -351,6 +377,7 @@ export const yearbookAlumni = sqliteTable(
   },
   (table) => [
     index("idx_yearbook_category").on(table.category),
+    index("idx_yearbook_batch").on(table.batchId),
     index("idx_yearbook_status").on(table.status),
     index("idx_yearbook_submitted_by").on(table.submittedBy),
   ]
@@ -377,6 +404,12 @@ export const fileAssets = sqliteTable(
     index("idx_file_assets_uploaded_by").on(table.uploadedBy),
   ]
 );
+
+export const admissionUploadLimits = sqliteTable("admission_upload_limits", {
+  key: text("key").primaryKey(),
+  count: integer("count").notNull().default(1),
+  resetAt: integer("reset_at").notNull(),
+});
 
 // Audit Logs Table
 export const auditLogs = sqliteTable(
@@ -543,6 +576,14 @@ export const yearbookAlumniRelations = relations(yearbookAlumni, ({ one }) => ({
     fields: [yearbookAlumni.submittedBy],
     references: [users.id],
   }),
+  batch: one(yearbookBatches, {
+    fields: [yearbookAlumni.batchId],
+    references: [yearbookBatches.id],
+  }),
+}));
+
+export const yearbookBatchesRelations = relations(yearbookBatches, ({ many }) => ({
+  entries: many(yearbookAlumni),
 }));
 
 export const clubMembersRelations = relations(clubMembers, ({ one }) => ({
@@ -729,6 +770,8 @@ export type NewActivity = typeof activities.$inferInsert;
 
 export type YearbookScholar = typeof yearbookAlumni.$inferSelect;
 export type NewYearbookScholar = typeof yearbookAlumni.$inferInsert;
+export type YearbookBatch = typeof yearbookBatches.$inferSelect;
+export type NewYearbookBatch = typeof yearbookBatches.$inferInsert;
 
 export type ClubMember = typeof clubMembers.$inferSelect;
 export type NewClubMember = typeof clubMembers.$inferInsert;

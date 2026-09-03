@@ -1,342 +1,177 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "../components/Navbar";
 import FooterSection from "../components/sections/FooterSection";
 import ChatbotWidget from "../components/ChatbotWidget";
-import { formatCampusBadge } from "../admin/adminStore";
-import { getYearbook } from "@/lib/actions/yearbook";
 import { isR2AssetUrl } from "@/lib/utils/r2Image";
 
-interface YearbookEntry {
+type Region = "Yangon" | "Mawlamyine";
+type Batch = {
+  id: string;
+  name: string;
+  region: string;
+  sortOrder: number;
+  isActive: boolean;
+};
+type Entry = {
   id: number;
   name: string;
-  category: "Class of 2026" | "Class of 2025" | "Class of 2024" | "University Placements" | "Competitions";
-  categoryLabel: string;
+  batchId: string;
+  batchName: string;
+  batchRegion: Region;
   role: string;
   destination?: string;
   subjects?: string;
   quote: string;
   image: string;
   badge?: string;
-  campus?: string;
-}
-
-const categories = [
-  "All",
-  "Class of 2026",
-  "Class of 2025",
-  "Class of 2024",
-  "University Placements",
-  "Competitions",
-];
-
-const primaryCampusTabs = [
-  { id: "All", label: "All Campuses" },
-  { id: "Yangon", label: "Yangon" },
-  { id: "Mawlamyine", label: "Mawlamyine" },
-];
+};
 
 interface RawYearbookRecord {
   id: number | string;
   name: string;
-  category: string;
+  batchId?: string | null;
+  batch_id?: string | null;
+  batchName?: string | null;
+  batchRegion?: string | null;
   role: string;
   destination?: string | null;
   subjects?: string | null;
   quote: string;
   image?: string;
   badge?: string | null;
-  campus?: string | null;
-  status?: string;
 }
 
-function mapYearbookEntry(d: RawYearbookRecord): YearbookEntry {
+function mapEntry(row: RawYearbookRecord): Entry {
   return {
-    id: Number(d.id),
-    name: d.name,
-    category: d.category as YearbookEntry["category"],
-    categoryLabel: d.category === "Class of 2026" ? "Pearson IAL Scholar" : "Alumni Success",
-    role: d.role,
-    destination: d.destination ?? undefined,
-    subjects: d.subjects ?? undefined,
-    quote: d.quote,
-    image: d.image || "/images/g5.jpg",
-    badge: d.badge || "Alumni",
-    campus: d.campus || "both-campuses",
+    id: Number(row.id),
+    name: row.name,
+    batchId: row.batchId ?? row.batch_id ?? "",
+    batchName: row.batchName ?? "Yearbook",
+    batchRegion: row.batchRegion === "Mawlamyine" ? "Mawlamyine" : "Yangon",
+    role: row.role,
+    destination: row.destination ?? undefined,
+    subjects: row.subjects ?? undefined,
+    quote: row.quote,
+    image: row.image || "/images/g5.jpg",
+    badge: row.badge ?? undefined,
   };
 }
 
 export default function YearbookGallery({
   initialData,
+  initialBatches,
 }: {
-  initialData?: RawYearbookRecord[];
+  initialData: RawYearbookRecord[];
+  initialBatches: Batch[];
 }) {
-  const [entries, setEntries] = useState<YearbookEntry[]>(() =>
-    (initialData ?? [])
-      .filter((d) => d.status === "published" || !d.status)
-      .map(mapYearbookEntry)
+  const entries = useMemo(() => initialData.map(mapEntry), [initialData]);
+  const [activeRegion, setActiveRegion] = useState<"All" | Region>("All");
+  const [activeBatch, setActiveBatch] = useState("All");
+  const [search, setSearch] = useState("");
+
+  const availableBatches = initialBatches.filter((batch) =>
+    activeRegion === "All" || batch.region === activeRegion
   );
-  const [isLoading, setIsLoading] = useState(!initialData);
-  const [hasError, setHasError] = useState(false);
-  const [activeCategory, setActiveCategory] = useState("All");
-  const [activeCampus, setActiveCampus] = useState("All");
-  const [searchQuery, setSearchQuery] = useState("");
 
-  useEffect(() => {
-    if (initialData) return;
-
-    async function loadYearbook() {
-      try {
-        setIsLoading(true);
-        setHasError(false);
-        const data = await getYearbook();
-        setEntries(
-          (data as RawYearbookRecord[])
-            .filter((d) => d.status === "published" || !d.status)
-            .map(mapYearbookEntry)
-        );
-      } catch (err) {
-        console.warn("Yearbook fetch note:", err);
-        setHasError(true);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    loadYearbook();
-  }, [initialData]);
-
-  const filteredEntries = entries.filter((entry) => {
-    const matchesCategory =
-      activeCategory === "All" ||
-      entry.category === activeCategory ||
-      (activeCategory === "University Placements" && Boolean(entry.destination));
-
-    const campusInfo = formatCampusBadge(entry.campus);
-    // City tabs include dual-campus ("both") scholars in both Yangon & Mawlamyine
-    const matchesCampus =
-      activeCampus === "All" ||
-      campusInfo.city === activeCampus ||
-      campusInfo.city === "Both";
-
-    const searchLower = searchQuery.toLowerCase();
-    const matchesSearch =
-      entry.name.toLowerCase().includes(searchLower) ||
-      entry.role.toLowerCase().includes(searchLower) ||
-      (entry.destination && entry.destination.toLowerCase().includes(searchLower)) ||
-      entry.quote.toLowerCase().includes(searchLower);
-
-    return matchesCategory && matchesCampus && matchesSearch;
+  const visibleEntries = entries.filter((entry) => {
+    const matchesRegion = activeRegion === "All" || entry.batchRegion === activeRegion;
+    const matchesBatch = activeBatch === "All" || entry.batchId === activeBatch;
+    const term = search.toLowerCase();
+    const matchesSearch = [entry.name, entry.role, entry.destination, entry.subjects, entry.quote]
+      .some((value) => value?.toLowerCase().includes(term));
+    return matchesRegion && matchesBatch && matchesSearch;
   });
 
+  const groups = (["Yangon", "Mawlamyine"] as Region[]).map((region) => ({
+    region,
+    batches: initialBatches
+      .filter((batch) => batch.region === region)
+      .map((batch) => ({
+        ...batch,
+        entries: visibleEntries.filter((entry) => entry.batchId === batch.id),
+      }))
+      .filter((batch) => batch.entries.length > 0),
+  })).filter((group) => group.batches.length > 0);
+
   return (
-    <div className="min-h-screen flex flex-col pt-20 bg-slate-50">
+    <div className="min-h-screen bg-slate-50 pt-20">
       <Navbar />
-
-      <main className="flex-1 max-w-[1280px] mx-auto w-full px-4 sm:px-6 md:px-8 py-10">
-        {/* Header */}
-        <div className="text-center max-w-2xl mx-auto mb-10">
-          <div className="inline-flex items-center gap-2 bg-[#E8F0FE] px-4 py-1.5 rounded-full mb-4 border border-[#0E3B7D]/20">
-            <span aria-hidden="true" className="material-symbols-outlined text-[#0E3B7D] text-sm font-bold">auto_stories</span>
-            <span className="text-xs font-extrabold text-[#0E3B7D] uppercase tracking-wider">
-              Hinthar Alumni Chronicle
-            </span>
+      <main className="mx-auto w-full max-w-[1280px] px-4 py-10 sm:px-6 md:px-8">
+        <div className="mx-auto mb-10 max-w-2xl text-center">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#0E3B7D]/20 bg-[#E8F0FE] px-4 py-1.5">
+            <span className="material-symbols-outlined text-sm font-bold text-[#0E3B7D]">auto_stories</span>
+            <span className="text-xs font-extrabold uppercase tracking-wider text-[#0E3B7D]">Hinthar Alumni Chronicle</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-[#09234B] mb-3 tracking-tight">
-            Yearbook &amp; <span className="text-[#0E3B7D]">Hall of Honors</span>
-          </h1>
-          <p className="text-sm md:text-base text-slate-600 font-normal">
-            Celebrating our Pearson Edexcel High Achievers, World Medalists, and graduates advancing to prestigious universities across the United Kingdom, Singapore, Australia, and worldwide.
-          </p>
+          <h1 className="mb-3 text-3xl font-black tracking-tight text-[#09234B] sm:text-4xl md:text-5xl">Our <span className="text-[#0E3B7D]">Yearbook</span></h1>
+          <p className="text-sm text-slate-600 md:text-base">Celebrating Hinthar graduates from Yangon and Mawlamyine, organized by their school batch.</p>
         </div>
 
-        {/* Filters */}
-        <div className="space-y-4 mb-10">
-          {/* Primary Campus Tabs */}
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            {primaryCampusTabs.map((tab) => {
-              const count =
-                tab.id === "All"
-                  ? entries.length
-                  : entries.filter((e) => formatCampusBadge(e.campus).city === tab.id || formatCampusBadge(e.campus).city === "Both").length;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveCampus(tab.id)}
-                  aria-pressed={activeCampus === tab.id}
-                  className={`px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                    activeCampus === tab.id
-                      ? "bg-[#0E3B7D] text-white shadow-md"
-                      : "bg-white text-slate-600 border border-slate-200 hover:border-[#0E3B7D]/40 hover:text-[#0E3B7D]"
-                  }`}
-                >
-                  {tab.label} ({count})
-                </button>
-              );
-            })}
+        <div className="mx-auto mb-10 space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-wrap justify-center gap-2">
+            {(["All", "Yangon", "Mawlamyine"] as const).map((region) => (
+              <button
+                key={region}
+                onClick={() => { setActiveRegion(region); setActiveBatch("All"); }}
+                className={`rounded-full px-5 py-2 text-xs font-black uppercase tracking-wider ${activeRegion === region ? "bg-[#0E3B7D] text-white" : "border border-slate-200 text-slate-600"}`}
+              >
+                {region === "All" ? "All Regions" : region}
+              </button>
+            ))}
           </div>
-
-          {/* Class-Year Sub-Tabs & Search */}
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs max-w-4xl mx-auto">
-            <div className="flex items-center gap-1 overflow-x-auto w-full sm:w-auto">
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setActiveCategory(cat)}
-                  aria-pressed={activeCategory === cat}
-                  className={`px-3.5 py-2 rounded-xl text-xs whitespace-nowrap transition-all cursor-pointer ${
-                    activeCategory === cat
-                      ? "bg-[#FFC700] text-[#09234B] font-black"
-                      : "text-slate-600 hover:text-[#0E3B7D]"
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-
-            <div className="relative w-full sm:w-72">
-              <span aria-hidden="true" className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
-                search
-              </span>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                aria-label="Search alumni by name, university, or award"
-                placeholder="Search alumni name, university, award..."
-                className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
-              />
-            </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <select value={activeBatch} onChange={(event) => setActiveBatch(event.target.value)} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-semibold">
+              <option value="All">All Batches</option>
+              {availableBatches.map((batch) => <option key={batch.id} value={batch.id}>{batch.region} — {batch.name}</option>)}
+            </select>
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search name, university, subjects..." className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs" />
           </div>
         </div>
 
-        {/* Error state */}
-        {hasError && !isLoading && (
-          <div role="alert" className="max-w-md mx-auto mb-8 p-4 rounded-2xl bg-red-50 border border-red-200 text-center">
-            <p className="text-sm font-bold text-red-700 mb-2">Could not load the yearbook.</p>
-            <button
-              type="button"
-              onClick={() => window.location.reload()}
-              className="px-4 py-1.5 rounded-xl bg-red-600 text-white text-xs font-bold cursor-pointer"
-            >
-              Retry
-            </button>
+        {groups.length === 0 ? (
+          <div className="mx-auto max-w-md rounded-3xl border border-dashed border-slate-300 p-12 text-center">
+            <h2 className="font-black text-[#09234B]">No Yearbook profiles found</h2>
+            <p className="mt-1 text-xs text-slate-500">Try another region, batch, or search.</p>
           </div>
-        )}
-
-        {/* Loading skeleton */}
-        {isLoading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" aria-busy="true" aria-label="Loading yearbook entries">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="bg-white rounded-3xl overflow-hidden border border-slate-200 animate-pulse">
-                <div className="h-64 bg-slate-200" />
-                <div className="p-6 space-y-3">
-                  <div className="h-3 bg-slate-200 rounded w-3/4" />
-                  <div className="h-3 bg-slate-100 rounded w-full" />
-                  <div className="h-3 bg-slate-100 rounded w-2/3" />
+        ) : groups.map((group) => (
+          <section key={group.region} className="mb-12 space-y-8">
+            <div className="border-b-2 border-[#FFC700] pb-3">
+              <h2 className="text-2xl font-black text-[#09234B]">{group.region}</h2>
+              <p className="text-xs text-slate-500">Hinthar International School Yearbook</p>
+            </div>
+            {group.batches.map((batch) => (
+              <div key={batch.id} className="space-y-4">
+                <h3 className="text-base font-black uppercase tracking-wider text-[#0E3B7D]">{batch.name}</h3>
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {batch.entries.map((entry) => (
+                    <article key={entry.id} className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-xl">
+                      <div className="relative h-64 bg-slate-900">
+                        <Image src={entry.image} alt={entry.name} fill unoptimized={isR2AssetUrl(entry.image)} sizes="(max-width: 768px) 100vw, 33vw" className="object-cover opacity-90" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                        <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
+                          <span className="rounded-full bg-[#09234B]/85 px-3 py-1 text-[10px] font-black uppercase text-[#FFC700]">{batch.name}</span>
+                          {entry.badge && <span className="rounded-full bg-emerald-600/90 px-3 py-1 text-[10px] font-black uppercase text-white">{entry.badge}</span>}
+                        </div>
+                        <div className="absolute bottom-4 left-4 right-4 text-white">
+                          <h4 className="text-xl font-black">{entry.name}</h4>
+                          <p className="text-xs font-semibold text-[#FFC700]">{entry.role}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-3 p-6 text-xs">
+                        {entry.destination && <p><strong className="text-[#0E3B7D]">University:</strong> {entry.destination}</p>}
+                        {entry.subjects && <p><strong className="text-slate-700">Subjects:</strong> {entry.subjects}</p>}
+                        <p className="italic leading-relaxed text-slate-600">&ldquo;{entry.quote}&rdquo;</p>
+                      </div>
+                    </article>
+                  ))}
                 </div>
               </div>
             ))}
-          </div>
-        )}
-
-        {/* Yearbook Gallery Grid */}
-        {!isLoading && (
-          filteredEntries.length === 0 ? (
-            <div className="text-center py-16 px-6 border border-dashed border-slate-300 rounded-3xl max-w-md mx-auto">
-              <span aria-hidden="true" className="material-symbols-outlined text-4xl text-slate-300">auto_stories</span>
-              <h2 className="text-base font-black text-[#09234B] mt-3">No Scholars Found</h2>
-              <p className="text-xs text-slate-500 mt-1">
-                Try adjusting the category, campus, or search filters.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <AnimatePresence mode="popLayout">
-            {filteredEntries.map((scholar) => {
-              const campusInfo = formatCampusBadge(scholar.campus);
-
-              return (
-                <motion.div
-                  key={scholar.id}
-                  layout
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.3 }}
-                  className="bg-white rounded-3xl overflow-hidden border border-slate-200/80 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between group"
-                >
-                  <div>
-                    <div className="relative h-64 w-full bg-slate-900 overflow-hidden">
-                      <Image
-                        src={scholar.image}
-                        alt={scholar.name}
-                        fill
-                        unoptimized={isR2AssetUrl(scholar.image)}
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-90"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                      <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#09234B]/80 text-[#FFC700] backdrop-blur-sm">
-                          {scholar.category}
-                        </span>
-                        {scholar.badge && (
-                          <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-600/90 text-white backdrop-blur-sm">
-                            {scholar.badge}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="absolute bottom-3 left-4 right-4 text-white">
-                        <h3 className="text-xl font-black">{scholar.name}</h3>
-                        <p className="text-xs text-[#FFC700] font-semibold">{scholar.role}</p>
-                      </div>
-                    </div>
-
-                    <div className="p-6 space-y-3">
-                      {scholar.destination && (
-                        <div className="p-2.5 bg-blue-50/70 rounded-xl border border-blue-100 text-xs">
-                          <span className="font-bold text-[#0E3B7D] block text-[10px] uppercase tracking-wider">
-                            University Destination
-                          </span>
-                          <span className="text-slate-800 font-semibold">{scholar.destination}</span>
-                        </div>
-                      )}
-
-                      {scholar.subjects && (
-                        <div className="text-xs text-slate-500">
-                          <strong className="text-slate-700">Subject Distinctions:</strong> {scholar.subjects}
-                        </div>
-                      )}
-
-                      <p className="text-xs text-slate-600 italic leading-relaxed pt-1">
-                        &ldquo;{scholar.quote}&rdquo;
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="p-4 px-6 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${campusInfo.badgeClass}`}>
-                      {campusInfo.label}
-                    </span>
-                    <span className="text-[10px] font-bold text-slate-500 font-mono">
-                      HIS Scholar #{scholar.id}
-                    </span>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
-            </div>
-          )
-        )}
+          </section>
+        ))}
       </main>
-
       <FooterSection />
       <ChatbotWidget />
     </div>

@@ -18,6 +18,7 @@ import {
   deleteCampusAction,
 } from "@/lib/actions/campuses";
 import ImageUploadPicker from "@/app/components/admin/ImageUploadPicker";
+import GalleryUploadPicker from "@/app/components/admin/GalleryUploadPicker";
 
 export default function AdminCampusesPage() {
   const [campuses, setCampuses] = useState<CampusRecord[]>([]);
@@ -49,6 +50,7 @@ export default function AdminCampusesPage() {
     email: "",
     gradesServed: "Year 7–9 · Pearson IGCSE · Pearson IAL",
     imageUrl: "/images/g2.jpg",
+    galleryUrls: [],
     mapUrl: "",
     isActive: true,
   });
@@ -118,6 +120,7 @@ export default function AdminCampusesPage() {
       email: formState.email || "admissions@hinthar.education",
       gradesServed: formState.gradesServed || "Year 7–9 · Pearson IGCSE · Pearson IAL",
       imageUrl: formState.imageUrl || "/images/g2.jpg",
+      galleryUrls: formState.galleryUrls || [],
       mapUrl: formState.mapUrl || undefined,
       isActive: formState.isActive ?? true,
     };
@@ -485,6 +488,13 @@ export default function AdminCampusesPage() {
                   folder="campuses"
                   defaultPresetsCategory="campus"
                 />
+                <div className="mt-4">
+                  <GalleryUploadPicker
+                    value={editingCampus.galleryUrls || []}
+                    onChange={(galleryUrls) => setEditingCampus({ ...editingCampus, galleryUrls })}
+                    folder="campuses"
+                  />
+                </div>
               </div>
 
               <div className="flex items-center gap-2 pt-2">
@@ -644,6 +654,13 @@ export default function AdminCampusesPage() {
                   folder="campuses"
                   defaultPresetsCategory="campus"
                 />
+                <div className="mt-4">
+                  <GalleryUploadPicker
+                    value={formState.galleryUrls || []}
+                    onChange={(galleryUrls) => setFormState({ ...formState, galleryUrls })}
+                    folder="campuses"
+                  />
+                </div>
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">

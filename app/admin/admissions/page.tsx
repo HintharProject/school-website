@@ -19,11 +19,14 @@ import {
 } from "@/lib/actions/admissions";
 import {
   getAdmissionOptions,
+  getSubjectCatalog,
+  upsertSubjectCatalogAction,
   upsertAdmissionOptionsAction,
   resetAdmissionOptionsAction,
   type AdmissionOptions,
+  type SubjectEntry,
 } from "@/lib/actions/siteContent";
-import { DEFAULT_ADMISSION_OPTIONS } from "@/lib/content/defaults";
+import { DEFAULT_ADMISSION_OPTIONS, DEFAULT_SUBJECT_CATALOG } from "@/lib/content/defaults";
 
 const statusBadgeClasses: Record<ApplicationStatus, string> = {
   Pending: "bg-amber-100 text-amber-800 border border-amber-200",
@@ -32,16 +35,28 @@ const statusBadgeClasses: Record<ApplicationStatus, string> = {
   Declined: "bg-rose-100 text-rose-800 border border-rose-200",
 };
 
+function subjectsForApplication(subjects: SubjectEntry[], application: AdmissionApplication) {
+  const program = application.programLevel
+    || (application.grade.includes("Lower Secondary") ? "lower_secondary" : application.grade.includes("IAL") ? "ial" : "igcse");
+  return subjects.filter((subject) => {
+    if (!subject.isActive) return false;
+    if (program === "lower_secondary") return subject.level === "Lower Secondary";
+    return subject.level === "Both" || subject.level === (program === "ial" ? "IAL" : "IGCSE");
+  });
+}
+
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 export default function AdminAdmissionsPage() {
   const [applications, setApplications] = useState<AdmissionApplication[]>([]);
   const [currentUser, setCurrentUser] = useState<UserProfile>(FALLBACK_GUEST_USER);
-  const [isLoaded, setIsLoaded] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | "All">("All");
-  const [gradeFilter, setGradeFilter] = useState<string>("All");
 
   // Modals state
   const [selectedApp, setSelectedApp] = useState<AdmissionApplication | null>(null);
@@ -66,6 +81,14 @@ export default function AdminAdmissionsPage() {
   const [activeTab, setActiveTab] = useState<"pipeline" | "terms">("pipeline");
   const [admissionOptions, setAdmissionOptions] = useState<AdmissionOptions>(DEFAULT_ADMISSION_OPTIONS);
   const [termsSaving, setTermsSaving] = useState(false);
+  const [subjects, setSubjects] = useState<SubjectEntry[]>(DEFAULT_SUBJECT_CATALOG);
+  const [subjectsSaving, setSubjectsSaving] = useState(false);
+  const [newSubject, setNewSubject] = useState({
+    name: "",
+    track: "STEM" as SubjectEntry["track"],
+    level: "Both" as SubjectEntry["level"],
+    code: "",
+  });
   const [newOptionInputs, setNewOptionInputs] = useState<Record<keyof AdmissionOptions, string>>({
     intendedStartTerms: "",
     studyModes: "",
@@ -77,7 +100,8 @@ export default function AdminAdmissionsPage() {
 
   useEffect(() => {
     if (session?.user) {
-      setCurrentUser(mapUserProfileRecord(session.user));
+      const timer = window.setTimeout(() => setCurrentUser(mapUserProfileRecord(session.user)), 0);
+      return () => window.clearTimeout(timer);
     }
   }, [session]);
 
@@ -88,21 +112,22 @@ export default function AdminAdmissionsPage() {
 
   const loadData = async () => {
     try {
-      const [data, opts] = await Promise.all([
+      const [data, opts, subjectRows] = await Promise.all([
         getAdmissions(),
         getAdmissionOptions().catch(() => DEFAULT_ADMISSION_OPTIONS),
+        getSubjectCatalog().catch(() => DEFAULT_SUBJECT_CATALOG),
       ]);
       setApplications(data.map(mapAdmissionRecord));
       setAdmissionOptions(opts);
+      setSubjects(subjectRows);
     } catch (err) {
       console.warn("Failed to load admissions:", err);
-    } finally {
-      setIsLoaded(true);
     }
   };
 
   useEffect(() => {
-    loadData();
+    const timer = window.setTimeout(() => void loadData(), 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   if (currentUser?.role === "student") {
@@ -136,9 +161,7 @@ export default function AdminAdmissionsPage() {
       (app.previousSchool && app.previousSchool.toLowerCase().includes(searchQuery.toLowerCase()));
 
     const matchesStatus = statusFilter === "All" || app.status === statusFilter;
-    const matchesGrade = gradeFilter === "All" || app.grade === gradeFilter;
-
-    return matchesSearch && matchesStatus && matchesGrade;
+    return matchesSearch && matchesStatus;
   });
 
   // Action Handlers
@@ -150,8 +173,8 @@ export default function AdminAdmissionsPage() {
       );
       if (selectedApp?.id === id) setSelectedApp((s) => (s ? { ...s, status: newStatus } : s));
       showToast(`Application ${id} status updated to: ${newStatus}`);
-    } catch (err: any) {
-      showToast(`Error: ${err.message || "Failed to update status."}`);
+    } catch (err: unknown) {
+      showToast(`Error: ${errorMessage(err, "Failed to update status.")}`);
     }
   };
 
@@ -176,8 +199,8 @@ export default function AdminAdmissionsPage() {
           s ? { ...s, notes, assessmentDate: assessmentDate ?? s.assessmentDate } : s
         );
       showToast("Assessment details and remarks saved successfully.");
-    } catch (err: any) {
-      showToast(`Error: ${err.message || "Failed to save notes."}`);
+    } catch (err: unknown) {
+      showToast(`Error: ${errorMessage(err, "Failed to save notes.")}`);
     }
   };
 
@@ -194,8 +217,8 @@ export default function AdminAdmissionsPage() {
       }
       setEditingApp(null);
       showToast(`Application ${editingApp.id} (${editingApp.studentName}) updated successfully!`);
-    } catch (err: any) {
-      showToast(`Error: ${err.message || "Failed to save application updates."}`);
+    } catch (err: unknown) {
+      showToast(`Error: ${errorMessage(err, "Failed to save application updates.")}`);
     }
   };
 
@@ -251,8 +274,8 @@ export default function AdminAdmissionsPage() {
       });
       setIsAddModalOpen(false);
       showToast(`Candidate ${newForm.studentName} registered (${applicationId}).`);
-    } catch (err: any) {
-      showToast(`Error: ${err.message || "Failed to create application."}`);
+    } catch (err: unknown) {
+      showToast(`Error: ${errorMessage(err, "Failed to create application.")}`);
     }
   };
 
@@ -265,8 +288,8 @@ export default function AdminAdmissionsPage() {
       const removedId = deletingApp.id;
       setDeletingApp(null);
       showToast(`Application ${removedId} removed from registry.`);
-    } catch (err: any) {
-      showToast(`Error: ${err.message || "Failed to delete application."}`);
+    } catch (err: unknown) {
+      showToast(`Error: ${errorMessage(err, "Failed to delete application.")}`);
     }
   };
 
@@ -280,13 +303,22 @@ export default function AdminAdmissionsPage() {
   const handleRemoveOption = (key: keyof AdmissionOptions, idx: number) => {
     setAdmissionOptions((prev) => ({ ...prev, [key]: prev[key].filter((_, i) => i !== idx) }));
   };
+  const handleMoveOption = (key: keyof AdmissionOptions, idx: number, direction: -1 | 1) => {
+    setAdmissionOptions((prev) => {
+      const next = [...prev[key]];
+      const target = idx + direction;
+      if (target < 0 || target >= next.length) return prev;
+      [next[idx], next[target]] = [next[target], next[idx]];
+      return { ...prev, [key]: next };
+    });
+  };
   const handleSaveTerms = async () => {
     setTermsSaving(true);
     try {
       const res = await upsertAdmissionOptionsAction(admissionOptions);
       showToast(res.message);
-    } catch (err: any) {
-      showToast(`Error: ${err.message || "Failed to save terms."}`);
+    } catch (err: unknown) {
+      showToast(`Error: ${errorMessage(err, "Failed to save terms.")}`);
     } finally {
       setTermsSaving(false);
     }
@@ -298,10 +330,34 @@ export default function AdminAdmissionsPage() {
       await resetAdmissionOptionsAction();
       setAdmissionOptions(DEFAULT_ADMISSION_OPTIONS);
       showToast("Admission options reset to defaults.");
-    } catch (err: any) {
-      showToast(`Error: ${err.message || "Failed to reset."}`);
+    } catch (err: unknown) {
+      showToast(`Error: ${errorMessage(err, "Failed to reset.")}`);
     } finally {
       setTermsSaving(false);
+    }
+  };
+
+  const handleAddSubject = () => {
+    const name = newSubject.name.trim();
+    if (!name) return;
+    setSubjects((current) => [...current, {
+      id: `subject-${crypto.randomUUID()}`,
+      name,
+      track: newSubject.track,
+      level: newSubject.level,
+      code: newSubject.code.trim() || undefined,
+      isActive: true,
+    }]);
+    setNewSubject({ name: "", track: "STEM", level: "Both", code: "" });
+  };
+
+  const handleSaveSubjects = async () => {
+    setSubjectsSaving(true);
+    try {
+      const result = await upsertSubjectCatalogAction(subjects);
+      showToast(result.message);
+    } finally {
+      setSubjectsSaving(false);
     }
   };
 
@@ -431,7 +487,7 @@ export default function AdminAdmissionsPage() {
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as any)}
+            onChange={(e) => setStatusFilter(e.target.value as ApplicationStatus | "All")}
             className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none"
           >
             <option value="All">All Statuses</option>
@@ -562,6 +618,12 @@ export default function AdminAdmissionsPage() {
                       {admissionOptions[key].map((opt, idx) => (
                         <div key={`${key}-${idx}`} className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs">
                           <span className="flex-1 font-medium text-slate-800 truncate">{opt}</span>
+                          <button type="button" onClick={() => handleMoveOption(key, idx, -1)} disabled={idx === 0} className="p-1 text-slate-400 disabled:opacity-25" aria-label={`Move ${opt} up`}>
+                            <span aria-hidden="true" className="material-symbols-outlined text-sm">arrow_upward</span>
+                          </button>
+                          <button type="button" onClick={() => handleMoveOption(key, idx, 1)} disabled={idx === admissionOptions[key].length - 1} className="p-1 text-slate-400 disabled:opacity-25" aria-label={`Move ${opt} down`}>
+                            <span aria-hidden="true" className="material-symbols-outlined text-sm">arrow_downward</span>
+                          </button>
                           <button type="button" onClick={() => handleRemoveOption(key, idx)} className="text-slate-400 hover:text-red-600 hover:bg-red-50 p-1 rounded-lg transition-colors cursor-pointer" aria-label={`Remove ${opt}`}>
                             <span aria-hidden="true" className="material-symbols-outlined text-sm">close</span>
                           </button>
@@ -586,6 +648,43 @@ export default function AdminAdmissionsPage() {
                   </div>
                 );
               })}
+            </div>
+          </div>
+
+          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 p-5">
+              <div>
+                <h2 className="text-base font-black text-[#09234B]">Admission Subject Catalog</h2>
+                <p className="mt-0.5 text-[11px] text-slate-500">Subjects saved here populate the public application and admission edit form.</p>
+              </div>
+              <button type="button" onClick={handleSaveSubjects} disabled={subjectsSaving} className="rounded-xl bg-[#0E3B7D] px-4 py-2 text-xs font-black text-white disabled:opacity-60">
+                {subjectsSaving ? "Saving..." : "Save Subjects"}
+              </button>
+            </div>
+            <div className="space-y-2 p-4">
+              {subjects.map((subject) => (
+                <div key={subject.id} className="grid items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2 sm:grid-cols-[1fr_130px_150px_90px_auto]">
+                  <input value={subject.name} onChange={(event) => setSubjects((items) => items.map((item) => item.id === subject.id ? { ...item, name: event.target.value } : item))} className="rounded-lg border border-slate-200 bg-white p-2 text-xs" aria-label="Subject name" />
+                  <select value={subject.track} onChange={(event) => setSubjects((items) => items.map((item) => item.id === subject.id ? { ...item, track: event.target.value as SubjectEntry["track"] } : item))} className="rounded-lg border border-slate-200 bg-white p-2 text-xs">
+                    {["STEM", "Business", "Computing", "Languages", "General"].map((track) => <option key={track}>{track}</option>)}
+                  </select>
+                  <select value={subject.level} onChange={(event) => setSubjects((items) => items.map((item) => item.id === subject.id ? { ...item, level: event.target.value as SubjectEntry["level"] } : item))} className="rounded-lg border border-slate-200 bg-white p-2 text-xs">
+                    {["Lower Secondary", "IGCSE", "IAL", "Both"].map((level) => <option key={level}>{level}</option>)}
+                  </select>
+                  <input value={subject.code || ""} onChange={(event) => setSubjects((items) => items.map((item) => item.id === subject.id ? { ...item, code: event.target.value } : item))} placeholder="Code" className="rounded-lg border border-slate-200 bg-white p-2 text-xs" />
+                  <div className="flex gap-1">
+                    <button type="button" onClick={() => setSubjects((items) => items.map((item) => item.id === subject.id ? { ...item, isActive: !item.isActive } : item))} className={`rounded-lg px-2 py-2 text-[10px] font-bold ${subject.isActive ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"}`}>{subject.isActive ? "Active" : "Hidden"}</button>
+                    <button type="button" onClick={() => setSubjects((items) => items.filter((item) => item.id !== subject.id))} className="rounded-lg px-2 py-2 text-red-600" aria-label={`Remove ${subject.name}`}><span className="material-symbols-outlined text-sm">delete</span></button>
+                  </div>
+                </div>
+              ))}
+              <div className="grid gap-2 rounded-xl border-2 border-dashed border-slate-200 p-3 sm:grid-cols-[1fr_130px_150px_90px_auto]">
+                <input value={newSubject.name} onChange={(event) => setNewSubject({ ...newSubject, name: event.target.value })} placeholder="New subject" className="rounded-lg border border-slate-200 p-2 text-xs" />
+                <select value={newSubject.track} onChange={(event) => setNewSubject({ ...newSubject, track: event.target.value as SubjectEntry["track"] })} className="rounded-lg border border-slate-200 p-2 text-xs">{["STEM", "Business", "Computing", "Languages", "General"].map((track) => <option key={track}>{track}</option>)}</select>
+                <select value={newSubject.level} onChange={(event) => setNewSubject({ ...newSubject, level: event.target.value as SubjectEntry["level"] })} className="rounded-lg border border-slate-200 p-2 text-xs">{["Lower Secondary", "IGCSE", "IAL", "Both"].map((level) => <option key={level}>{level}</option>)}</select>
+                <input value={newSubject.code} onChange={(event) => setNewSubject({ ...newSubject, code: event.target.value })} placeholder="Code" className="rounded-lg border border-slate-200 p-2 text-xs" />
+                <button type="button" onClick={handleAddSubject} disabled={!newSubject.name.trim()} className="rounded-lg bg-[#FFC700] px-3 py-2 text-xs font-black text-[#09234B] disabled:opacity-50">Add</button>
+              </div>
             </div>
           </div>
         </div>
@@ -638,6 +737,41 @@ export default function AdminAdmissionsPage() {
                 )}
               </div>
             </div>
+
+            <div className="grid grid-cols-1 gap-3 text-xs sm:grid-cols-3">
+              <div className="rounded-xl bg-slate-50 p-3">
+                <span className="block text-[10px] font-bold uppercase text-slate-400">Last completed</span>
+                <strong>{selectedApp.finishedGrade || "Not provided"}</strong>
+              </div>
+              <div className="rounded-xl bg-slate-50 p-3">
+                <span className="block text-[10px] font-bold uppercase text-slate-400">Suggested entry</span>
+                <strong>{selectedApp.suggestedEntryYear || selectedApp.grade}</strong>
+              </div>
+              <div className="rounded-xl bg-slate-50 p-3">
+                <span className="block text-[10px] font-bold uppercase text-slate-400">Preferred region</span>
+                <strong>{selectedApp.preferredRegion || "Not provided"}</strong>
+              </div>
+            </div>
+
+            {(selectedApp.documentUrls?.length ?? 0) > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-xs font-black uppercase tracking-wider text-[#09234B]">Supporting documents</h3>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {selectedApp.documentUrls?.map((document) => (
+                    <a
+                      key={document.type}
+                      href={document.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-2 rounded-xl border border-slate-200 p-3 text-xs font-bold text-[#0E3B7D] hover:bg-blue-50"
+                    >
+                      <span aria-hidden="true" className="material-symbols-outlined text-base">download</span>
+                      <span className="truncate">{document.filename}</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Assessment Date & Remarks */}
             <div className="space-y-3">
@@ -741,7 +875,9 @@ export default function AdminAdmissionsPage() {
                       onChange={(e) => setEditingApp({ ...editingApp, grade: e.target.value })}
                       className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
                     >
-                      <option value="Lower Secondary (Year 7–9)">Lower Secondary (Year 7–9)</option>
+                      <option value="Lower Secondary (Year 7)">Lower Secondary (Year 7)</option>
+                      <option value="Lower Secondary (Year 8)">Lower Secondary (Year 8)</option>
+                      <option value="Lower Secondary (Year 9)">Lower Secondary (Year 9)</option>
                       <option value="Pearson IGCSE (Year 10)">Pearson IGCSE (Year 10)</option>
                       <option value="Pearson IGCSE (Year 11)">Pearson IGCSE (Year 11)</option>
                       <option value="Pearson IAL (Year 12)">Pearson IAL (Year 12)</option>
@@ -823,7 +959,7 @@ export default function AdminAdmissionsPage() {
                     <label className="font-bold text-slate-700 block mb-1">Gender</label>
                     <select
                       value={editingApp.gender || "Male"}
-                      onChange={(e) => setEditingApp({ ...editingApp, gender: e.target.value as any })}
+                      onChange={(e) => setEditingApp({ ...editingApp, gender: e.target.value as AdmissionApplication["gender"] })}
                       className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
                     >
                       <option value="Male">Male</option>
@@ -955,7 +1091,7 @@ export default function AdminAdmissionsPage() {
                     <label className="font-bold text-slate-700 block mb-1">Application Workflow Status</label>
                     <select
                       value={editingApp.status}
-                      onChange={(e) => setEditingApp({ ...editingApp, status: e.target.value as any })}
+                      onChange={(e) => setEditingApp({ ...editingApp, status: e.target.value as ApplicationStatus })}
                       className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-bold"
                     >
                       <option value="Pending">Pending</option>
@@ -1003,23 +1139,8 @@ export default function AdminAdmissionsPage() {
                   Toggle subject preferences for this applicant. Changes are saved with the rest of the form.
                 </p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2" role="group" aria-label="Subject selection">
-                  {[
-                    "Pure Mathematics",
-                    "Further Mathematics",
-                    "Physics",
-                    "Chemistry",
-                    "Biology",
-                    "Computer Science",
-                    "Information Technology",
-                    "Economics",
-                    "Accounting",
-                    "Business Studies",
-                    "English Language",
-                    "Global Perspectives",
-                    "Statistics",
-                    "Art & Design",
-                    "Geography",
-                  ].map((subj) => {
+                  {subjectsForApplication(subjects, editingApp).map((subject) => {
+                    const subj = subject.name;
                     const isSelected = (editingApp.selectedSubjects ?? []).includes(subj);
                     return (
                       <button
@@ -1099,7 +1220,9 @@ export default function AdminAdmissionsPage() {
                     onChange={(e) => setNewForm({ ...newForm, grade: e.target.value })}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
                   >
-                    <option value="Lower Secondary (Year 7–9)">Lower Secondary (Year 7–9)</option>
+                    <option value="Lower Secondary (Year 7)">Lower Secondary (Year 7)</option>
+                    <option value="Lower Secondary (Year 8)">Lower Secondary (Year 8)</option>
+                    <option value="Lower Secondary (Year 9)">Lower Secondary (Year 9)</option>
                     <option value="Pearson IGCSE (Year 10)">Pearson IGCSE (Year 10)</option>
                     <option value="Pearson IGCSE (Year 11)">Pearson IGCSE (Year 11)</option>
                     <option value="Pearson IAL (Year 12)">Pearson IAL (Year 12)</option>
@@ -1110,7 +1233,7 @@ export default function AdminAdmissionsPage() {
                   <label className="font-bold text-slate-700 block mb-1">Gender</label>
                   <select
                     value={newForm.gender}
-                    onChange={(e) => setNewForm({ ...newForm, gender: e.target.value as any })}
+                    onChange={(e) => setNewForm({ ...newForm, gender: e.target.value as typeof newForm.gender })}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
                   >
                     <option value="Male">Male</option>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "../components/Navbar";
@@ -10,7 +9,7 @@ import ChatbotWidget from "../components/ChatbotWidget";
 import { CampusRecord, mapCampusRecord } from "../admin/adminStore";
 import { getCampuses } from "@/lib/actions/campuses";
 import { useLocale } from "@/lib/i18n/useT";
-import { isR2AssetUrl } from "@/lib/utils/r2Image";
+import ImageCarousel from "../components/ImageCarousel";
 
 const getMapUrl = (campus: CampusRecord) =>
   campus.mapUrl ||
@@ -156,13 +155,10 @@ export default function CampusesView({
                 >
                   {/* Campus Header Image — bypass optimizer for R2 assets (prevents 404 via _next/image) */}
                   <div className="relative h-60 w-full overflow-hidden bg-slate-900">
-                    <Image
-                      src={safeCampusImage(campus.imageUrl)}
+                    <ImageCarousel
+                      images={[safeCampusImage(campus.imageUrl), ...(campus.galleryUrls || []).map(safeCampusImage)]}
                       alt={loc(campus, locale, "name")}
-                      fill
-                      unoptimized={isR2AssetUrl(campus.imageUrl)}
-                      className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-90"
-                      sizes="(max-width: 768px) 100vw, 50vw"
+                      className="h-full w-full opacity-90"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#09234B] via-[#09234B]/40 to-transparent" />
 

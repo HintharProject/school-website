@@ -154,16 +154,31 @@ ON CONFLICT (`id`) DO UPDATE SET
   `featured` = excluded.`featured`;
 
 -- 6. YEARBOOK ALUMNI SEED
-INSERT INTO `yearbook_alumni` (`id`, `name`, `category`, `role`, `destination`, `subjects`, `quote`, `image`, `badge`, `campus`, `status`)
+INSERT INTO `yearbook_batches` (`id`, `name`, `region`, `sort_order`, `is_active`)
 VALUES
-  (1, 'Lin Myat Thu', 'Class of 2026', 'Valedictorian & Student Council President', 'Imperial College London · Aeronautical Eng', 'Pure Maths (A*), Further Maths (A*), Physics (A*)', 'At Hinthar, rigorous British education paired with passionate faculty mentorship gave me the foundation to reach global engineering frontiers.', '/images/g4.jpg', 'World Top Scorer', 'both-campuses', 'published'),
-  (2, 'Su Myat Noe', 'Class of 2026', 'High Distinction Scholar & Debate Captain', 'National University of Singapore (NUS) · Computer Science', 'Maths (A*), Computer Science (A*), Physics (A*)', 'The Turing Computing Lab and coding societies at Hinthar taught me not just syntax, but structural analytical thinking.', '/images/g6.jpg', 'Top Distinction', 'both-campuses', 'published'),
-  (3, 'Kaung Sithu', 'Class of 2025', 'ASEAN Scholar & Newton Society Lead', 'University of Melbourne · Biomedical Science', 'Biology (A*), Chemistry (A*), Pure Maths (A)', 'Hands-on lab experiments and individual research papers gave me an immense head start in international university medicine pathways.', '/images/g5.jpg', 'ASEAN Scholar Candidate', 'both-campuses', 'published'),
-  (4, 'Yamin Shwe Yee', 'Class of 2025', 'Senior Prefect & Arts Guild Curator', 'King''s College London · Economics & International Relations', 'Economics (A*), Business Studies (A*), Maths (A)', 'Hinthar is a family where every student is challenged to discover their authentic academic voice and lead with global purpose.', '/images/g8.jpg', 'Dean''s Honour Roll', 'both-campuses', 'published'),
-  (5, 'Aung Phone Myint', 'Class of 2024', 'Pearson World Medal Winner in Pure Mathematics', 'University of Manchester · Actuarial Science', 'Pure Maths (A*), Physics (A*), Chemistry (A*)', 'Scoring the highest mark in Myanmar for Pearson Pure Mathematics was only possible through our teachers'' relentless dedication.', '/images/g7.jpg', 'Pearson World Distinction', 'both-campuses', 'published')
+  ('yangon-2026', 'Class of 2026', 'Yangon', 2026, 1),
+  ('yangon-2025', 'Class of 2025', 'Yangon', 2025, 1),
+  ('yangon-2024', 'Class of 2024', 'Yangon', 2024, 1),
+  ('mawlamyine-2026', 'Class of 2026', 'Mawlamyine', 2026, 1),
+  ('mawlamyine-2025', 'Class of 2025', 'Mawlamyine', 2025, 1),
+  ('mawlamyine-2024', 'Class of 2024', 'Mawlamyine', 2024, 1)
+ON CONFLICT (`id`) DO UPDATE SET
+  `name` = excluded.`name`,
+  `region` = excluded.`region`,
+  `sort_order` = excluded.`sort_order`,
+  `is_active` = excluded.`is_active`;
+
+INSERT INTO `yearbook_alumni` (`id`, `name`, `category`, `batch_id`, `role`, `destination`, `subjects`, `quote`, `image`, `badge`, `campus`, `status`)
+VALUES
+  (1, 'Lin Myat Thu', 'Class of 2026', 'yangon-2026', 'Valedictorian & Student Council President', 'Imperial College London · Aeronautical Eng', 'Pure Maths (A*), Further Maths (A*), Physics (A*)', 'At Hinthar, rigorous British education paired with passionate faculty mentorship gave me the foundation to reach global engineering frontiers.', '/images/g4.jpg', 'World Top Scorer', 'yangon-all', 'published'),
+  (2, 'Su Myat Noe', 'Class of 2026', 'yangon-2026', 'High Distinction Scholar & Debate Captain', 'National University of Singapore (NUS) · Computer Science', 'Maths (A*), Computer Science (A*), Physics (A*)', 'The Turing Computing Lab and coding societies at Hinthar taught me not just syntax, but structural analytical thinking.', '/images/g6.jpg', 'Top Distinction', 'yangon-all', 'published'),
+  (3, 'Kaung Sithu', 'Class of 2025', 'yangon-2025', 'ASEAN Scholar & Newton Society Lead', 'University of Melbourne · Biomedical Science', 'Biology (A*), Chemistry (A*), Pure Maths (A)', 'Hands-on lab experiments and individual research papers gave me an immense head start in international university medicine pathways.', '/images/g5.jpg', 'ASEAN Scholar Candidate', 'yangon-all', 'published'),
+  (4, 'Yamin Shwe Yee', 'Class of 2025', 'yangon-2025', 'Senior Prefect & Arts Guild Curator', 'King''s College London · Economics & International Relations', 'Economics (A*), Business Studies (A*), Maths (A)', 'Hinthar is a family where every student is challenged to discover their authentic academic voice and lead with global purpose.', '/images/g8.jpg', 'Dean''s Honour Roll', 'yangon-all', 'published'),
+  (5, 'Aung Phone Myint', 'Class of 2024', 'yangon-2024', 'Pearson World Medal Winner in Pure Mathematics', 'University of Manchester · Actuarial Science', 'Pure Maths (A*), Physics (A*), Chemistry (A*)', 'Scoring the highest mark in Myanmar for Pearson Pure Mathematics was only possible through our teachers'' relentless dedication.', '/images/g7.jpg', 'Pearson World Distinction', 'yangon-all', 'published')
 ON CONFLICT (`id`) DO UPDATE SET
   `name` = excluded.`name`,
   `category` = excluded.`category`,
+  `batch_id` = excluded.`batch_id`,
   `role` = excluded.`role`,
   `destination` = excluded.`destination`,
   `subjects` = excluded.`subjects`,

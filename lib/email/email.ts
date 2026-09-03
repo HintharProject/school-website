@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { portalUrl } from "@/lib/routes/public";
 
 /**
  * Shared email utilities. Resend HTTP API only — SMTP/nodemailer is not
@@ -71,6 +72,10 @@ function buildBody(payload: EmailPayload): { subject: string; html: string } {
   ).replace(/\/$/, "");
   const applicationId = payload.applicationId || "HIS-APP";
   const grade = payload.grade || "Pearson Edexcel Track";
+  const applicationPortalUrl = new URL(
+    portalUrl({ id: applicationId, email: payload.recipientEmail }),
+    siteUrl
+  ).toString();
 
   if (payload.type === "admission_submitted") {
     return {
@@ -97,7 +102,7 @@ function buildBody(payload: EmailPayload): { subject: string; html: string } {
             <li>Our Admissions Committee will review the submitted academic records within 24–48 business hours.</li>
             <li>You will receive an email invitation to schedule a diagnostic placement assessment and campus tour.</li>
             <li>Keep your Application Reference ID (<strong>${escapeHtml(applicationId)}</strong>) for all future communications.</li>
-            <li>Track your application status anytime at the Student Portal: <strong>${siteUrl}/portal</strong> (use your Reference ID and this email address).</li>
+            <li>Track your application status anytime in the <a href="${escapeHtml(applicationPortalUrl)}" style="color:#0E3B7D;font-weight:700;">Student Portal</a>.</li>
           </ul>
         </div>
         ${FOOTER_HTML}
@@ -234,8 +239,8 @@ async function dispatch(payload: unknown): Promise<EmailResult> {
     }
 
     return { sent: true, simulated: false, provider: "resend", id: data?.id };
-  } catch (err: any) {
-    console.warn("Email dispatch error:", err?.message);
+  } catch (err: unknown) {
+    console.warn("Email dispatch error:", err instanceof Error ? err.message : err);
     return { sent: false, simulated: false, error: "Email delivery failed." };
   }
 }

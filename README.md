@@ -1,45 +1,66 @@
-# Hinthar International School — Web Platform & Supabase Backend
+# Hinthar International School Web Platform
 
-Official web platform and administration system for **[Hinthar International School](https://hinthar.education/)** (Yangon & Mawlamyine, Myanmar).
+Official website and administration system for Hinthar International School in Yangon and Mawlamyine.
 
-Built with **Next.js (App Router)**, **TypeScript**, **Tailwind CSS**, **Framer Motion**, and a **Supabase PostgreSQL Backend**.
+## Stack
 
----
+- Next.js App Router, React, TypeScript, Tailwind CSS
+- Cloudflare Workers via `@opennextjs/cloudflare`
+- Cloudflare D1 with Drizzle ORM
+- Cloudflare R2 for campus, club, Yearbook, and admission files
+- Better Auth with closed registration and role-based access
+- Resend admission email notifications
 
-## 🌟 Core Features
+## Main features
 
-- 🏛️ **4 School Campuses Showcase (`/campuses`)**:
-  - **Ywarma Campus (Yangon)**: Flagship Academic Center & Pearson Examination Hall.
-  - **Shwe Padauk Campus (Yangon)**: Senior STEM, AI & Robotics Innovation Center.
-  - **Shwe Pone Nyet Campus (Yangon)**: Lower Secondary (Year 7–9) & Creative Arts Hub.
-  - **Mawlamyine Campus (Mon State)**: Regional Center of Academic Excellence.
-- 🎓 **Alumni Yearbook Gallery (`/yearbook`)**:
-  - Cohort filtering (Class of 2026, 2025, 2024, Placements).
-  - Search by student, distinction, subjects, and top global university destinations.
-- 👥 **Student Clubs & Societies (`/clubs`)**:
-  - STEM & Robotics, Model UN & Debate, Newton Science, Digital Arts & Media, Sports.
-- 📝 **4-Step Admissions Wizard (`/admission`)**:
-  - Online student enrollment and automated Reference ID generation (`HIS-2026-XXXX`).
-  - Asynchronous pipeline storage into Supabase `admissions` table.
-- 🤖 **AI Consultation Chatbot (`/chatbot` & Floating Widget)**:
-  - Smart prompt-based answers to parents & students regarding curriculums, campuses, and admissions via `/api/chatbot`.
-- 🔐 **3-Tier Role-Based Admin Portal (`/admin` & `/admin/login`)**:
-  - **No Public Self-Registration**: All accounts are directly provisioned by authorized leadership.
-  - **School Principal (`principal`)**: Full superadmin authority (Dr. Kaung Myat Htut: `kaungmyat.htut@gmail.com`).
-  - **Faculty & Staff (`staff_admin`)**: Admissions processing, timetable scheduling, review queue moderation, and student account creation.
-  - **Student Contributors (`student`)**: Scoped data entry for Yearbook and Clubs (submissions route to a **Staff Review Queue** before publishing).
+- Public school, campus, classes, clubs, activities, news, staff, and Yearbook pages
+- Four-step admission form for Lower Secondary (Years 7–9), Pearson IGCSE, and Pearson IAL
+- Real admission document uploads: identity document, latest school report, and student photo
+- Shareable application tracking links: `/portal?id=HIS-...&email=...`
+- Region-specific Yearbook batches for Yangon and Mawlamyine
+- Campus and club image galleries
+- Administrator-managed admission subjects, academic streams, and starting terms
 
----
+## Access model
 
-## 🔐 User Roles & Permissions Matrix
+- `admin`: full administration, admissions decisions, account invitations, configuration, and publishing
+- `student`: may submit and edit their own Yearbook and club content for administrator review
+- Public self-registration is disabled
 
-| Module / Action | Principal (`Dr. Kaung Myat Htut`) | Faculty & Staff Admin | Student Contributor |
-|---|---|---|---|
-| **User Account Creation** | ✅ Staff Admin & Students | ✅ Students only | ❌ Disabled |
-| **Campuses Master Config** | ✅ Full CRUD (4 Campuses) | ✅ Full CRUD | ❌ Restricted |
-| **Admissions Pipeline** | ✅ Decisions & Approvals | ✅ Processing & Scheduling | ❌ Restricted (Confidential) |
-| **Yearbook Publishing** | ✅ Direct Publish & Review | ✅ Direct Publish & Review | 📝 Submit for Review |
-| **Student Clubs** | ✅ Full Management | ✅ Full Management | 📝 Submit Proposals & Updates |
-| **Classes & Timetables** | ✅ Master Schedule | ✅ Master Schedule | 👁️ View Only |
+## Local development
 
----
+```bash
+npm install
+npm run dev
+```
+
+`npm run dev` automatically applies pending local D1 migrations before Next.js starts. Local Cloudflare binding data is persisted under `%LOCALAPPDATA%\hinthar-dev\wrangler-state` on Windows.
+
+Useful commands:
+
+```bash
+npm run db:migrate:local
+npm run d1:seed:local
+npm run lint
+npx tsc --noEmit
+npm run build
+npm run build:cloudflare
+```
+
+## Routes
+
+- `/` — school landing page
+- `/campuses`, `/classes`, `/clubs`, `/activities`, `/news`, `/staff`
+- `/yearbook` — public regional Yearbook
+- `/admission` — online application
+- `/portal` — public application status lookup
+- `/admin/login`, `/admin` — authenticated administration
+
+## Deployment
+
+See [DEPLOY.md](DEPLOY.md). Always apply remote D1 migrations before deploying application code that depends on a new schema:
+
+```bash
+npm run db:migrate:prod
+npm run deploy
+```

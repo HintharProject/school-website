@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 
 interface Message {
-  id: number;
+  id: string;
   role: "ai" | "user";
   text: string;
   time: string;
@@ -50,7 +50,7 @@ const KNOWLEDGE_BASE: { keywords: string[]; reply: string; link?: { href: string
 
 const initialMessages: Message[] = [
   {
-    id: 0,
+    id: "welcome",
     role: "ai",
     text: "Mingalarpar! Welcome to Hinthar International School. I am your AI Admissions Assistant. How can I assist you with our Pearson Edexcel curriculums, campus admissions, or class schedules today?",
     time: "Just now",
@@ -62,7 +62,7 @@ const quickChips = [
   "Pearson Edexcel Tracks",
   "How to Apply for 2026",
   "Extracurricular Clubs",
-  "Alumni University Placements",
+  "Explore the School Yearbook",
 ];
 
 export default function ChatbotWidget() {
@@ -81,7 +81,7 @@ export default function ChatbotWidget() {
     if (!msg) return;
 
     const userMsg: Message = {
-      id: Date.now(),
+      id: crypto.randomUUID(),
       role: "user",
       text: msg,
       time: getTime(),
@@ -99,9 +99,12 @@ export default function ChatbotWidget() {
       });
 
       if (res.ok) {
-        const data = (await res.json()) as any;
+        const data = (await res.json()) as {
+          reply: string;
+          link?: { href: string; label: string };
+        };
         const aiMsg: Message = {
-          id: Date.now() + 1,
+          id: crypto.randomUUID(),
           role: "ai",
           text: data.reply,
           time: getTime(),
@@ -129,7 +132,7 @@ export default function ChatbotWidget() {
     }
 
     const aiMsg: Message = {
-      id: Date.now() + 1,
+      id: crypto.randomUUID(),
       role: "ai",
       text: reply,
       time: getTime(),

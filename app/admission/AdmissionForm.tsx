@@ -1,18 +1,33 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import Navbar from "../components/Navbar";
 import FooterSection from "../components/sections/FooterSection";
 import { submitPublicAdmissionAction } from "@/lib/actions/admissions";
 import { getSubjectCatalog, getAdmissionOptions, type SubjectEntry, type AdmissionOptions } from "@/lib/actions/siteContent";
 import { DEFAULT_SUBJECT_CATALOG, DEFAULT_ADMISSION_OPTIONS } from "@/lib/content/defaults";
+import {
+  FINISHED_GRADE_OPTIONS,
+  formatStoredGrade,
+  PROGRAM_LEVELS,
+  suggestEntryYear,
+  type ProgramLevel,
+} from "@/lib/admission/gradeMapping";
+import { portalUrl } from "@/lib/routes/public";
 
 type Step = 1 | 2 | 3 | 4 | 5;
+type AdmissionDocument = {
+  type: "identity" | "report" | "photo";
+  url: string;
+  filename: string;
+};
 
 export default function AdmissionForm() {
   const [currentStep, setCurrentStep] = useState<Step>(1);
-  const [dragActive, setDragActive] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<{ name: string; size: string; type: string }[]>([]);
+  const [uploadedDocuments, setUploadedDocuments] = useState<AdmissionDocument[]>([]);
+  const [uploadingType, setUploadingType] = useState<AdmissionDocument["type"] | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [submittedId, setSubmittedId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -22,26 +37,6 @@ export default function AdmissionForm() {
   );
   const [admissionOptions, setAdmissionOptions] = useState<AdmissionOptions>(DEFAULT_ADMISSION_OPTIONS);
 
-  useEffect(() => {
-    let mounted = true;
-    getSubjectCatalog()
-      .then((catalog) => {
-        if (mounted && Array.isArray(catalog) && catalog.length > 0) {
-          const active = catalog.filter((s) => s.isActive);
-          if (active.length > 0) setAvailableSubjects(active);
-        }
-      })
-      .catch(() => {});
-    getAdmissionOptions()
-      .then((opts) => {
-        if (mounted && opts) setAdmissionOptions(opts);
-      })
-      .catch(() => {});
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
   const [formData, setFormData] = useState({
     // Step 1: Student Details
     studentName: "",
@@ -50,11 +45,12 @@ export default function AdmissionForm() {
     nationality: "Myanmar",
     currentSchool: "",
     programLevel: "igcse",
-    gradeLevel: "Grade 10 (IGCSE Year 1)",
+    finishedGrade: "Year 9 (completed)",
+    preferredRegion: "Yangon",
 
     // Step 2: Academic Stream & Subjects
-    academicStream: "stem",
-    selectedSubjects: ["Mathematics", "Physics", "Chemistry", "English Language"],
+    academicStream: DEFAULT_ADMISSION_OPTIONS.academicStreams[0],
+    selectedSubjects: ["Pure Mathematics", "Physics", "Chemistry", "English Language"],
     intendedStartTerm: "August 2026",
     studyMode: "Full-Time On-Campus",
 
@@ -71,43 +67,73 @@ export default function AdmissionForm() {
     howHeard: "School Website",
   });
 
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
-  };
+  useEffect(() => {
+    let mounted = true;
+    getSubjectCatalog()
+      .then((catalog) => {
+        if (mounted && Array.isArray(catalog) && catalog.length > 0) {
+          const active = catalog.filter((s) => s.isActive);
+          if (active.length > 0) {
+            setAvailableSubjects(active);
+            const activeNames = new Set(active.map((subject) => subject.name));
+            setFormData((current) => ({
+              ...current,
+              selectedSubjects: current.selectedSubjects.filter((subject) => activeNames.has(subject)),
+            }));
+          }
+        }
+      })
+      .catch(() => {});
+    getAdmissionOptions()
+      .then((opts) => {
+        if (mounted && opts) {
+          setAdmissionOptions(opts);
+          setFormData((current) => ({
+            ...current,
+            intendedStartTerm: opts.intendedStartTerms.includes(current.intendedStartTerm)
+              ? current.intendedStartTerm
+              : opts.intendedStartTerms[0],
+            academicStream: opts.academicStreams.includes(current.academicStream)
+              ? current.academicStream
+              : opts.academicStreams[0],
+          }));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const files = Array.from(e.dataTransfer.files).map((f) => ({
-        name: f.name,
-        size: `${(f.size / (1024 * 1024)).toFixed(2)} MB`,
-        type: f.type || "Document",
-      }));
-      setUploadedFiles((prev) => [...prev, ...files]);
+  const handleDocumentUpload = async (
+    type: AdmissionDocument["type"],
+    file?: File
+  ) => {
+    if (!file || uploadingType) return;
+    setUploadingType(type);
+    setUploadError(null);
+    try {
+      const body = new FormData();
+      body.set("file", file);
+      body.set("documentType", type);
+      const response = await fetch("/api/admission/upload", { method: "POST", body });
+      const result = await response.json() as {
+        success?: boolean;
+        error?: string;
+        document?: AdmissionDocument;
+      };
+      if (!response.ok || !result.success || !result.document) {
+        throw new Error(result.error || "Upload failed.");
+      }
+      setUploadedDocuments((current) => [
+        ...current.filter((document) => document.type !== type),
+        result.document!,
+      ]);
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "Upload failed.");
+    } finally {
+      setUploadingType(null);
     }
-  };
-
-  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const files = Array.from(e.target.files).map((f) => ({
-        name: f.name,
-        size: `${(f.size / (1024 * 1024)).toFixed(2)} MB`,
-        type: f.type || "Document",
-      }));
-      setUploadedFiles((prev) => [...prev, ...files]);
-    }
-  };
-
-  const removeFile = (index: number) => {
-    setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const toggleSubject = (subject: string) => {
@@ -126,16 +152,17 @@ export default function AdmissionForm() {
     e.preventDefault();
     if (isSubmitting) return;
 
+    if (uploadedDocuments.length !== 3) {
+      setSubmitError("Please upload all three required documents.");
+      return;
+    }
+
     setIsSubmitting(true);
     setSubmitError(null);
 
-    // Map programLevel to readable format
-    const gradeLabel =
-      formData.programLevel === "ial"
-        ? "Pearson IAL (Year 12)"
-        : formData.programLevel === "igcse"
-        ? "Pearson IGCSE (Year 10)"
-        : "Lower Secondary (Year 8)";
+    const programLevel = formData.programLevel as ProgramLevel;
+    const suggestedEntryYear = suggestEntryYear(formData.finishedGrade, programLevel);
+    const gradeLabel = formatStoredGrade(programLevel, suggestedEntryYear);
 
     try {
       const result = await submitPublicAdmissionAction({
@@ -144,9 +171,13 @@ export default function AdmissionForm() {
         gender: formData.gender as "Male" | "Female" | "Other",
         nationality: formData.nationality,
         grade: gradeLabel,
-        programLevel: formData.programLevel,
+        programLevel,
+        finishedGrade: formData.finishedGrade,
+        suggestedEntryYear: `Year ${suggestedEntryYear}`,
+        preferredRegion: formData.preferredRegion,
         academicStream: formData.academicStream,
         selectedSubjects: formData.selectedSubjects,
+        documentUrls: uploadedDocuments,
         intendedStartTerm: formData.intendedStartTerm,
         studyMode: formData.studyMode,
         previousSchool: formData.currentSchool || null,
@@ -204,6 +235,14 @@ export default function AdmissionForm() {
     setCurrentStep((prev) => Math.max(prev - 1, 1) as Step);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  const programLevel = formData.programLevel as ProgramLevel;
+  const suggestedEntryYear = suggestEntryYear(formData.finishedGrade, programLevel);
+  const filteredSubjects = availableSubjects.filter((subject) =>
+    programLevel === "lower_secondary"
+      ? subject.level === "Lower Secondary"
+      : subject.level === "Both" || subject.level === (programLevel === "igcse" ? "IGCSE" : "IAL")
+  );
 
   return (
     <div className="min-h-screen flex flex-col pt-20 bg-slate-50">
@@ -340,12 +379,50 @@ export default function AdmissionForm() {
                   <select
                     id="adm-program-level"
                     value={formData.programLevel}
-                    onChange={(e) => setFormData({ ...formData, programLevel: e.target.value })}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      programLevel: e.target.value,
+                      selectedSubjects: [],
+                    })}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0E3B7D] outline-none transition-all text-sm text-slate-900 font-semibold"
                   >
                     <option value="lower_secondary">Lower Secondary (Year 7–9 / Ages 11–14)</option>
                     <option value="igcse">Pearson Edexcel IGCSE (Year 10–11 / Ages 14–16)</option>
-                    <option value="ial">Pearson Edexcel IAL - A-Level (Year 12–13 / Ages 16–18)</option>
+                    <option value="ial">Pearson Edexcel IAL (Year 12–13 / Ages 16–18)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="adm-finished-grade" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Last Completed Grade *
+                  </label>
+                  <select
+                    id="adm-finished-grade"
+                    value={formData.finishedGrade}
+                    onChange={(e) => setFormData({ ...formData, finishedGrade: e.target.value })}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0E3B7D] outline-none transition-all text-sm text-slate-900"
+                  >
+                    {FINISHED_GRADE_OPTIONS.map((grade) => (
+                      <option key={grade} value={grade}>{grade}</option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-slate-500">
+                    Suggested entry: <strong>Year {suggestedEntryYear}</strong>. Final placement is confirmed after the placement test.
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="adm-region" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Preferred Campus Region *
+                  </label>
+                  <select
+                    id="adm-region"
+                    value={formData.preferredRegion}
+                    onChange={(e) => setFormData({ ...formData, preferredRegion: e.target.value })}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0E3B7D] outline-none transition-all text-sm text-slate-900"
+                  >
+                    <option value="Yangon">Yangon</option>
+                    <option value="Mawlamyine">Mawlamyine</option>
                   </select>
                 </div>
 
@@ -396,28 +473,23 @@ export default function AdmissionForm() {
                   Academic Focus Track
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3" role="radiogroup" aria-label="Academic Focus Track">
-                  {[
-                    { id: "stem", label: "STEM & Pure Sciences", icon: "science", desc: "Physics, Chem, Bio, Pure Math" },
-                    { id: "cs", label: "Computing & IT", icon: "developer_board", desc: "Computer Science, ICT, Math" },
-                    { id: "business", label: "Business & Commerce", icon: "trending_up", desc: "Economics, Accounting, Business" },
-                  ].map((track) => (
+                  {admissionOptions.academicStreams.map((track) => (
                     <button
-                      key={track.id}
+                      key={track}
                       type="button"
                       role="radio"
-                      aria-checked={formData.academicStream === track.id}
-                      onClick={() => setFormData({ ...formData, academicStream: track.id })}
+                      aria-checked={formData.academicStream === track}
+                      onClick={() => setFormData({ ...formData, academicStream: track })}
                       className={`p-4 rounded-2xl border text-left cursor-pointer transition-all ${
-                        formData.academicStream === track.id
+                        formData.academicStream === track
                           ? "border-[#0E3B7D] bg-[#E8F0FE] ring-2 ring-[#0E3B7D]/30"
                           : "border-slate-200 hover:border-[#0E3B7D]/50 bg-slate-50"
                       }`}
                     >
                       <span aria-hidden="true" className="material-symbols-outlined text-[#0E3B7D] text-2xl mb-1 font-bold block">
-                        {track.icon}
+                        school
                       </span>
-                      <span className="block text-sm font-bold text-[#09234B]">{track.label}</span>
-                      <span className="block text-[11px] text-slate-500 mt-1 font-normal">{track.desc}</span>
+                      <span className="block text-sm font-bold text-[#09234B]">{track}</span>
                     </button>
                   ))}
                 </div>
@@ -429,7 +501,7 @@ export default function AdmissionForm() {
                   Select Target Electives / Subjects
                 </span>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5" role="group" aria-label="Select Target Electives / Subjects">
-                  {availableSubjects.map((entry) => {
+                  {filteredSubjects.map((entry) => {
                     const subj = entry.name;
                     const isSelected = formData.selectedSubjects.includes(subj);
                     return (
@@ -472,19 +544,12 @@ export default function AdmissionForm() {
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <label htmlFor="adm-study-mode" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                     Study Format
-                  </label>
-                  <select
-                    id="adm-study-mode"
-                    value={formData.studyMode}
-                    onChange={(e) => setFormData({ ...formData, studyMode: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900"
-                  >
-                    {admissionOptions.studyModes.map((opt) => (
-                      <option key={opt} value={opt}>{opt}</option>
-                    ))}
-                  </select>
+                  </span>
+                  <div className="w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700">
+                    Full-Time On-Campus
+                  </div>
                 </div>
               </div>
 
@@ -584,7 +649,7 @@ export default function AdmissionForm() {
 
                 <div className="space-y-1.5 sm:col-span-2">
                   <label htmlFor="adm-address" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Residential Address in Yangon / Township
+                    Residential Address / Township
                   </label>
                   <input
                     id="adm-address"
@@ -632,73 +697,52 @@ export default function AdmissionForm() {
                   Step 4: Supporting Documents &amp; Review
                 </h2>
                 <p className="text-xs text-slate-500 mt-1 font-normal">
-                  Upload student records, passport/NRC, and previous report cards (optional for initial inquiry).
+                  Upload the three required documents. PDF, JPG, PNG, or WebP files up to 8 MB are accepted.
                 </p>
               </div>
 
-              {/* Upload Dropzone */}
-              <div
-                onDragEnter={handleDrag}
-                onDragLeave={handleDrag}
-                onDragOver={handleDrag}
-                onDrop={handleDrop}
-                className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all ${
-                  dragActive
-                    ? "border-[#0E3B7D] bg-[#E8F0FE]"
-                    : "border-slate-300 hover:border-[#0E3B7D] bg-slate-50"
-                }`}
-              >
-                <span aria-hidden="true" className="material-symbols-outlined text-4xl text-[#FFC700] mb-2 font-bold">
-                  cloud_upload
-                </span>
-                <p className="text-sm font-bold text-[#09234B] mb-1">
-                  Drag and drop student documents here
-                </p>
-                <p className="text-xs text-slate-500 mb-1 font-normal">
-                  Accepts PDF, JPG, PNG up to 15MB (Transcripts, Birth Cert, Passport Photo)
-                </p>
-                <p className="text-[11px] text-slate-400 mb-4 font-normal">
-                  Documents listed here are recorded with your inquiry. Please present the original documents at the
-                  campus office during verification.
-                </p>
-                <label className="bg-white hover:bg-slate-100 border border-slate-300 px-5 py-2 rounded-full text-xs font-bold uppercase tracking-wider cursor-pointer transition-colors text-[#0E3B7D] inline-block shadow-sm">
-                  Browse Files
-                  <input type="file" multiple className="hidden" onChange={handleFileInput} />
-                </label>
-              </div>
-
-              {/* File List */}
-              {uploadedFiles.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Attached Files ({uploadedFiles.length})
-                  </p>
-                  {uploadedFiles.map((file, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200"
-                    >
-                      <div className="flex items-center gap-2.5 overflow-hidden">
-                        <span aria-hidden="true" className="material-symbols-outlined text-[#0E3B7D] text-base">description</span>
-                        <div>
-                          <p className="text-xs font-bold text-[#09234B] truncate max-w-[280px]">
-                            {file.name}
-                          </p>
-                          <span className="text-[10px] text-slate-500">{file.size}</span>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeFile(i)}
-                        className="text-slate-400 hover:text-red-500 p-1"
-                        aria-label="Remove attached file"
-                      >
-                        <span aria-hidden="true" className="material-symbols-outlined text-sm">close</span>
-                      </button>
-                    </div>
-                  ))}
+              {uploadError && (
+                <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-700">
+                  {uploadError}
                 </div>
               )}
+
+              <div className="grid gap-3">
+                {[
+                  { type: "identity" as const, label: "Birth Certificate / Student NRC", accept: ".pdf,.jpg,.jpeg,.png,.webp" },
+                  { type: "report" as const, label: "Latest School Report Card", accept: ".pdf,.jpg,.jpeg,.png,.webp" },
+                  { type: "photo" as const, label: "Recent Student Photo", accept: ".jpg,.jpeg,.png,.webp" },
+                ].map((slot) => {
+                  const uploaded = uploadedDocuments.find((document) => document.type === slot.type);
+                  const isUploading = uploadingType === slot.type;
+                  return (
+                    <div key={slot.type} className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center">
+                      <span aria-hidden="true" className="material-symbols-outlined text-2xl text-[#0E3B7D]">
+                        {uploaded ? "check_circle" : "upload_file"}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold text-[#09234B]">{slot.label} *</p>
+                        <p className="truncate text-[11px] text-slate-500">
+                          {uploaded?.filename || "No file uploaded"}
+                        </p>
+                      </div>
+                      <label className="cursor-pointer rounded-full border border-slate-300 bg-white px-4 py-2 text-center text-xs font-bold uppercase tracking-wider text-[#0E3B7D] hover:bg-slate-100">
+                        {isUploading ? "Uploading..." : uploaded ? "Replace" : "Choose File"}
+                        <input
+                          type="file"
+                          accept={slot.accept}
+                          disabled={Boolean(uploadingType)}
+                          className="hidden"
+                          onChange={(event) => {
+                            void handleDocumentUpload(slot.type, event.target.files?.[0]);
+                            event.target.value = "";
+                          }}
+                        />
+                      </label>
+                    </div>
+                  );
+                })}
+              </div>
 
               {/* Application Summary Box */}
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2 text-xs">
@@ -707,7 +751,9 @@ export default function AdmissionForm() {
                 </p>
                 <div className="grid grid-cols-2 gap-2 text-slate-700">
                   <div><strong>Student:</strong> {formData.studentName}</div>
-                  <div><strong>Program:</strong> {formData.programLevel.toUpperCase()}</div>
+                  <div><strong>Program:</strong> {PROGRAM_LEVELS[programLevel].label}</div>
+                  <div><strong>Suggested entry:</strong> Year {suggestedEntryYear}</div>
+                  <div><strong>Region:</strong> {formData.preferredRegion}</div>
                   <div><strong>Parent:</strong> {formData.parentName}</div>
                   <div><strong>Contact:</strong> {formData.parentPhone}</div>
                   <div className="col-span-2"><strong>Subjects:</strong> {formData.selectedSubjects.join(", ")}</div>
@@ -724,7 +770,7 @@ export default function AdmissionForm() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || Boolean(uploadingType) || uploadedDocuments.length !== 3}
                   className="inline-flex items-center gap-2 px-8 py-3.5 bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-md active:scale-95 border border-[#FFC700] disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
                 >
                   {isSubmitting ? (
@@ -802,7 +848,7 @@ export default function AdmissionForm() {
                   </div>
                   <div className="flex items-start gap-2">
                     <span aria-hidden="true" className="material-symbols-outlined text-[#0E3B7D] text-sm shrink-0">apartment</span>
-                    <span>Campus placement takes place at No. 23B, Ywar Ma Kyaung Lane, Hlaing Township, Yangon.</span>
+                    <span>Your placement assessment will be arranged with the admissions team in {formData.preferredRegion}.</span>
                   </div>
                 </div>
               </div>
@@ -816,19 +862,19 @@ export default function AdmissionForm() {
                   <span aria-hidden="true" className="material-symbols-outlined text-sm">print</span>
                   <span>Print Receipt</span>
                 </button>
-                <a
-                  href={`/portal?ref=${encodeURIComponent(submittedId)}`}
+                <Link
+                  href={portalUrl({ id: submittedId, email: formData.parentEmail })}
                   className="px-6 py-2.5 bg-[#0E3B7D] text-white rounded-full text-xs font-bold uppercase tracking-wider shadow-md hover:bg-[#164E9A] transition-all inline-flex items-center gap-1.5"
                 >
                   <span aria-hidden="true" className="material-symbols-outlined text-sm">manage_accounts</span>
                   <span>Track Application Status</span>
-                </a>
-                <a
+                </Link>
+                <Link
                   href="/"
                   className="px-6 py-2.5 border border-slate-300 text-slate-700 rounded-full text-xs font-bold uppercase tracking-wider hover:bg-slate-100 transition-all"
                 >
                   Return to Home
-                </a>
+                </Link>
               </div>
             </div>
           )}
