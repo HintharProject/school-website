@@ -3,6 +3,8 @@
 // ── APPLICATION STATUS ────────────────────────────────────────────────────────
 /* eslint-disable @typescript-eslint/no-explicit-any -- These adapters normalize records returned by D1, Better Auth, and legacy seed data. */
 
+import { parseGalleryUrls } from "@/lib/campuses/images";
+
 export type ApplicationStatus = "Pending" | "Assessment Scheduled" | "Approved" | "Declined";
 
 // ── ADMISSION APPLICATION (camelCase UI type) ─────────────────────────────────
@@ -288,7 +290,6 @@ export interface CampusRecord {
 }
 
 export function mapCampusRecord(d: any): CampusRecord {
-  const gallery = d.galleryUrls ?? d.gallery_urls ?? [];
   return {
     id: d.id,
     name: d.name,
@@ -302,9 +303,7 @@ export function mapCampusRecord(d: any): CampusRecord {
     email: d.email || "",
     gradesServed: d.gradesServed || d.grades_served || "",
     imageUrl: d.imageUrl || d.image_url || "/images/g2.jpg",
-    galleryUrls: Array.isArray(gallery) ? gallery : (() => {
-      try { return JSON.parse(gallery); } catch { return []; }
-    })(),
+    galleryUrls: parseGalleryUrls(d.galleryUrls ?? d.gallery_urls),
     mapUrl: d.mapUrl || d.map_url || undefined,
     isActive: typeof d.isActive === "boolean" ? d.isActive : typeof d.is_active === "boolean" ? d.is_active : true,
     createdAt: d.createdAt || d.created_at,

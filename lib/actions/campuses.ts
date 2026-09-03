@@ -96,12 +96,17 @@ async function auditCampus(
 
 export async function getCampuses() {
   const db = await getDb();
-  const rows = await db
+  return db.select().from(campuses).orderBy(desc(campuses.city));
+}
+
+/** Active campuses for public /campuses — image_url + gallery_urls from D1. */
+export async function getPublicCampuses() {
+  const db = await getDb();
+  return db
     .select()
     .from(campuses)
+    .where(eq(campuses.isActive, true))
     .orderBy(desc(campuses.city));
-
-  return rows;
 }
 
 export async function createCampusAction(data: unknown): Promise<CampusActionResult> {

@@ -132,11 +132,11 @@ export default function Navbar() {
             : "py-2 sm:py-2.5 bg-white/95 backdrop-blur-md shadow-md border-b border-slate-200"
         }`}
       >
-        <div className="max-w-[1360px] mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 flex items-center gap-2 sm:gap-3 lg:gap-4 min-h-[44px]">
-          {/* Logo — compact on mobile, no overflow */}
+        <div className="max-w-[1360px] mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-3 lg:gap-4 min-h-[44px]">
+          {/* Logo — left column, balanced against right actions */}
           <Link
             href="/"
-            className="flex items-center gap-2 sm:gap-3 group shrink-0 min-w-0"
+            className="flex items-center gap-2 sm:gap-3 group shrink-0 min-w-0 col-start-1 justify-self-start"
           >
             <div className="relative h-9 w-9 sm:h-10 sm:w-10 md:h-11 md:w-11 shrink-0 transition-transform duration-300 group-hover:scale-105 rounded-full overflow-hidden bg-white shadow-sm ring-2 ring-[#FFC700]/80">
               <Image
@@ -169,13 +169,10 @@ export default function Navbar() {
             </div>
           </Link>
 
-          {/* Spacer — pushes nav to center, actions to right */}
-          <div className="flex-1 hidden lg:block" aria-hidden />
-
-          {/* Desktop Navigation — compact pill, grouped */}
+          {/* Desktop Navigation — truly centered in viewport */}
           <nav
             aria-label="Primary"
-            className={`hidden lg:flex items-center gap-1 p-1 rounded-full transition-all duration-300 shrink-0 ${
+            className={`hidden lg:flex items-center gap-1 p-1 rounded-full transition-all duration-300 shrink-0 col-start-2 justify-self-center ${
               isTransparent
                 ? "bg-white/10 backdrop-blur-md border border-white/20"
                 : "bg-slate-100/90 border border-slate-200"
@@ -271,9 +268,9 @@ export default function Navbar() {
             </div>
           </nav>
 
-          {/* Desktop actions — hidden on mobile, moved to drawer */}
-          <div className="hidden lg:flex items-center gap-2.5 shrink-0 ml-4">
-            <LanguageToggle />
+          {/* Desktop actions — right column mirrors logo width */}
+          <div className="hidden lg:flex items-center gap-2.5 shrink-0 col-start-3 justify-self-end">
+            <LanguageToggle variant={isTransparent ? "transparent" : "default"} />
             <Link
               href="/admission"
               className="inline-flex items-center justify-center gap-1.5 min-h-10 px-5 py-2.5 rounded-full text-xs font-extrabold tracking-wider uppercase transition-all duration-200 bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] shadow-md hover:shadow-lg active:scale-95 whitespace-nowrap border border-[#FFC700] shrink-0 touch-manipulation"
@@ -285,8 +282,8 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* Mobile hamburger — only visible below lg */}
-          <div className="flex items-center lg:hidden shrink-0 ml-auto">
+          {/* Mobile hamburger — right column on small screens */}
+          <div className="flex items-center lg:hidden shrink-0 col-start-3 justify-self-end row-start-1">
             <button
               id="menu-toggle"
               onClick={() => setMobileOpen(true)}

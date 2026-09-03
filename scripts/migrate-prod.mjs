@@ -3,9 +3,6 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const persistTo = process.env.LOCALAPPDATA
-  ? join(process.env.LOCALAPPDATA, "hinthar-dev", "wrangler-state")
-  : join(root, ".wrangler", "state");
 const wrangler = join(root, "node_modules", "wrangler", "bin", "wrangler.js");
 const node = process.execPath;
 
@@ -18,17 +15,16 @@ function run(label, args) {
   }
 }
 
-run("db:migrate:local", [
+run("db:migrate:prod", [
   wrangler,
   "d1",
   "migrations",
   "apply",
   "hinthar-db",
-  "--local",
-  "--persist-to",
-  persistTo,
+  "--remote",
 ]);
 
 run("ensure-campus-gallery-column", [
   join(root, "scripts", "ensure-campus-gallery-column.mjs"),
+  "--remote",
 ]);

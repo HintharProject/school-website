@@ -2,14 +2,17 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "../components/Navbar";
 import FooterSection from "../components/sections/FooterSection";
 import ChatbotWidget from "../components/ChatbotWidget";
+import CampusGalleryModal from "../components/CampusGalleryModal";
 import { CampusRecord, mapCampusRecord } from "../admin/adminStore";
-import { getCampuses } from "@/lib/actions/campuses";
+import { getPublicCampuses } from "@/lib/actions/campuses";
 import { useLocale } from "@/lib/i18n/useT";
-import ImageCarousel from "../components/ImageCarousel";
+import { isR2AssetUrl } from "@/lib/utils/r2Image";
+import { resolveCampusImages } from "@/lib/campuses/images";
 
 const getMapUrl = (campus: CampusRecord) =>
   campus.mapUrl ||
@@ -25,15 +28,6 @@ function loc(campus: CampusRecord, locale: string, field: "name" | "tagline" | "
   return campus[field] as string;
 }
 
-// Fallback for campuses that were saved with missing local files (e.g. /images/specialisations/*, /images/heroImg.png)
-// R2 assets and data: URLs are preserved; anything else pointing to a non-existent public file falls back to g2.
-function safeCampusImage(url: string | undefined): string {
-  if (!url) return "/images/g2.jpg";
-  if (url.startsWith("/api/assets/") || url.startsWith("data:")) return url;
-  if (url.includes("specialisations") || url.includes("heroImg")) return "/images/g2.jpg";
-  return url;
-}
-
 export default function CampusesView({
   initialData,
 }: {
@@ -45,6 +39,7 @@ export default function CampusesView({
   );
   const [selectedCity, setSelectedCity] = useState<"All" | "Yangon" | "Mawlamyine">("All");
   const [activeCampusModal, setActiveCampusModal] = useState<CampusRecord | null>(null);
+  const [galleryState, setGalleryState] = useState<CampusRecord | null>(null);
   const [isLoading, setIsLoading] = useState(!initialData);
 
   useEffect(() => {
@@ -53,7 +48,7 @@ export default function CampusesView({
     async function loadCampuses() {
       try {
         setIsLoading(true);
-        const data = await getCampuses();
+        const data = await getPublicCampuses();
         if (data && data.length > 0) {
           setCampuses(data.map(mapCampusRecord));
         }
@@ -143,7 +138,13 @@ export default function CampusesView({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <AnimatePresence mode="popLayout">
-              {filteredCampuses.map((campus) => (
+              {filteredCampuses.map((campus) => {
+                const campusImages = resolveCampusImages(campus);
+                const showcaseImage = campusImages[0];
+                const hasGallery = campusImages.length > 1;
+                const campusName = loc(campus, locale, "name");
+
+                return (
                 <motion.div
                   key={campus.id}
                   layout
@@ -153,26 +154,86 @@ export default function CampusesView({
                   transition={{ duration: 0.3 }}
                   className="bg-white rounded-3xl overflow-hidden border border-slate-200/80 shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col group"
                 >
-                  {/* Campus Header Image — bypass optimizer for R2 assets (prevents 404 via _next/image) */}
-                  <div className="relative h-60 w-full overflow-hidden bg-slate-900">
-                    <ImageCarousel
-                      images={[safeCampusImage(campus.imageUrl), ...(campus.galleryUrls || []).map(safeCampusImage)]}
-                      alt={loc(campus, locale, "name")}
-                      className="h-full w-full opacity-90"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#09234B] via-[#09234B]/40 to-transparent" />
+                  {/* Showcase photo — single hero image, gallery opens in modal */}
+                  <div className="relative h-72 md:h-80 w-full overflow-hidden bg-slate-100 group/image">
+                    <button
+                      type="button"
+                      onClick={() => setGalleryState(campus)}
+                      className="absolute inset-0 z-0 cursor-pointer"
+                      aria-label={
+                        hasGallery
+                          ? `View ${campusName} photo gallery (${campusImages.length} photos)`
+                          : `View ${campusName} photo`
+                      }
+                    >
+                      <Image
+                        src={showcaseImage}
+                        alt={campusName}
+                        fill
+                        unoptimized={isR2AssetUrl(showcaseImage)}
+                        className="object-cover transition-transform duration-700 group-hover/image:scale-[1.03]"
+                        sizes="(max-width: 768px) 100vw, 50vw"
+                      />
+                    </button>
+
+                    {/* Light bottom gradient — keeps photo visible while anchoring text */}
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-[#09234B]/95 via-[#09234B]/35 to-transparent" />
 
                     {/* City Badge */}
-                    <div className="absolute top-4 left-4 flex gap-2">
+                    <div className="pointer-events-none absolute top-4 left-4 z-10">
                       <span className="px-3.5 py-1 rounded-full bg-[#FFC700] text-[#09234B] text-xs font-black uppercase tracking-wider shadow-md">
                         {campus.city}
                       </span>
                     </div>
 
+                    {/* Gallery CTA — button modal works on touch + desktop (better than hover-only) */}
+                    {hasGallery && (
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setGalleryState(campus);
+                        }}
+                        className="absolute top-4 right-4 z-10 flex items-center gap-1.5 rounded-full bg-white/95 px-3.5 py-2 text-[11px] font-black uppercase tracking-wider text-[#0E3B7D] shadow-lg backdrop-blur-sm transition-all hover:bg-white hover:scale-105"
+                      >
+                        <span aria-hidden="true" className="material-symbols-outlined text-base">
+                          photo_library
+                        </span>
+                        <span>Gallery · {campusImages.length}</span>
+                      </button>
+                    )}
+
+                    {/* Mini preview stack — hints at more photos */}
+                    {hasGallery && (
+                      <div className="pointer-events-none absolute bottom-20 right-5 z-10 hidden sm:flex items-center">
+                        {campusImages.slice(1, 4).map((image, index) => (
+                          <div
+                            key={`${image}-preview-${index}`}
+                            className="relative h-10 w-14 overflow-hidden rounded-lg border-2 border-white shadow-md"
+                            style={{ marginLeft: index > 0 ? "-0.75rem" : 0, zIndex: 3 - index }}
+                          >
+                            <Image
+                              src={image}
+                              alt=""
+                              fill
+                              unoptimized={isR2AssetUrl(image)}
+                              className="object-cover"
+                              sizes="56px"
+                            />
+                          </div>
+                        ))}
+                        {campusImages.length > 4 && (
+                          <span className="ml-2 rounded-full bg-black/55 px-2 py-1 text-[10px] font-black text-white backdrop-blur-sm">
+                            +{campusImages.length - 4}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
                     {/* Name & Tagline Overlay */}
-                    <div className="absolute bottom-4 left-5 right-5 text-white">
+                    <div className="pointer-events-none absolute bottom-4 left-5 right-5 z-10 text-white">
                       <h2 className="text-2xl font-black tracking-tight drop-shadow-md">
-                        {loc(campus, locale, "name")}
+                        {campusName}
                       </h2>
                       <p className="text-xs sm:text-sm text-[#FFC700] font-semibold line-clamp-1">
                         {loc(campus, locale, "tagline")}
@@ -241,10 +302,22 @@ export default function CampusesView({
                     </div>
                   </div>
                 </motion.div>
-              ))}
+              );
+              })}
             </AnimatePresence>
           </div>
         </div>
+
+        {/* Gallery lightbox */}
+        {galleryState && (
+          <CampusGalleryModal
+            isOpen
+            images={resolveCampusImages(galleryState)}
+            campusName={loc(galleryState, locale, "name")}
+            city={galleryState.city}
+            onClose={() => setGalleryState(null)}
+          />
+        )}
 
         {/* Modal: Full Campus Facilities */}
         {activeCampusModal && (

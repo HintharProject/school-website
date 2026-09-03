@@ -3,7 +3,7 @@
 -- ==============================================================================
 
 -- 1. CAMPUSES SEED
-INSERT INTO `campuses` (`id`, `name`, `city`, `tagline`, `address`, `phone`, `email`, `grades_served`, `image_url`, `map_url`, `is_active`)
+INSERT INTO `campuses` (`id`, `name`, `city`, `tagline`, `address`, `phone`, `email`, `grades_served`, `image_url`, `gallery_urls`, `map_url`, `is_active`)
 VALUES
   (
     'ywarma-campus',
@@ -15,6 +15,7 @@ VALUES
     'ywarma.admissions@hinthar.education',
     'Year 7–9 · Pearson IGCSE · Pearson IAL',
     '/images/g2.jpg',
+    '[]',
     'https://www.google.com/maps/search/?api=1&query=Ywar+Ma+Kyaung+Lane,+Hlaing+Township,+Yangon,+Myanmar',
     1
   ),
@@ -28,6 +29,7 @@ VALUES
     'shwepadauk@hinthar.education',
     'Pearson IGCSE & Pearson IAL (STEM Specialized)',
     '/images/engineering.avif',
+    '[]',
     'https://www.google.com/maps/search/?api=1&query=Shwe+Padauk+Road,+Yangon,+Myanmar',
     1
   ),
@@ -41,6 +43,7 @@ VALUES
     'shweponenyet@hinthar.education',
     'Lower Secondary (Year 7–9) & Foundation Arts',
     '/images/g8.jpg',
+    '[]',
     'https://www.google.com/maps/search/?api=1&query=Shwe+Pone+Nyet+Street,+Yangon,+Myanmar',
     1
   ),
@@ -54,6 +57,7 @@ VALUES
     'mawlamyine@hinthar.education',
     'Year 7–9 · Pearson IGCSE · Pearson IAL',
     '/images/g7.jpg',
+    '[]',
     'https://www.google.com/maps/search/?api=1&query=Strand+Road,+Mawlamyine,+Mon+State,+Myanmar',
     1
   )

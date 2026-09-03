@@ -44,17 +44,15 @@ export default function HeroSection({
           priority
           quality={95}
         />
-        {/* Balanced cinematic overlays to showcase graduation.webp vividly */}
-        <div className="absolute inset-0 bg-[#06152B]/55" />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#09234B]/85 via-[#0A1F42]/40 to-[#06152B]/95" />
-        {/* Center vignette keeps headline/CTAs readable over the photo */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(6,21,43,0.30)_0%,rgba(6,21,43,0.78)_100%)]" />
-        {/* Subtle warm gold ambient glow */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[450px] h-[450px] bg-[#FFC700]/15 rounded-full blur-[130px] pointer-events-none" />
+        {/* Lighter overlays — graduation photo stays visible, text remains readable */}
+        <div className="absolute inset-0 bg-[#06152B]/40" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#09234B]/75 via-transparent to-[#06152B]/90" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_45%,rgba(6,21,43,0.15)_0%,rgba(6,21,43,0.65)_100%)]" />
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[520px] h-[520px] bg-[#FFC700]/10 rounded-full blur-[140px] pointer-events-none" />
       </div>
 
       {/* ─── Hero Main Content Area ───────────────────────────── */}
-      <div className="relative z-10 w-full max-w-[1080px] mx-auto px-6 md:px-8 pt-28 sm:pt-32 lg:pt-36 pb-10 lg:pb-14 my-auto flex flex-col items-center justify-center text-center">
+      <div className="relative z-10 w-full max-w-[1080px] mx-auto px-6 md:px-8 pt-28 sm:pt-32 lg:pt-[8.5rem] pb-10 lg:pb-14 my-auto flex flex-col items-center justify-center text-center">
 
         {/* ─── Centered Hero Story ─── */}
         <motion.div
@@ -125,20 +123,23 @@ export default function HeroSection({
               </Link>
             </motion.div>
 
-            {/* Quick Pillars */}
+            {/* Key stats — glass cards for clearer hierarchy */}
             <motion.div
               variants={itemVariants}
-              className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full max-w-4xl mx-auto pt-6 border-t border-white/15"
+              className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 w-full max-w-4xl mx-auto pt-6"
             >
               {highlights.map((stat, i) => (
-                <div key={i} className="flex flex-col items-center text-center">
+                <div
+                  key={i}
+                  className="flex flex-col items-center text-center rounded-2xl border border-white/15 bg-white/8 px-3 py-4 backdrop-blur-md transition-colors hover:bg-white/12"
+                >
                   <span className="text-xl sm:text-2xl font-black text-white tracking-tight">
                     {stat.value}
                   </span>
-                  <span className="text-[11px] font-bold text-[#FFC700] uppercase tracking-wider mt-0.5">
+                  <span className="text-[10px] sm:text-[11px] font-bold text-[#FFC700] uppercase tracking-wider mt-1">
                     {stat.label}
                   </span>
-                  <span className="text-[10px] text-slate-300 font-light">
+                  <span className="text-[9px] sm:text-[10px] text-slate-300/90 font-light mt-0.5 leading-snug">
                     {stat.sub}
                   </span>
                 </div>

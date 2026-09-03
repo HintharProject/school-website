@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import CampusesView from "./CampusesView";
-import { getCampuses } from "@/lib/actions/campuses";
+import { getPublicCampuses } from "@/lib/actions/campuses";
 
 export const dynamic = "force-dynamic";
 
@@ -11,9 +11,9 @@ export const metadata: Metadata = {
 };
 
 export default async function CampusesPage() {
-  let initialData: Awaited<ReturnType<typeof getCampuses>> = [];
+  let initialData: Awaited<ReturnType<typeof getPublicCampuses>> = [];
   try {
-    initialData = await getCampuses();
+    initialData = await getPublicCampuses();
   } catch (err) {
     console.warn("Campuses SSR fetch note:", err);
   }
