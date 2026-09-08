@@ -1,11 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import Navbar from "../components/Navbar";
 import FooterSection from "../components/sections/FooterSection";
 import { submitPublicAdmissionAction } from "@/lib/actions/admissions";
 import { getSubjectCatalog, getAdmissionOptions, type SubjectEntry, type AdmissionOptions } from "@/lib/actions/siteContent";
+import { getPublicPrograms } from "@/lib/actions/academicCatalog";
+import type { CatalogProgram } from "@/lib/academic/catalog";
 import { DEFAULT_SUBJECT_CATALOG, DEFAULT_ADMISSION_OPTIONS } from "@/lib/content/defaults";
 import {
   FINISHED_GRADE_OPTIONS,
@@ -15,6 +18,8 @@ import {
   type ProgramLevel,
 } from "@/lib/admission/gradeMapping";
 import { portalUrl } from "@/lib/routes/public";
+import { useLocale, useT } from "@/lib/i18n/useT";
+import { locField } from "@/lib/i18n/loc";
 
 type Step = 1 | 2 | 3 | 4 | 5;
 type AdmissionDocument = {
@@ -24,6 +29,9 @@ type AdmissionDocument = {
 };
 
 export default function AdmissionForm() {
+  const t = useT();
+  const locale = useLocale();
+  const searchParams = useSearchParams();
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [uploadedDocuments, setUploadedDocuments] = useState<AdmissionDocument[]>([]);
   const [uploadingType, setUploadingType] = useState<AdmissionDocument["type"] | null>(null);
@@ -36,6 +44,7 @@ export default function AdmissionForm() {
     DEFAULT_SUBJECT_CATALOG.filter((s) => s.isActive)
   );
   const [admissionOptions, setAdmissionOptions] = useState<AdmissionOptions>(DEFAULT_ADMISSION_OPTIONS);
+  const [programs, setPrograms] = useState<CatalogProgram[]>([]);
 
   const [formData, setFormData] = useState({
     // Step 1: Student Details
@@ -45,14 +54,15 @@ export default function AdmissionForm() {
     nationality: "Myanmar",
     currentSchool: "",
     programLevel: "igcse",
+    targetProgramId: "",
     finishedGrade: "Year 9 (completed)",
     preferredRegion: "Yangon",
 
     // Step 2: Academic Stream & Subjects
     academicStream: DEFAULT_ADMISSION_OPTIONS.academicStreams[0],
-    selectedSubjects: ["Pure Mathematics", "Physics", "Chemistry", "English Language"],
+    selectedSubjects: [] as string[],
     intendedStartTerm: "August 2026",
-    studyMode: "Full-Time On-Campus",
+    studyMode: DEFAULT_ADMISSION_OPTIONS.studyModes[0],
 
     // Step 3: Parent/Guardian
     parentName: "",
@@ -69,41 +79,79 @@ export default function AdmissionForm() {
 
   useEffect(() => {
     let mounted = true;
-    getSubjectCatalog()
-      .then((catalog) => {
-        if (mounted && Array.isArray(catalog) && catalog.length > 0) {
-          const active = catalog.filter((s) => s.isActive);
-          if (active.length > 0) {
-            setAvailableSubjects(active);
-            const activeNames = new Set(active.map((subject) => subject.name));
-            setFormData((current) => ({
-              ...current,
-              selectedSubjects: current.selectedSubjects.filter((subject) => activeNames.has(subject)),
-            }));
-          }
-        }
-      })
-      .catch(() => {});
-    getAdmissionOptions()
-      .then((opts) => {
-        if (mounted && opts) {
-          setAdmissionOptions(opts);
-          setFormData((current) => ({
+    Promise.all([getSubjectCatalog(), getAdmissionOptions(), getPublicPrograms()])
+      .then(([catalog, opts, programList]) => {
+        if (!mounted) return;
+
+        const active = catalog.filter((s) => s.isActive);
+        if (active.length > 0) setAvailableSubjects(active);
+        if (opts) setAdmissionOptions(opts);
+        if (Array.isArray(programList)) setPrograms(programList);
+
+        const programParam = searchParams.get("program");
+        const regionParam = searchParams.get("region");
+        const studyModeParam = searchParams.get("studyMode");
+        const matchedProgram = programList.find((p) => p.id === programParam);
+
+        setFormData((current) => {
+          const next = {
             ...current,
-            intendedStartTerm: opts.intendedStartTerms.includes(current.intendedStartTerm)
+            intendedStartTerm: opts?.intendedStartTerms.includes(current.intendedStartTerm)
               ? current.intendedStartTerm
-              : opts.intendedStartTerms[0],
-            academicStream: opts.academicStreams.includes(current.academicStream)
+              : opts?.intendedStartTerms[0] ?? current.intendedStartTerm,
+            academicStream: opts?.academicStreams.includes(current.academicStream)
               ? current.academicStream
-              : opts.academicStreams[0],
-          }));
-        }
+              : opts?.academicStreams[0] ?? current.academicStream,
+            selectedSubjects: [] as string[],
+          };
+
+          if (matchedProgram) {
+            next.targetProgramId = matchedProgram.id;
+            if (matchedProgram.programLevel) {
+              next.programLevel = matchedProgram.programLevel;
+            }
+            if (matchedProgram.studyMode) next.studyMode = matchedProgram.studyMode;
+            else if (studyModeParam && opts?.studyModes.includes(studyModeParam)) {
+              next.studyMode = studyModeParam;
+            }
+            if (matchedProgram.campus === "yangon") next.preferredRegion = "Yangon";
+            else if (matchedProgram.campus === "mawlamyine") next.preferredRegion = "Mawlamyine";
+          } else if (studyModeParam && opts?.studyModes.includes(studyModeParam)) {
+            next.studyMode = studyModeParam;
+          }
+
+          if (regionParam === "Yangon" || regionParam === "Mawlamyine") {
+            next.preferredRegion = regionParam;
+          }
+
+          return next;
+        });
       })
       .catch(() => {});
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [searchParams]);
+
+  const selectedProgram = useMemo(
+    () => programs.find((p) => p.id === formData.targetProgramId) ?? null,
+    [programs, formData.targetProgramId]
+  );
+
+  const programLevel = (selectedProgram?.programLevel ?? formData.programLevel) as ProgramLevel;
+  const suggestedEntryYear = suggestEntryYear(formData.finishedGrade, programLevel);
+
+  const filteredSubjects = useMemo(() => {
+    if (selectedProgram && selectedProgram.subjects.length > 0) {
+      const linkedNames = new Set(selectedProgram.subjects.map((s) => s.nameEn));
+      return availableSubjects.filter((subject) => linkedNames.has(subject.name));
+    }
+    return availableSubjects.filter((subject) =>
+      programLevel === "lower_secondary"
+        ? subject.level === "Lower Secondary"
+        : subject.level === "Both" || subject.level === (programLevel === "igcse" ? "IGCSE" : "IAL")
+    );
+  }, [availableSubjects, selectedProgram, programLevel]);
 
   const handleDocumentUpload = async (
     type: AdmissionDocument["type"],
@@ -160,9 +208,11 @@ export default function AdmissionForm() {
     setIsSubmitting(true);
     setSubmitError(null);
 
-    const programLevel = formData.programLevel as ProgramLevel;
+    const programLevel = (selectedProgram?.programLevel ?? formData.programLevel) as ProgramLevel;
     const suggestedEntryYear = suggestEntryYear(formData.finishedGrade, programLevel);
-    const gradeLabel = formatStoredGrade(programLevel, suggestedEntryYear);
+    const gradeLabel = selectedProgram
+      ? selectedProgram.nameEn
+      : formatStoredGrade(programLevel, suggestedEntryYear);
 
     try {
       const result = await submitPublicAdmissionAction({
@@ -171,7 +221,8 @@ export default function AdmissionForm() {
         gender: formData.gender as "Male" | "Female" | "Other",
         nationality: formData.nationality,
         grade: gradeLabel,
-        programLevel,
+        programLevel: (selectedProgram?.programLevel as ProgramLevel | undefined) ?? programLevel,
+        targetProgramId: formData.targetProgramId || null,
         finishedGrade: formData.finishedGrade,
         suggestedEntryYear: `Year ${suggestedEntryYear}`,
         preferredRegion: formData.preferredRegion,
@@ -236,14 +287,6 @@ export default function AdmissionForm() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const programLevel = formData.programLevel as ProgramLevel;
-  const suggestedEntryYear = suggestEntryYear(formData.finishedGrade, programLevel);
-  const filteredSubjects = availableSubjects.filter((subject) =>
-    programLevel === "lower_secondary"
-      ? subject.level === "Lower Secondary"
-      : subject.level === "Both" || subject.level === (programLevel === "igcse" ? "IGCSE" : "IAL")
-  );
-
   return (
     <div className="min-h-screen flex flex-col pt-20 bg-slate-50">
       <Navbar />
@@ -261,7 +304,7 @@ export default function AdmissionForm() {
             Apply to <span className="text-[#0E3B7D]">Hinthar International</span>
           </h1>
           <p className="text-sm md:text-base text-slate-600 font-normal max-w-lg mx-auto">
-            Take the first step toward world-class Pearson Edexcel education. Complete the application below.
+            {t("admission.pageSubtitle")}
           </p>
         </div>
 
@@ -276,10 +319,10 @@ export default function AdmissionForm() {
               />
 
               {[
-                { step: 1, label: "Student", icon: "person" },
-                { step: 2, label: "Curriculum", icon: "menu_book" },
-                { step: 3, label: "Guardian", icon: "family_restroom" },
-                { step: 4, label: "Documents", icon: "upload_file" },
+                { step: 1, label: t("admission.stepStudent"), icon: "person" },
+                { step: 2, label: t("admission.stepCurriculum"), icon: "menu_book" },
+                { step: 3, label: t("admission.stepGuardian"), icon: "family_restroom" },
+                { step: 4, label: t("admission.stepDocuments"), icon: "upload_file" },
               ].map((item) => (
                 <div key={item.step} className="flex flex-col items-center relative z-10">
                   <div
@@ -319,7 +362,7 @@ export default function AdmissionForm() {
             <div className="space-y-6">
               <div className="border-b border-slate-100 pb-4">
                 <h2 className="text-xl font-bold text-[#09234B]">
-                  Step 1: Student Information
+                  Step 1: {t("admission.stepStudent")}
                 </h2>
                 <p className="text-xs text-slate-500 mt-1 font-normal">
                   Enter student identity details and the target educational tier.
@@ -372,24 +415,58 @@ export default function AdmissionForm() {
                   </select>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label htmlFor="adm-program-level" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label htmlFor="adm-target-program" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                     Target Academic Program *
                   </label>
-                  <select
-                    id="adm-program-level"
-                    value={formData.programLevel}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      programLevel: e.target.value,
-                      selectedSubjects: [],
-                    })}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0E3B7D] outline-none transition-all text-sm text-slate-900 font-semibold"
-                  >
-                    <option value="lower_secondary">Lower Secondary (Year 7–9 / Ages 11–14)</option>
-                    <option value="igcse">Pearson Edexcel IGCSE (Year 10–11 / Ages 14–16)</option>
-                    <option value="ial">Pearson Edexcel IAL (Year 12–13 / Ages 16–18)</option>
-                  </select>
+                  {programs.length > 0 ? (
+                    <select
+                      id="adm-target-program"
+                      required
+                      value={formData.targetProgramId}
+                      onChange={(e) => {
+                        const nextId = e.target.value;
+                        const nextProgram = programs.find((p) => p.id === nextId);
+                        setFormData({
+                          ...formData,
+                          targetProgramId: nextId,
+                          programLevel: (nextProgram?.programLevel as ProgramLevel) ?? formData.programLevel,
+                          studyMode: nextProgram?.studyMode ?? formData.studyMode,
+                          preferredRegion:
+                            nextProgram?.campus === "yangon"
+                              ? "Yangon"
+                              : nextProgram?.campus === "mawlamyine"
+                                ? "Mawlamyine"
+                                : formData.preferredRegion,
+                          selectedSubjects: [],
+                        });
+                      }}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0E3B7D] outline-none transition-all text-sm text-slate-900 font-semibold"
+                    >
+                      <option value="" disabled>Select a program pathway</option>
+                      {programs.map((p) => (
+                        <option key={p.id} value={p.id}>{locField(locale, p.nameEn, p.nameMy)}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <select
+                      id="adm-program-level"
+                      value={formData.programLevel}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        programLevel: e.target.value,
+                        selectedSubjects: [],
+                      })}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0E3B7D] outline-none transition-all text-sm text-slate-900 font-semibold"
+                    >
+                      <option value="lower_secondary">Lower Secondary (Year 7–9 / Ages 11–14)</option>
+                      <option value="igcse">Pearson Edexcel IGCSE (Year 10–11 / Ages 14–16)</option>
+                      <option value="ial">Pearson Edexcel IAL (Year 12–13 / Ages 16–18)</option>
+                    </select>
+                  )}
+                  {selectedProgram ? (
+                    <p className="text-[11px] text-slate-500 mt-1">{locField(locale, selectedProgram.nameEn, selectedProgram.nameMy)}</p>
+                  ) : null}
                 </div>
 
                 <div className="space-y-1.5">
@@ -460,7 +537,7 @@ export default function AdmissionForm() {
             <div className="space-y-6">
               <div className="border-b border-slate-100 pb-4">
                 <h2 className="text-xl font-bold text-[#09234B]">
-                  Step 2: Academic Stream &amp; Subjects
+                  Step 2: {t("admission.stepCurriculum")}
                 </h2>
                 <p className="text-xs text-slate-500 mt-1 font-normal">
                   Select your intended specialization track and subject preferences.
@@ -501,8 +578,14 @@ export default function AdmissionForm() {
                   Select Target Electives / Subjects
                 </span>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5" role="group" aria-label="Select Target Electives / Subjects">
+                  {filteredSubjects.length === 0 ? (
+                    <p className="col-span-full text-xs text-slate-500 py-4">
+                      No subjects are linked to this program yet. Ask admin to link electives in the Academic Catalog, or continue and note preferences in Step 4.
+                    </p>
+                  ) : null}
                   {filteredSubjects.map((entry) => {
                     const subj = entry.name;
+                    const displayName = locField(locale, entry.name, entry.nameMy);
                     const isSelected = formData.selectedSubjects.includes(subj);
                     return (
                       <button
@@ -519,7 +602,7 @@ export default function AdmissionForm() {
                         <span aria-hidden="true" className="material-symbols-outlined text-base text-[#0E3B7D]">
                           {isSelected ? "check_box" : "check_box_outline_blank"}
                         </span>
-                        <span className="truncate">{subj}</span>
+                        <span className="truncate">{displayName}</span>
                       </button>
                     );
                   })}
@@ -566,7 +649,7 @@ export default function AdmissionForm() {
                   onClick={nextStep}
                   className="inline-flex items-center gap-2 px-6 py-3 bg-[#0E3B7D] hover:bg-[#164E9A] text-white rounded-xl text-xs font-extrabold uppercase tracking-wider shadow-md hover:scale-105 active:scale-95 transition-all"
                 >
-                  <span>Continue to Guardian Info</span>
+                  <span>{t("admission.next")}</span>
                   <span aria-hidden="true" className="material-symbols-outlined text-sm font-bold">arrow_forward</span>
                 </button>
               </div>
@@ -578,7 +661,7 @@ export default function AdmissionForm() {
             <div className="space-y-6">
               <div className="border-b border-slate-100 pb-4">
                 <h2 className="text-xl font-bold text-[#09234B]">
-                  Step 3: Parent / Guardian Details
+                  Step 3: {t("admission.stepGuardian")}
                 </h2>
                 <p className="text-xs text-slate-500 mt-1 font-normal">
                   Provide primary contact details for academic notices, progress reports, and consultations.
@@ -694,7 +777,7 @@ export default function AdmissionForm() {
               )}
               <div className="border-b border-slate-100 pb-4">
                 <h2 className="text-xl font-bold text-[#09234B]">
-                  Step 4: Supporting Documents &amp; Review
+                  Step 4: {t("admission.stepDocuments")}
                 </h2>
                 <p className="text-xs text-slate-500 mt-1 font-normal">
                   Upload the three required documents. PDF, JPG, PNG, or WebP files up to 8 MB are accepted.
@@ -751,7 +834,7 @@ export default function AdmissionForm() {
                 </p>
                 <div className="grid grid-cols-2 gap-2 text-slate-700">
                   <div><strong>Student:</strong> {formData.studentName}</div>
-                  <div><strong>Program:</strong> {PROGRAM_LEVELS[programLevel].label}</div>
+                  <div><strong>Program:</strong> {selectedProgram?.nameEn ?? PROGRAM_LEVELS[programLevel].label}</div>
                   <div><strong>Suggested entry:</strong> Year {suggestedEntryYear}</div>
                   <div><strong>Region:</strong> {formData.preferredRegion}</div>
                   <div><strong>Parent:</strong> {formData.parentName}</div>
@@ -780,7 +863,7 @@ export default function AdmissionForm() {
                     </>
                   ) : (
                     <>
-                      <span>Submit Application</span>
+                      <span>{t("admission.submitApplication")}</span>
                       <span aria-hidden="true" className="material-symbols-outlined text-base font-bold">verified</span>
                     </>
                   )}

@@ -14,9 +14,12 @@ import ImageUploadPicker from "@/app/components/admin/ImageUploadPicker";
 interface PostRow {
   id: number;
   title: string;
+  titleMy: string | null;
   slug: string;
   excerpt: string | null;
+  excerptMy: string | null;
   body: string;
+  bodyMy: string | null;
   category: string;
   image: string | null;
   status: string;
@@ -26,8 +29,11 @@ interface PostRow {
 
 interface FormState {
   title: string;
+  titleMy: string;
   excerpt: string;
+  excerptMy: string;
   body: string;
+  bodyMy: string;
   category: string;
   image: string;
   status: "published" | "draft" | "archived";
@@ -35,8 +41,11 @@ interface FormState {
 
 const EMPTY_FORM: FormState = {
   title: "",
+  titleMy: "",
   excerpt: "",
+  excerptMy: "",
   body: "",
+  bodyMy: "",
   category: "Announcement",
   image: "",
   status: "published",
@@ -79,8 +88,11 @@ export default function AdminNewsPage() {
   const openEdit = (post: PostRow) => {
     setForm({
       title: post.title,
+      titleMy: post.titleMy || "",
       excerpt: post.excerpt || "",
+      excerptMy: post.excerptMy || "",
       body: post.body,
+      bodyMy: post.bodyMy || "",
       category: post.category,
       image: post.image || "",
       status: (post.status as FormState["status"]) || "published",
@@ -97,8 +109,11 @@ export default function AdminNewsPage() {
     try {
       const payload = {
         title: form.title,
+        titleMy: form.titleMy || null,
         excerpt: form.excerpt || null,
+        excerptMy: form.excerptMy || null,
         body: form.body,
+        bodyMy: form.bodyMy || null,
         category: form.category,
         image: form.image || null,
         status: form.status,
@@ -210,6 +225,17 @@ export default function AdminNewsPage() {
             </div>
 
             <div className="space-y-1">
+              <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">Title (Myanmar, optional)</label>
+              <input
+                type="text"
+                value={form.titleMy}
+                onChange={(e) => setForm({ ...form, titleMy: e.target.value })}
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+                placeholder="မြန်မာခေါင်းစဉ်"
+              />
+            </div>
+
+            <div className="space-y-1">
               <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
                 Excerpt (optional — auto-generated from body if blank)
               </label>
@@ -223,6 +249,16 @@ export default function AdminNewsPage() {
             </div>
 
             <div className="space-y-1">
+              <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">Excerpt (Myanmar, optional)</label>
+              <input
+                type="text"
+                value={form.excerptMy}
+                onChange={(e) => setForm({ ...form, excerptMy: e.target.value })}
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+              />
+            </div>
+
+            <div className="space-y-1">
               <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">Body</label>
               <textarea
                 required
@@ -231,6 +267,16 @@ export default function AdminNewsPage() {
                 onChange={(e) => setForm({ ...form, body: e.target.value })}
                 className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[#0E3B7D]"
                 placeholder="Write the announcement. Separate paragraphs with a blank line."
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">Body (Myanmar, optional)</label>
+              <textarea
+                rows={6}
+                value={form.bodyMy}
+                onChange={(e) => setForm({ ...form, bodyMy: e.target.value })}
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[#0E3B7D]"
               />
             </div>
 

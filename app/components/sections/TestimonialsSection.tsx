@@ -2,11 +2,14 @@
 
 import Image from "next/image";
 import { useT } from "@/lib/i18n/useT";
+import { useLocale } from "@/lib/i18n/useT";
+import { locField } from "@/lib/i18n/loc";
 import type { PublicTestimonial } from "@/lib/actions/testimonials";
 import { isR2AssetUrl } from "@/lib/utils/r2Image";
 
 export default function TestimonialsSection({ items }: { items: PublicTestimonial[] }) {
   const t = useT();
+  const locale = useLocale();
 
   if (!items.length) return null;
 
@@ -16,7 +19,7 @@ export default function TestimonialsSection({ items }: { items: PublicTestimonia
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 bg-[#E8F0FE] px-4 py-1.5 rounded-full mb-4 border border-[#0E3B7D]/20">
             <span aria-hidden="true" className="material-symbols-outlined text-[#0E3B7D] text-sm font-bold">forum</span>
-            <span className="text-xs font-extrabold text-[#0E3B7D] uppercase tracking-wider">Testimonials</span>
+            <span className="text-xs font-extrabold text-[#0E3B7D] uppercase tracking-wider">{t("home.testimonialsBadge")}</span>
           </div>
           <h2 className="text-3xl md:text-4xl font-black text-[#09234B] mb-3 tracking-tight">
             {t("home.testimonialsTitle")}
@@ -27,14 +30,17 @@ export default function TestimonialsSection({ items }: { items: PublicTestimonia
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {items.slice(0, 6).map((item) => (
+          {items.slice(0, 6).map((item) => {
+            const quote = locField(locale, item.quote, item.quoteMy);
+            const authorRole = locField(locale, item.authorRole ?? "", item.authorRoleMy);
+            return (
             <figure
               key={item.id}
               className="relative bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col"
             >
               <span aria-hidden="true" className="material-symbols-outlined text-[#FFC700] text-3xl mb-2">format_quote</span>
               <blockquote className="text-xs sm:text-sm text-slate-700 font-light leading-relaxed flex-1">
-                {item.quote}
+                {quote}
               </blockquote>
               {typeof item.rating === "number" && item.rating >= 1 && item.rating <= 5 && (
                 <div className="flex gap-0.5 pt-3" aria-label={`${item.rating} out of 5 stars`}>
@@ -55,13 +61,14 @@ export default function TestimonialsSection({ items }: { items: PublicTestimonia
                 </div>
                 <div>
                   <p className="text-xs font-black text-[#09234B]">{item.authorName}</p>
-                  {item.authorRole && (
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{item.authorRole}</p>
+                  {authorRole && (
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{authorRole}</p>
                   )}
                 </div>
               </figcaption>
             </figure>
-          ))}
+          );
+          })}
         </div>
       </div>
     </section>

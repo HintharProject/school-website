@@ -13,9 +13,13 @@ interface StaffRow {
   id: number;
   name: string;
   role: string;
+  roleMy: string | null;
   department: string;
+  departmentMy: string | null;
   qualifications: string | null;
+  qualificationsMy: string | null;
   bio: string | null;
+  bioMy: string | null;
   email: string | null;
   phone: string | null;
   image: string | null;
@@ -27,9 +31,13 @@ interface StaffRow {
 interface FormState {
   name: string;
   role: string;
+  roleMy: string;
   department: string;
+  departmentMy: string;
   qualifications: string;
+  qualificationsMy: string;
   bio: string;
+  bioMy: string;
   email: string;
   phone: string;
   image: string;
@@ -41,9 +49,13 @@ interface FormState {
 const EMPTY_FORM: FormState = {
   name: "",
   role: "",
+  roleMy: "",
   department: "General",
+  departmentMy: "",
   qualifications: "",
+  qualificationsMy: "",
   bio: "",
+  bioMy: "",
   email: "",
   phone: "",
   image: "",
@@ -96,9 +108,13 @@ export default function AdminStaffPage() {
     setForm({
       name: row.name,
       role: row.role,
+      roleMy: row.roleMy || "",
       department: row.department,
+      departmentMy: row.departmentMy || "",
       qualifications: row.qualifications || "",
+      qualificationsMy: row.qualificationsMy || "",
       bio: row.bio || "",
+      bioMy: row.bioMy || "",
       email: row.email || "",
       phone: row.phone || "",
       image: row.image || "",
@@ -202,6 +218,10 @@ export default function AdminStaffPage() {
                 <input type="text" required value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className={inputCls} placeholder="e.g. Principal, Physics Teacher" />
               </div>
               <div className="space-y-1">
+                <label className={labelCls}>Role / Title (Myanmar, optional)</label>
+                <input type="text" value={form.roleMy} onChange={(e) => setForm({ ...form, roleMy: e.target.value })} className={inputCls} />
+              </div>
+              <div className="space-y-1">
                 <label className={labelCls}>Department</label>
                 <select value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} className={inputCls}>
                   {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
@@ -224,13 +244,28 @@ export default function AdminStaffPage() {
             </div>
 
             <div className="space-y-1">
+              <label className={labelCls}>Department (Myanmar, optional)</label>
+              <input type="text" value={form.departmentMy} onChange={(e) => setForm({ ...form, departmentMy: e.target.value })} className={inputCls} />
+            </div>
+
+            <div className="space-y-1">
               <label className={labelCls}>Qualifications</label>
               <input type="text" value={form.qualifications} onChange={(e) => setForm({ ...form, qualifications: e.target.value })} className={inputCls} placeholder="e.g. PhD Physics, University of Yangon" />
             </div>
 
             <div className="space-y-1">
+              <label className={labelCls}>Qualifications (Myanmar, optional)</label>
+              <input type="text" value={form.qualificationsMy} onChange={(e) => setForm({ ...form, qualificationsMy: e.target.value })} className={inputCls} />
+            </div>
+
+            <div className="space-y-1">
               <label className={labelCls}>Short Bio (optional)</label>
               <textarea rows={3} value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} className={inputCls} />
+            </div>
+
+            <div className="space-y-1">
+              <label className={labelCls}>Short Bio (Myanmar, optional)</label>
+              <textarea rows={3} value={form.bioMy} onChange={(e) => setForm({ ...form, bioMy: e.target.value })} className={inputCls} />
             </div>
 
             <ImageUploadPicker

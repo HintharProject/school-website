@@ -5,7 +5,6 @@ import Image from "next/image";
 import Link from "next/link";
 import Navbar from "../components/Navbar";
 import FooterSection from "../components/sections/FooterSection";
-import ChatbotWidget from "../components/ChatbotWidget";
 import { getActivities } from "@/lib/actions/activities";
 import { isR2AssetUrl } from "@/lib/utils/r2Image";
 
@@ -345,7 +344,6 @@ export default function ActivitiesView({ initialData }: { initialData?: RawActiv
       </main>
 
       <FooterSection />
-      <ChatbotWidget />
     </div>
   );
 }

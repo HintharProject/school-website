@@ -6,14 +6,16 @@ import Link from "next/link";
 import { checkAdmissionStatusAction, AdmissionStatusView } from "@/lib/actions/admissions";
 import { portalUrl } from "@/lib/routes/public";
 
-const STATUS_STEPS = [
-  { key: "submitted", label: "Application Received", icon: "mark_email_read", desc: "Your application has been received." },
-  { key: "review", label: "Under Review", icon: "pending_actions", desc: "Admissions reviewing within 24–48h." },
-  { key: "assessment", label: "Placement Test", icon: "edit_note", desc: "Diagnostic assessment scheduling." },
-  { key: "decision", label: "Final Decision", icon: "verified", desc: "Enrollment confirmation." },
+import { useT } from "@/lib/i18n/useT";
+
+const STATUS_STEP_KEYS = [
+  { key: "submitted", labelKey: "portal.timelineSubmitted", descKey: "portal.timelineSubmittedDesc", icon: "mark_email_read" },
+  { key: "review", labelKey: "portal.timelineReview", descKey: "portal.timelineReviewDesc", icon: "pending_actions" },
+  { key: "assessment", labelKey: "portal.timelineAssessment", descKey: "portal.timelineAssessmentDesc", icon: "edit_note" },
+  { key: "decision", labelKey: "portal.timelineDecision", descKey: "portal.timelineDecisionDesc", icon: "verified" },
 ] as const;
 
-function stepState(app: AdmissionStatusView | null, step: (typeof STATUS_STEPS)[number]["key"]) {
+function stepState(app: AdmissionStatusView | null, step: (typeof STATUS_STEP_KEYS)[number]["key"]) {
   if (!app) return "idle" as const;
   switch (step) {
     case "submitted":
@@ -30,6 +32,7 @@ function stepState(app: AdmissionStatusView | null, step: (typeof STATUS_STEPS)[
 }
 
 export default function PortalClient() {
+  const t = useT();
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryId = searchParams.get("id") || searchParams.get("ref") || "";
@@ -58,7 +61,7 @@ export default function PortalClient() {
       });
 
       if (!result.success || !result.application) {
-        setErrorMessage(result.error || "No application found for that reference code and guardian email combination.");
+        setErrorMessage(result.error || t("portal.notFound"));
         // scroll to form to show error
         setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
       } else {
@@ -75,7 +78,7 @@ export default function PortalClient() {
         setTimeout(() => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
       }
     } catch {
-      setErrorMessage("Something went wrong while checking your status. Please try again.");
+      setErrorMessage(t("portal.errorGeneric"));
       setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
     } finally {
       setLoading(false);
@@ -112,7 +115,7 @@ export default function PortalClient() {
       >
         <div className="flex items-center gap-2 mb-1">
           <span aria-hidden="true" className="material-symbols-outlined text-[#0E3B7D]">search</span>
-          <h2 className="text-sm font-black text-[#09234B] uppercase tracking-wider">Check Status</h2>
+          <h2 className="text-sm font-black text-[#09234B] uppercase tracking-wider">{t("portal.checkStatus")}</h2>
           {(typeof window !== "undefined" && localStorage.getItem("portal:lastRef")) && (
             <span className="ml-auto text-[10px] text-slate-400">Last lookup remembered</span>
           )}
@@ -120,7 +123,7 @@ export default function PortalClient() {
 
         <div className="space-y-1">
           <label htmlFor="portal-ref" className="text-[11px] font-bold text-slate-700 uppercase tracking-wider pl-1">
-            Application Reference Code
+            {t("portal.referenceCode")}
           </label>
           <div className="relative">
             <span aria-hidden="true" className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-base">
@@ -140,7 +143,7 @@ export default function PortalClient() {
 
         <div className="space-y-1">
           <label htmlFor="portal-email" className="text-[11px] font-bold text-slate-700 uppercase tracking-wider pl-1">
-            Guardian Email (used during application)
+            {t("portal.guardianEmail")}
           </label>
           <div className="relative">
             <span aria-hidden="true" className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-base">
@@ -170,13 +173,12 @@ export default function PortalClient() {
           disabled={loading}
           className="w-full bg-[#0E3B7D] hover:bg-[#164E9A] text-white py-3 rounded-xl font-black uppercase tracking-wider shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 text-xs disabled:opacity-50 cursor-pointer"
         >
-          <span>{loading ? "Checking Status..." : "Check Application Status"}</span>
+          <span>{loading ? t("portal.checking") : t("portal.checkApplicationStatus")}</span>
           <span aria-hidden="true" className="material-symbols-outlined text-sm font-bold">search</span>
         </button>
 
         <p className="text-[11px] text-slate-400 text-center">
-          Lost your reference code? Contact the Admissions Office at{" "}
-          <a href="tel:+959894332200" className="text-[#0E3B7D] font-bold hover:underline">+95 9 894 332200</a> with the guardian&apos;s phone number.
+          {t("portal.lostReference")}
         </p>
       </form>
 
@@ -193,11 +195,11 @@ export default function PortalClient() {
                   </span>
                   <button onClick={copyRef} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white border border-slate-200 text-[11px] font-bold text-slate-600 hover:text-[#0E3B7D] hover:border-[#0E3B7D]/30 transition-colors cursor-pointer">
                     <span aria-hidden="true" className="material-symbols-outlined text-xs">{copied ? "check" : "content_copy"}</span>
-                    <span>{copied ? "Copied" : "Copy"}</span>
+                    <span>{copied ? t("portal.copied") : t("portal.copy")}</span>
                   </button>
                   <button onClick={() => window.print()} className="hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white border border-slate-200 text-[11px] font-bold text-slate-600 hover:text-[#0E3B7D] transition-colors cursor-pointer">
                     <span aria-hidden="true" className="material-symbols-outlined text-xs">print</span>
-                    <span>Print</span>
+                    <span>{t("portal.print")}</span>
                   </button>
                 </div>
                 <h2 className="text-xl font-black text-[#09234B] tracking-tight mt-2 truncate">
@@ -268,9 +270,9 @@ export default function PortalClient() {
           <div className="p-6 sm:p-8">
             {/* Desktop horizontal */}
             <div className="hidden sm:flex items-start justify-between gap-2">
-              {STATUS_STEPS.map((step, idx) => {
+              {STATUS_STEP_KEYS.map((step, idx) => {
                 const state = stepState(application, step.key);
-                const isLast = idx === STATUS_STEPS.length - 1;
+                const isLast = idx === STATUS_STEP_KEYS.length - 1;
                 return (
                   <div key={step.key} className="flex-1 flex flex-col items-center text-center relative">
                     {!isLast && (
@@ -293,8 +295,8 @@ export default function PortalClient() {
                         {state === "done" || state === "approved" ? "check" : state === "declined" ? "close" : step.icon}
                       </span>
                     </div>
-                    <p className={`mt-2 text-xs font-bold ${state === "idle" ? "text-slate-400" : "text-[#09234B]"}`}>{step.label}</p>
-                    <p className="text-[11px] text-slate-500 max-w-[150px]">{step.desc}</p>
+                    <p className={`mt-2 text-xs font-bold ${state === "idle" ? "text-slate-400" : "text-[#09234B]"}`}>{t(step.labelKey)}</p>
+                    <p className="text-[11px] text-slate-500 max-w-[150px]">{t(step.descKey)}</p>
                     {step.key === "assessment" && application.assessmentDate && (
                       <p className="text-[11px] font-semibold text-[#0E3B7D] mt-1">{application.assessmentDate}</p>
                     )}
@@ -305,9 +307,9 @@ export default function PortalClient() {
 
             {/* Mobile vertical */}
             <div className="sm:hidden space-y-5">
-              {STATUS_STEPS.map((step, idx) => {
+              {STATUS_STEP_KEYS.map((step, idx) => {
                 const state = stepState(application, step.key);
-                const isLast = idx === STATUS_STEPS.length - 1;
+                const isLast = idx === STATUS_STEP_KEYS.length - 1;
                 return (
                   <div key={step.key} className="flex gap-4">
                     <div className="flex flex-col items-center">
@@ -331,8 +333,8 @@ export default function PortalClient() {
                       {!isLast && <div className={`w-0.5 flex-1 min-h-[24px] ${state === "done" ? "bg-emerald-500" : "bg-slate-200"}`} />}
                     </div>
                     <div className="pb-1">
-                      <p className={`text-xs font-bold ${state === "idle" ? "text-slate-400" : "text-[#09234B]"}`}>{step.label}</p>
-                      <p className="text-[11px] text-slate-500">{step.desc}</p>
+                      <p className={`text-xs font-bold ${state === "idle" ? "text-slate-400" : "text-[#09234B]"}`}>{t(step.labelKey)}</p>
+                      <p className="text-[11px] text-slate-500">{t(step.descKey)}</p>
                       {step.key === "assessment" && application.assessmentDate && (
                         <p className="text-[11px] text-[#0E3B7D] font-semibold mt-1">{application.assessmentDate} — arrive 15m early</p>
                       )}

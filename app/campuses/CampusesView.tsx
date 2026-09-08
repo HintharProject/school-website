@@ -6,11 +6,10 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "../components/Navbar";
 import FooterSection from "../components/sections/FooterSection";
-import ChatbotWidget from "../components/ChatbotWidget";
 import CampusGalleryModal from "../components/CampusGalleryModal";
 import { CampusRecord, mapCampusRecord } from "../admin/adminStore";
 import { getPublicCampuses } from "@/lib/actions/campuses";
-import { useLocale } from "@/lib/i18n/useT";
+import { useLocale, useT } from "@/lib/i18n/useT";
 import { isR2AssetUrl } from "@/lib/utils/r2Image";
 import { resolveCampusImages } from "@/lib/campuses/images";
 
@@ -34,6 +33,7 @@ export default function CampusesView({
   initialData?: Parameters<typeof mapCampusRecord>[0][];
 }) {
   const locale = useLocale();
+  const t = useT();
   const [campuses, setCampuses] = useState<CampusRecord[]>(() =>
     (initialData ?? []).map(mapCampusRecord)
   );
@@ -80,10 +80,10 @@ export default function CampusesView({
             <span>Nationwide Campus Network</span>
           </div>
           <h1 className="text-3xl sm:text-5xl font-black text-[#09234B] tracking-tight">
-            Our Campuses
+            {t("campuses.title")}
           </h1>
           <p className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto mt-3">
-            Providing modern British curriculum education across <strong>3 Yangon branches</strong> (Ywarma Flagship, Shwe Padauk STEM &amp; Shwe Pone Nyet Arts) and our <strong>Mawlamyine Regional Campus</strong>.
+            {t("campuses.subtitle")}
           </p>
         </section>
 
@@ -100,7 +100,7 @@ export default function CampusesView({
                     : "text-slate-600 hover:text-[#0E3B7D] hover:bg-slate-50"
                 }`}
               >
-                All Campuses ({campuses.length})
+                {t("campuses.all")} ({campuses.length})
               </button>
               <button
                 onClick={() => setSelectedCity("Yangon")}
@@ -110,7 +110,7 @@ export default function CampusesView({
                     : "text-slate-600 hover:text-[#0E3B7D] hover:bg-slate-50"
                 }`}
               >
-                Yangon ({yangonCount})
+                {t("campuses.yangon")} ({yangonCount})
               </button>
               <button
                 onClick={() => setSelectedCity("Mawlamyine")}
@@ -120,7 +120,7 @@ export default function CampusesView({
                     : "text-slate-600 hover:text-[#0E3B7D] hover:bg-slate-50"
                 }`}
               >
-                Mawlamyine ({mawlamyineCount})
+                {t("campuses.mawlamyine")} ({mawlamyineCount})
               </button>
             </div>
           </div>
@@ -279,7 +279,7 @@ export default function CampusesView({
                           className="px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer"
                         >
                           <span aria-hidden="true" className="material-symbols-outlined text-base text-[#0E3B7D]">info</span>
-                          <span>Details</span>
+                          <span>{t("campuses.details")}</span>
                         </button>
                         <a
                           href={getMapUrl(campus)}
@@ -288,7 +288,7 @@ export default function CampusesView({
                           className="px-3.5 py-2.5 rounded-xl bg-[#E8F0FE] hover:bg-[#0E3B7D] text-[#0E3B7D] hover:text-white text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer"
                         >
                           <span aria-hidden="true" className="material-symbols-outlined text-base">map</span>
-                          <span>View Map</span>
+                          <span>{t("campuses.viewMap")}</span>
                         </a>
                       </div>
 
@@ -296,7 +296,7 @@ export default function CampusesView({
                         href="/admission"
                         className="px-4 py-2.5 rounded-xl bg-[#0E3B7D] hover:bg-[#164E9A] text-white text-xs font-black uppercase tracking-wider shadow-md hover:shadow-lg transition-all flex items-center gap-1.5"
                       >
-                        <span>Apply</span>
+                        <span>{t("campuses.apply")}</span>
                         <span aria-hidden="true" className="material-symbols-outlined text-base">arrow_forward</span>
                       </Link>
                     </div>
@@ -370,7 +370,7 @@ export default function CampusesView({
                   href="/admission"
                   className="px-5 py-2 bg-[#0E3B7D] text-white rounded-xl font-bold text-xs flex items-center gap-1"
                 >
-                  <span>Apply Now</span>
+                  <span>{t("nav.applyNow")}</span>
                   <span aria-hidden="true" className="material-symbols-outlined text-xs">arrow_forward</span>
                 </Link>
               </div>
@@ -379,7 +379,6 @@ export default function CampusesView({
         )}
       </main>
       <FooterSection />
-      <ChatbotWidget />
     </>
   );
 }

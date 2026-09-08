@@ -11,7 +11,7 @@ import {
   getEffectiveSiteContent,
   upsertSiteContentAction,
 } from "@/lib/actions/siteContent";
-import type { SiteContentKey } from "@/lib/content/defaults";
+import type { AnnouncementItem, SiteContentKey } from "@/lib/content/defaults";
 
 type TabId = Extract<
   SiteContentKey,
@@ -30,11 +30,16 @@ interface HighlightRow {
   value: string;
   label: string;
   sub: string;
+  valueMy?: string;
+  labelMy?: string;
+  subMy?: string;
 }
 interface FaqRow {
   id?: string;
   question: string;
   answer: string;
+  questionMy?: string;
+  answerMy?: string;
 }
 interface ProgramRow {
   id: string;
@@ -45,11 +50,17 @@ interface ProgramRow {
   description: string;
   highlights: string[];
   image: string;
+  badgeMy?: string;
+  ageMy?: string;
+  titleMy?: string;
+  descriptionMy?: string;
+  highlightsMy?: string[];
 }
 interface ContactRow {
   icon: string;
   text: string;
   href: string;
+  textMy?: string;
 }
 
 const inputCls =
@@ -60,7 +71,7 @@ export default function AdminSiteContentPage() {
   const [activeTab, setActiveTab] = useState<TabId>("announcements");
   const [isLoading, setIsLoading] = useState(true);
 
-  const [announcements, setAnnouncements] = useState<string[]>([]);
+  const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
   const [highlights, setHighlights] = useState<HighlightRow[]>([]);
   const [faqs, setFaqs] = useState<FaqRow[]>([]);
   const [programs, setPrograms] = useState<ProgramRow[]>([]);
@@ -77,9 +88,13 @@ export default function AdminSiteContentPage() {
   useEffect(() => {
     getEffectiveSiteContent()
       .then((content) => {
-        setAnnouncements(content.announcements ?? []);
+        setAnnouncements(
+          (content.announcements ?? []).map((a) =>
+            typeof a === "string" ? { text: a } : { text: a.text, textMy: a.textMy }
+          )
+        );
         setHighlights(content.heroHighlights ?? []);
-        setFaqs((content.faqs ?? []).map(({ id, question, answer }) => ({ id, question, answer })));
+        setFaqs((content.faqs ?? []).map(({ id, question, answer, questionMy, answerMy }) => ({ id, question, answer, questionMy, answerMy })));
         setPrograms(content.programs ?? []);
         setContacts(content.contactInfo ?? []);
       })
@@ -110,7 +125,11 @@ export default function AdminSiteContentPage() {
       const res = await upsertSiteContentAction(key, null);
       showToast(res.message);
       const content = await getEffectiveSiteContent();
-      setAnnouncements(content.announcements ?? []);
+      setAnnouncements(
+        (content.announcements ?? []).map((a) =>
+          typeof a === "string" ? { text: a } : { text: a.text, textMy: a.textMy }
+        )
+      );
       setHighlights(content.heroHighlights ?? []);
       setFaqs((content.faqs ?? []).map(({ id, question, answer }) => ({ id, question, answer })));
       setPrograms(content.programs ?? []);
@@ -166,17 +185,34 @@ export default function AdminSiteContentPage() {
           {/* ── Announcements ── */}
           {activeTab === "announcements" && (
             <>
-              <FieldLabel text="Scrolling announcement bar messages (one per line)" />
-              <textarea
-                className={inputCls + " min-h-[140px] font-mono text-xs"}
-                value={announcements.join("\n")}
-                onChange={(e) => setAnnouncements(e.target.value.split("\n"))}
-              />
+              <FieldLabel text="Scrolling announcement bar messages" />
+              <div className="space-y-3">
+                {announcements.map((a, i) => (
+                  <div key={i} className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <div>
+                      <label className={labelCls}>English</label>
+                      <input className={inputCls} value={a.text} onChange={(e) => setAnnouncements(announcements.map((x, xi) => xi === i ? { ...x, text: e.target.value } : x))} />
+                    </div>
+                    <div className="flex gap-2 items-end">
+                      <div className="flex-1">
+                        <label className={labelCls}>Myanmar (optional)</label>
+                        <input className={inputCls} value={a.textMy ?? ""} onChange={(e) => setAnnouncements(announcements.map((x, xi) => xi === i ? { ...x, textMy: e.target.value } : x))} />
+                      </div>
+                      <button onClick={() => setAnnouncements(announcements.filter((_, xi) => xi !== i))} className="p-2 rounded-xl text-red-500 hover:bg-red-50 cursor-pointer" aria-label="Remove announcement">
+                        <span aria-hidden="true" className="material-symbols-outlined">delete</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <button onClick={() => setAnnouncements([...announcements, { text: "" }])} className="text-xs font-black text-[#0E3B7D] hover:underline cursor-pointer">
+                  + Add announcement
+                </button>
+              </div>
               <Actions
                 onSave={() =>
                   save(
                     "announcements",
-                    announcements.filter((a) => a.trim().length > 0)
+                    announcements.filter((a) => a.text.trim().length > 0)
                   )
                 }
                 onReset={() => resetSection("announcements")}
@@ -203,6 +239,18 @@ export default function AdminSiteContentPage() {
                     <div>
                       <label className={labelCls}>Sub-label</label>
                       <input className={inputCls} value={h.sub} onChange={(e) => setHighlights(highlights.map((x, xi) => xi === i ? { ...x, sub: e.target.value } : x))} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Value (MY)</label>
+                      <input className={inputCls} value={h.valueMy ?? ""} onChange={(e) => setHighlights(highlights.map((x, xi) => xi === i ? { ...x, valueMy: e.target.value } : x))} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Label (MY)</label>
+                      <input className={inputCls} value={h.labelMy ?? ""} onChange={(e) => setHighlights(highlights.map((x, xi) => xi === i ? { ...x, labelMy: e.target.value } : x))} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Sub-label (MY)</label>
+                      <input className={inputCls} value={h.subMy ?? ""} onChange={(e) => setHighlights(highlights.map((x, xi) => xi === i ? { ...x, subMy: e.target.value } : x))} />
                     </div>
                     <button onClick={() => setHighlights(highlights.filter((_, xi) => xi !== i))} className="p-2 rounded-xl text-red-500 hover:bg-red-50 cursor-pointer" aria-label="Remove stat">
                       <span aria-hidden="true" className="material-symbols-outlined">delete</span>
@@ -237,8 +285,21 @@ export default function AdminSiteContentPage() {
                       <textarea className={inputCls} rows={2} value={p.description} onChange={(e) => setPrograms(programs.map((x, xi) => xi === i ? { ...x, description: e.target.value } : x))} />
                     </div>
                     <div>
+                      <label className={labelCls}>Description (Myanmar, optional)</label>
+                      <textarea className={inputCls} rows={2} value={p.descriptionMy ?? ""} onChange={(e) => setPrograms(programs.map((x, xi) => xi === i ? { ...x, descriptionMy: e.target.value } : x))} />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <LabeledInput label="Title (MY)" value={p.titleMy ?? ""} onChange={(v) => setPrograms(programs.map((x, xi) => xi === i ? { ...x, titleMy: v } : x))} />
+                      <LabeledInput label="Badge (MY)" value={p.badgeMy ?? ""} onChange={(v) => setPrograms(programs.map((x, xi) => xi === i ? { ...x, badgeMy: v } : x))} />
+                      <LabeledInput label="Age (MY)" value={p.ageMy ?? ""} onChange={(v) => setPrograms(programs.map((x, xi) => xi === i ? { ...x, ageMy: v } : x))} />
+                    </div>
+                    <div>
                       <label className={labelCls}>Highlights (one per line)</label>
                       <textarea className={inputCls + " font-mono text-xs"} rows={3} value={p.highlights.join("\n")} onChange={(e) => setPrograms(programs.map((x, xi) => xi === i ? { ...x, highlights: e.target.value.split("\n") } : x))} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Highlights (Myanmar, one per line)</label>
+                      <textarea className={inputCls + " font-mono text-xs"} rows={3} value={(p.highlightsMy ?? []).join("\n")} onChange={(e) => setPrograms(programs.map((x, xi) => xi === i ? { ...x, highlightsMy: e.target.value.split("\n") } : x))} />
                     </div>
                     <button onClick={() => setPrograms(programs.filter((_, xi) => xi !== i))} className="text-xs font-black text-red-500 hover:underline cursor-pointer">
                       Remove program
@@ -269,9 +330,14 @@ export default function AdminSiteContentPage() {
                 {faqs.map((f, i) => (
                   <div key={i} className="border border-slate-100 rounded-2xl p-4 space-y-3 bg-slate-50/60">
                     <LabeledInput label="Question" value={f.question} onChange={(v) => setFaqs(faqs.map((x, xi) => xi === i ? { ...x, question: v } : x))} />
+                    <LabeledInput label="Question (MY)" value={f.questionMy ?? ""} onChange={(v) => setFaqs(faqs.map((x, xi) => xi === i ? { ...x, questionMy: v } : x))} />
                     <div>
                       <label className={labelCls}>Answer</label>
                       <textarea className={inputCls} rows={3} value={f.answer} onChange={(e) => setFaqs(faqs.map((x, xi) => xi === i ? { ...x, answer: e.target.value } : x))} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Answer (Myanmar, optional)</label>
+                      <textarea className={inputCls} rows={3} value={f.answerMy ?? ""} onChange={(e) => setFaqs(faqs.map((x, xi) => xi === i ? { ...x, answerMy: e.target.value } : x))} />
                     </div>
                     <button onClick={() => setFaqs(faqs.filter((_, xi) => xi !== i))} className="text-xs font-black text-red-500 hover:underline cursor-pointer">
                       Remove FAQ
@@ -300,6 +366,10 @@ export default function AdminSiteContentPage() {
                     <div>
                       <label className={labelCls}>Text</label>
                       <input className={inputCls} value={c.text} onChange={(e) => setContacts(contacts.map((x, xi) => xi === i ? { ...x, text: e.target.value } : x))} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Text (MY)</label>
+                      <input className={inputCls} value={c.textMy ?? ""} onChange={(e) => setContacts(contacts.map((x, xi) => xi === i ? { ...x, textMy: e.target.value } : x))} />
                     </div>
                     <div>
                       <label className={labelCls}>Link (href)</label>

@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import Image from "next/image";
 import Navbar from "../components/Navbar";
 import FooterSection from "../components/sections/FooterSection";
-import ChatbotWidget from "../components/ChatbotWidget";
 import { isR2AssetUrl } from "@/lib/utils/r2Image";
 
 type Region = "Yangon" | "Mawlamyine";
@@ -173,7 +172,6 @@ export default function YearbookGallery({
         ))}
       </main>
       <FooterSection />
-      <ChatbotWidget />
     </div>
   );
 }

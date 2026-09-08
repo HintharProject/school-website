@@ -9,7 +9,9 @@ import { revalidatePath } from "next/cache";
 const testimonialSchema = z.object({
   authorName: z.string().min(2).max(200),
   authorRole: z.string().max(200).optional().nullable(),
+  authorRoleMy: z.string().max(200).optional().nullable(),
   quote: z.string().min(5).max(2000),
+  quoteMy: z.string().max(2000).optional().nullable(),
   image: z.string().max(500).optional().nullable(),
   rating: z.number().int().min(1).max(5).optional().nullable(),
   sortOrder: z.number().int().min(0).max(9999).default(0),
@@ -20,7 +22,9 @@ export interface PublicTestimonial {
   id: number;
   authorName: string;
   authorRole: string | null;
+  authorRoleMy: string | null;
   quote: string;
+  quoteMy: string | null;
   image: string | null;
   rating: number | null;
 }
@@ -34,7 +38,9 @@ export async function getPublishedTestimonials(): Promise<PublicTestimonial[]> {
         id: testimonials.id,
         authorName: testimonials.authorName,
         authorRole: testimonials.authorRole,
+        authorRoleMy: testimonials.authorRoleMy,
         quote: testimonials.quote,
+        quoteMy: testimonials.quoteMy,
         image: testimonials.image,
         rating: testimonials.rating,
       })
@@ -71,7 +77,9 @@ export async function createTestimonialAction(
     .values({
       authorName: validated.authorName.trim(),
       authorRole: validated.authorRole?.trim() || null,
+      authorRoleMy: validated.authorRoleMy?.trim() || null,
       quote: validated.quote.trim(),
+      quoteMy: validated.quoteMy?.trim() || null,
       image: validated.image?.trim() || null,
       rating: validated.rating ?? null,
       sortOrder: validated.sortOrder,
@@ -109,7 +117,9 @@ export async function updateTestimonialAction(
     .set({
       authorName: validated.authorName.trim(),
       authorRole: validated.authorRole?.trim() || null,
+      authorRoleMy: validated.authorRoleMy?.trim() || null,
       quote: validated.quote.trim(),
+      quoteMy: validated.quoteMy?.trim() || null,
       image: validated.image?.trim() || null,
       rating: validated.rating ?? null,
       sortOrder: validated.sortOrder,

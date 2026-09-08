@@ -9,6 +9,14 @@ export interface KeyHighlight {
   value: string;
   label: string;
   sub: string;
+  valueMy?: string;
+  labelMy?: string;
+  subMy?: string;
+}
+
+export interface AnnouncementItem {
+  text: string;
+  textMy?: string;
 }
 
 export const DEFAULT_HIGHLIGHTS: KeyHighlight[] = [
@@ -18,17 +26,19 @@ export const DEFAULT_HIGHLIGHTS: KeyHighlight[] = [
   { value: "100%", label: "Exam Board Center", sub: "British Council Partner" },
 ];
 
-export const DEFAULT_ANNOUNCEMENTS: string[] = [
-  "Admissions Open for 2026–2027 Academic Year (Year 7–9 · IGCSE · IAL)",
-  "Official Pearson Edexcel Examination Centre — Hlaing Campus, Yangon",
-  "Individual Academic Counseling Available: +95 9 894 332200",
-  "Small Class Sizes with British Council Certified Faculty Mentorship",
+export const DEFAULT_ANNOUNCEMENTS: AnnouncementItem[] = [
+  { text: "Admissions Open for 2026–2027 Academic Year (Year 7–9 · IGCSE · IAL)", textMy: "၂၀၂၆–၂၀၂၇ ပညာသင်နှစ်အတွက် ကျောင်းဝင်ခွင့် ဖွင့်လှစ်ထားသည် (Year 7–9 · IGCSE · IAL)" },
+  { text: "Official Pearson Edexcel Examination Centre — Hlaing Campus, Yangon", textMy: "တရားဝင် Pearson Edexcel စာမေးပွဲစင်တာ — ရန်ကုန် Hlaing Campus" },
+  { text: "Individual Academic Counseling Available: +95 9 894 332200", textMy: "ပုဂ္ဂိုလ်ရေးဆိုင်ရာ ပညာရေးအကြံပေးချက် ရရှိနိုင်ပါသည်: +95 9 894 332200" },
+  { text: "Small Class Sizes with British Council Certified Faculty Mentorship", textMy: "British Council အတည်ပြု ဆရာ၊ ဆရာမများ mentorship ဖြင့် စာသင်ခန်းအရွယ်အစား သေးငယ်သည်" },
 ];
 
 export interface FaqItem {
   id: string;
   question: string;
   answer: string;
+  questionMy?: string;
+  answerMy?: string;
   defaultOpen?: boolean;
 }
 
@@ -75,6 +85,11 @@ export interface AcademicProgram {
   description: string;
   highlights: string[];
   image: string;
+  badgeMy?: string;
+  ageMy?: string;
+  titleMy?: string;
+  descriptionMy?: string;
+  highlightsMy?: string[];
 }
 
 export const DEFAULT_PROGRAMS: AcademicProgram[] = [
@@ -132,6 +147,7 @@ export interface ContactInfoItem {
   icon: string;
   text: string;
   href: string;
+  textMy?: string;
 }
 
 export const DEFAULT_CONTACT_INFO: ContactInfoItem[] = [
@@ -165,6 +181,7 @@ export type SubjectTrack = "STEM" | "Business" | "Computing" | "Languages" | "Ge
 export interface SubjectEntry {
   id: string;
   name: string;
+  nameMy?: string;
   track: SubjectTrack;
   level: SubjectLevel;
   code?: string;
@@ -213,8 +230,10 @@ export const DEFAULT_ADMISSION_OPTIONS: AdmissionOptions = {
     "Immediate Mid-Term Transfer",
   ],
   studyModes: [
-    "Full-Time On-Campus",
-    "Hybrid / Supplementary",
+    "Full-Time On-Campus (Mon–Fri)",
+    "Weekend O Level Program",
+    "6-Month Intensive (Cambridge Checkpoint)",
+    "1-Year Pearson Edexcel (Jun–Mar)",
     "Hybrid / Flexible Learning",
     "Pearson Examination Series Candidate",
   ],

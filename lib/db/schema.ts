@@ -193,6 +193,75 @@ export const classesCourses = sqliteTable(
   ]
 );
 
+// Academic Programs (public /classes + admission Step 1)
+export const academicPrograms = sqliteTable(
+  "academic_programs",
+  {
+    id: text("id").primaryKey(),
+    nameEn: text("name_en").notNull(),
+    nameMy: text("name_my"),
+    summaryEn: text("summary_en"),
+    summaryMy: text("summary_my"),
+    descriptionEn: text("description_en"),
+    descriptionMy: text("description_my"),
+    curriculum: text("curriculum").notNull().default("Pearson"),
+    category: text("category").notNull().default("pearson"),
+    duration: text("duration"),
+    campus: text("campus").notNull().default("both"),
+    studyMode: text("study_mode"),
+    programLevel: text("program_level"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index("idx_academic_programs_active").on(table.isActive),
+    index("idx_academic_programs_category").on(table.category),
+    index("idx_academic_programs_campus").on(table.campus),
+  ]
+);
+
+// Academic Subjects (admission Step 2 electives; linked to programs)
+export const academicSubjects = sqliteTable(
+  "academic_subjects",
+  {
+    id: text("id").primaryKey(),
+    nameEn: text("name_en").notNull(),
+    nameMy: text("name_my"),
+    code: text("code"),
+    track: text("track").notNull().default("STEM"),
+    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index("idx_academic_subjects_active").on(table.isActive),
+    index("idx_academic_subjects_track").on(table.track),
+  ]
+);
+
+export const programSubjectLinks = sqliteTable(
+  "program_subject_links",
+  {
+    programId: text("program_id")
+      .notNull()
+      .references(() => academicPrograms.id, { onDelete: "cascade" }),
+    subjectId: text("subject_id")
+      .notNull()
+      .references(() => academicSubjects.id, { onDelete: "cascade" }),
+  },
+  (table) => [uniqueIndex("idx_program_subject_unique").on(table.programId, table.subjectId)]
+);
+
 // Bulletin Notices Table
 export const bulletinNotices = sqliteTable(
   "bulletin_notices",
@@ -227,6 +296,7 @@ export const admissions = sqliteTable(
     nationality: text("nationality").default("Myanmar"),
     grade: text("grade").notNull(),
     programLevel: text("program_level"),
+    targetProgramId: text("target_program_id"),
     finishedGrade: text("finished_grade"),
     suggestedEntryYear: text("suggested_entry_year"),
     preferredRegion: text("preferred_region"),
@@ -755,6 +825,14 @@ export type NewCampus = typeof campuses.$inferInsert;
 
 export type ClassCourse = typeof classesCourses.$inferSelect;
 export type NewClassCourse = typeof classesCourses.$inferInsert;
+
+export type AcademicProgram = typeof academicPrograms.$inferSelect;
+export type NewAcademicProgram = typeof academicPrograms.$inferInsert;
+
+export type AcademicSubject = typeof academicSubjects.$inferSelect;
+export type NewAcademicSubject = typeof academicSubjects.$inferInsert;
+
+export type ProgramSubjectLink = typeof programSubjectLinks.$inferSelect;
 
 export type BulletinNotice = typeof bulletinNotices.$inferSelect;
 export type NewBulletinNotice = typeof bulletinNotices.$inferInsert;

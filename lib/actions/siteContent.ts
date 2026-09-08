@@ -11,6 +11,7 @@ import {
   DEFAULT_SUBJECT_CATALOG,
   DEFAULT_ADMISSION_OPTIONS,
   SITE_CONTENT_KEYS,
+  type AnnouncementItem,
   type ContactInfoItem,
   type FaqItem,
   type KeyHighlight,
@@ -24,13 +25,27 @@ import { revalidatePath } from "next/cache";
 
 
 export interface SiteContentMap {
-  announcements?: string[];
+  announcements?: AnnouncementItem[] | string[];
   heroHighlights?: KeyHighlight[];
   faqs?: FaqItem[];
   programs?: AcademicProgram[];
   contactInfo?: ContactInfoItem[];
   subjectCatalog?: SubjectEntry[];
   admissionOptions?: AdmissionOptions;
+}
+
+function normalizeAnnouncements(raw: unknown): AnnouncementItem[] {
+  if (!Array.isArray(raw)) return DEFAULT_ANNOUNCEMENTS;
+  return raw
+    .map((item) => {
+      if (typeof item === "string") return { text: item.trim() };
+      if (item && typeof item === "object" && "text" in item) {
+        const o = item as AnnouncementItem;
+        return { text: String(o.text ?? "").trim(), textMy: o.textMy?.trim() || undefined };
+      }
+      return { text: String(item).trim() };
+    })
+    .filter((a) => a.text.length >= 3);
 }
 
 export type {
@@ -73,7 +88,7 @@ export async function getSiteContentMap(): Promise<SiteContentMap> {
 export async function getEffectiveSiteContent(): Promise<Required<SiteContentMap>> {
   const overrides = await getSiteContentMap();
   return {
-    announcements: overrides.announcements ?? DEFAULT_ANNOUNCEMENTS,
+    announcements: normalizeAnnouncements(overrides.announcements ?? DEFAULT_ANNOUNCEMENTS),
     heroHighlights: overrides.heroHighlights ?? DEFAULT_HIGHLIGHTS,
     faqs: overrides.faqs ?? DEFAULT_FAQS,
     programs: overrides.programs ?? DEFAULT_PROGRAMS,
@@ -87,8 +102,10 @@ function parsePayload(key: SiteContentKey, value: unknown): string | null {
   try {
     switch (key) {
       case "announcements":
-        if (!Array.isArray(value) || value.some((v) => typeof v !== "string" || v.trim().length < 3)) return null;
-        return JSON.stringify(value.map((v: string) => v.trim()));
+        if (!Array.isArray(value)) return null;
+        const ann = normalizeAnnouncements(value);
+        if (ann.length === 0) return null;
+        return JSON.stringify(ann);
       case "heroHighlights":
         if (!Array.isArray(value)) return null;
         for (const h of value) {
@@ -106,6 +123,8 @@ function parsePayload(key: SiteContentKey, value: unknown): string | null {
             id: String(f.id || `faq-${i + 1}`),
             question: f.question.trim(),
             answer: f.answer.trim(),
+            questionMy: f.questionMy?.trim() || undefined,
+            answerMy: f.answerMy?.trim() || undefined,
           }))
         );
       case "programs":
@@ -230,6 +249,24 @@ function safeRevalidate(paths: string[]) {
  * Safe to call from any Server Component or action — never throws.
  */
 export async function getSubjectCatalog(): Promise<SubjectEntry[]> {
+  try {
+    const { getCatalogSubjectsAsLegacyEntries } = await import("@/lib/actions/academicCatalog");
+    const fromCatalog = await getCatalogSubjectsAsLegacyEntries();
+    if (fromCatalog.length > 0) {
+      return fromCatalog.map((s) => ({
+        id: s.id,
+        name: s.name,
+        nameMy: s.nameMy ?? undefined,
+        track: s.track as SubjectEntry["track"],
+        level: s.level as SubjectEntry["level"],
+        code: s.code,
+        isActive: s.isActive,
+      }));
+    }
+  } catch (err) {
+    console.warn("getSubjectCatalog D1 note:", err);
+  }
+
   try {
     const db = await getDb();
     const rows = await db

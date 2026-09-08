@@ -13,7 +13,9 @@ interface TestimonialRow {
   id: number;
   authorName: string;
   authorRole: string | null;
+  authorRoleMy: string | null;
   quote: string;
+  quoteMy: string | null;
   image: string | null;
   rating: number | null;
   sortOrder: number;
@@ -23,7 +25,9 @@ interface TestimonialRow {
 interface FormState {
   authorName: string;
   authorRole: string;
+  authorRoleMy: string;
   quote: string;
+  quoteMy: string;
   image: string;
   rating: number;
   sortOrder: number;
@@ -33,7 +37,9 @@ interface FormState {
 const EMPTY_FORM: FormState = {
   authorName: "",
   authorRole: "",
+  authorRoleMy: "",
   quote: "",
+  quoteMy: "",
   image: "",
   rating: 5,
   sortOrder: 0,
@@ -75,7 +81,9 @@ export default function AdminTestimonialsPage() {
     setForm({
       authorName: row.authorName,
       authorRole: row.authorRole || "",
+      authorRoleMy: row.authorRoleMy || "",
       quote: row.quote,
+      quoteMy: row.quoteMy || "",
       image: row.image || "",
       rating: row.rating ?? 5,
       sortOrder: row.sortOrder,
@@ -180,8 +188,18 @@ export default function AdminTestimonialsPage() {
             </div>
 
             <div className="space-y-1">
+              <label className={labelCls}>Role (Myanmar, optional)</label>
+              <input type="text" value={form.authorRoleMy} onChange={(e) => setForm({ ...form, authorRoleMy: e.target.value })} className={inputCls} />
+            </div>
+
+            <div className="space-y-1">
               <label className={labelCls}>Quote</label>
               <textarea rows={4} required value={form.quote} onChange={(e) => setForm({ ...form, quote: e.target.value })} className={inputCls} placeholder="What they said about Hinthar…" />
+            </div>
+
+            <div className="space-y-1">
+              <label className={labelCls}>Quote (Myanmar, optional)</label>
+              <textarea rows={4} value={form.quoteMy} onChange={(e) => setForm({ ...form, quoteMy: e.target.value })} className={inputCls} />
             </div>
 
             <ImageUploadPicker

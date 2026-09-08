@@ -4,7 +4,9 @@ import { motion, Variants } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
 import AnnouncementTicker from "./AnnouncementTicker";
-import { DEFAULT_HIGHLIGHTS, type KeyHighlight } from "@/lib/content/defaults";
+import { DEFAULT_HIGHLIGHTS, type KeyHighlight, type AnnouncementItem } from "@/lib/content/defaults";
+import { useLocale, useT } from "@/lib/i18n/useT";
+import { locField } from "@/lib/i18n/loc";
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -25,15 +27,19 @@ const itemVariants: Variants = {
 
 export default function HeroSection({
   highlights = DEFAULT_HIGHLIGHTS,
+  announcements,
 }: {
   highlights?: KeyHighlight[];
+  announcements?: AnnouncementItem[] | string[];
 }) {
+  const t = useT();
+  const locale = useLocale();
+
   return (
     <section
       id="home"
       className="relative min-h-[100svh] lg:h-[100svh] flex flex-col justify-between overflow-hidden bg-[#06152B]"
     >
-      {/* ─── High-Resolution Photographic Background ───────────── */}
       <div className="absolute inset-0 z-0">
         <Image
           src="/images/graduation.webp"
@@ -44,56 +50,46 @@ export default function HeroSection({
           priority
           quality={95}
         />
-        {/* Lighter overlays — graduation photo stays visible, text remains readable */}
         <div className="absolute inset-0 bg-[#06152B]/40" />
         <div className="absolute inset-0 bg-gradient-to-b from-[#09234B]/75 via-transparent to-[#06152B]/90" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_45%,rgba(6,21,43,0.15)_0%,rgba(6,21,43,0.65)_100%)]" />
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[520px] h-[520px] bg-[#FFC700]/10 rounded-full blur-[140px] pointer-events-none" />
       </div>
 
-      {/* ─── Hero Main Content Area ───────────────────────────── */}
       <div className="relative z-10 w-full max-w-[1080px] mx-auto px-6 md:px-8 pt-28 sm:pt-32 lg:pt-[8.5rem] pb-10 lg:pb-14 my-auto flex flex-col items-center justify-center text-center">
-
-        {/* ─── Centered Hero Story ─── */}
         <motion.div
           variants={containerVariants}
           initial="hidden"
           animate="show"
           className="w-full flex flex-col items-center text-center"
         >
-            {/* Accreditation Badge */}
             <motion.div
               variants={itemVariants}
               className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-[#FFC700]/40 shadow-sm mb-6"
             >
               <div className="w-2 h-2 rounded-full bg-[#FFC700] animate-pulse" />
               <span className="text-[11px] font-extrabold text-[#FFC700] tracking-[0.16em] uppercase">
-                Official Pearson Edexcel Examination Centre · Yangon
+                {t("home.heroBadge")}
               </span>
             </motion.div>
 
-            {/* Prestige Headline */}
             <motion.h1
               variants={itemVariants}
               className="text-4xl sm:text-5xl md:text-6xl xl:text-[64px] font-black text-white leading-[1.08] tracking-tight mb-5 drop-shadow-[0_2px_16px_rgba(4,14,30,0.85)]"
             >
-              Shaping Global Scholars.{" "}
+              {t("home.heroTitle1")}{" "}
               <span className="block mt-1 text-transparent bg-clip-text bg-gradient-to-r from-[#FFC700] via-[#FFE48A] to-[#FFC700]">
-                Delivering Excellence.
+                {t("home.heroTitle2")}
               </span>
             </motion.h1>
 
-            {/* Clear Mission Subtitle */}
             <motion.p
               variants={itemVariants}
               className="text-base sm:text-lg text-slate-200 leading-relaxed max-w-3xl mx-auto mb-8 font-normal"
             >
-              Yangon’s premier international institution offering a rigorous, continuous British curriculum from{" "}
-              <strong className="text-white font-semibold">Lower Secondary (Year 7–9)</strong> through{" "}
-              <strong className="text-white font-semibold">Pearson Edexcel IGCSE &amp; International A-Level (IAL)</strong> — preparing Myanmar&apos;s youth for world-class universities.
+              {t("home.heroSubtitle")}
             </motion.p>
 
-            {/* High-Contrast Action CTAs */}
             <motion.div
               variants={itemVariants}
               className="flex flex-wrap items-center justify-center gap-3.5 sm:gap-4 mb-8 lg:mb-9 w-full"
@@ -102,7 +98,7 @@ export default function HeroSection({
                 href="/admission"
                 className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] font-black text-xs uppercase tracking-wider shadow-lg shadow-[#FFC700]/25 hover:scale-[1.03] active:scale-[0.98] transition-all"
               >
-                <span>Apply for 2026–2027</span>
+                <span>{t("home.heroCtaApply")}</span>
                 <span aria-hidden="true" className="material-symbols-outlined text-base font-black">arrow_forward</span>
               </Link>
 
@@ -111,19 +107,10 @@ export default function HeroSection({
                 className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/25 text-white font-bold text-xs uppercase tracking-wider hover:scale-[1.03] active:scale-[0.98] transition-all"
               >
                 <span aria-hidden="true" className="material-symbols-outlined text-base">menu_book</span>
-                <span>Curriculum &amp; Syllabi</span>
-              </Link>
-
-              <Link
-                href="/chatbot"
-                className="inline-flex items-center gap-1.5 px-5 py-3.5 rounded-full bg-transparent hover:bg-white/10 text-[#FFC700] border border-[#FFC700]/40 font-bold text-xs uppercase tracking-wider transition-all"
-              >
-                <span aria-hidden="true" className="material-symbols-outlined text-base">smart_toy</span>
-                <span>Admissions AI</span>
+                <span>{t("home.heroCtaCurriculum")}</span>
               </Link>
             </motion.div>
 
-            {/* Key stats — glass cards for clearer hierarchy */}
             <motion.div
               variants={itemVariants}
               className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 w-full max-w-4xl mx-auto pt-6"
@@ -134,23 +121,21 @@ export default function HeroSection({
                   className="flex flex-col items-center text-center rounded-2xl border border-white/15 bg-white/8 px-3 py-4 backdrop-blur-md transition-colors hover:bg-white/12"
                 >
                   <span className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                    {stat.value}
+                    {locField(locale, stat.value, stat.valueMy)}
                   </span>
                   <span className="text-[10px] sm:text-[11px] font-bold text-[#FFC700] uppercase tracking-wider mt-1">
-                    {stat.label}
+                    {locField(locale, stat.label, stat.labelMy)}
                   </span>
                   <span className="text-[9px] sm:text-[10px] text-slate-300/90 font-light mt-0.5 leading-snug">
-                    {stat.sub}
+                    {locField(locale, stat.sub, stat.subMy)}
                   </span>
                 </div>
               ))}
             </motion.div>
         </motion.div>
-
       </div>
 
-      {/* ─── Bottom Live Announcement Bar (fits within 100svh) ─── */}
-      <AnnouncementTicker />
+      <AnnouncementTicker messages={announcements} />
     </section>
   );
 }

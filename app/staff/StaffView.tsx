@@ -3,6 +3,8 @@
 import Image from "next/image";
 import { useState } from "react";
 import { useT } from "@/lib/i18n/useT";
+import { useLocale } from "@/lib/i18n/useT";
+import { locField } from "@/lib/i18n/loc";
 import type { PublicStaffMember } from "@/lib/actions/staff";
 import { isR2AssetUrl } from "@/lib/utils/r2Image";
 
@@ -20,6 +22,7 @@ const DEFAULT_AVATARS = ["/images/Dr_KMH.png", "/images/g4.jpg", "/images/g6.jpg
 
 export default function StaffView({ staff }: { staff: PublicStaffMember[] }) {
   const t = useT();
+  const locale = useLocale();
   const [selected, setSelected] = useState<PublicStaffMember | null>(null);
 
   return (
@@ -27,7 +30,7 @@ export default function StaffView({ staff }: { staff: PublicStaffMember[] }) {
       <div className="text-center mb-10">
         <div className="inline-flex items-center gap-2 bg-[#E8F0FE] px-4 py-1.5 rounded-full mb-4 border border-[#0E3B7D]/20">
           <span aria-hidden="true" className="material-symbols-outlined text-[#0E3B7D] text-sm font-bold">groups</span>
-          <span className="text-xs font-extrabold text-[#0E3B7D] uppercase tracking-wider">Faculty & Mentors</span>
+          <span className="text-xs font-extrabold text-[#0E3B7D] uppercase tracking-wider">{t("staff.badge")}</span>
         </div>
         <h1 className="text-3xl md:text-4xl font-black text-[#09234B] mb-3 tracking-tight">
           {t("staff.pageTitle")}
@@ -44,7 +47,10 @@ export default function StaffView({ staff }: { staff: PublicStaffMember[] }) {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {staff.map((member, idx) => (
+          {staff.map((member, idx) => {
+            const role = locField(locale, member.role, member.roleMy);
+            const department = locField(locale, member.department, member.departmentMy);
+            return (
             <button
               key={member.id}
               type="button"
@@ -69,15 +75,16 @@ export default function StaffView({ staff }: { staff: PublicStaffMember[] }) {
                   </div>
                 )}
                 <span className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-white/90 backdrop-blur-sm text-[9px] font-black uppercase tracking-wider text-[#0E3B7D] border border-[#0E3B7D]/10">
-                  {member.department}
+                  {department}
                 </span>
               </div>
               <div className="p-4 space-y-1">
                 <h2 className="text-sm font-black text-[#09234B] leading-snug">{member.name}</h2>
-                <p className="text-[11px] font-bold text-[#0E3B7D] uppercase tracking-wider">{member.role}</p>
+                <p className="text-[11px] font-bold text-[#0E3B7D] uppercase tracking-wider">{role}</p>
               </div>
             </button>
-          ))}
+          );
+          })}
         </div>
       )}
 
@@ -119,17 +126,25 @@ export default function StaffView({ staff }: { staff: PublicStaffMember[] }) {
             <div className="p-6 space-y-3">
               <div>
                 <h3 className="text-lg font-black text-[#09234B] tracking-tight">{selected.name}</h3>
-                <p className="text-xs font-bold text-[#0E3B7D] uppercase tracking-wider">{selected.role}</p>
+                <p className="text-xs font-bold text-[#0E3B7D] uppercase tracking-wider">
+                  {locField(locale, selected.role, selected.roleMy)}
+                </p>
               </div>
-              {selected.qualifications && (
+              {(selected.qualifications || selected.qualificationsMy) && (
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
                     {t("staff.qualifications")}
                   </p>
-                  <p className="text-xs text-slate-700 font-medium">{selected.qualifications}</p>
+                  <p className="text-xs text-slate-700 font-medium">
+                    {locField(locale, selected.qualifications ?? "", selected.qualificationsMy)}
+                  </p>
                 </div>
               )}
-              {selected.bio && <p className="text-xs text-slate-600 font-light leading-relaxed">{selected.bio}</p>}
+              {(selected.bio || selected.bioMy) && (
+                <p className="text-xs text-slate-600 font-light leading-relaxed">
+                  {locField(locale, selected.bio ?? "", selected.bioMy)}
+                </p>
+              )}
               <div className="flex flex-wrap gap-2 pt-1">
                 {selected.email && (
                   <a

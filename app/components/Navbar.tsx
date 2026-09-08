@@ -24,7 +24,6 @@ const moreNavItems: NavItem[] = [
   { labelKey: "nav.activities", href: "/activities" },
   { labelKey: "nav.news", href: "/news" },
   { labelKey: "nav.staff", href: "/staff" },
-  { labelKey: "footer.aiConsultation", href: "/chatbot" },
   { labelKey: "nav.studentPortal", href: "/portal" },
 ];
 

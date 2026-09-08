@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import FooterSection from "../components/sections/FooterSection";
-import ChatbotWidget from "../components/ChatbotWidget";
 import { formatCampusBadge } from "../admin/adminStore";
 import { getClubs } from "@/lib/actions/clubs";
 import ImageCarousel from "../components/ImageCarousel";
@@ -336,7 +335,6 @@ export default function ClubsView({ initialData }: { initialData?: RawClubRecord
       </main>
 
       <FooterSection />
-      <ChatbotWidget />
     </div>
   );
 }

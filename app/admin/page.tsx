@@ -13,7 +13,7 @@ import { authClient } from "@/lib/auth/auth-client";
 import { getAdmissions } from "@/lib/actions/admissions";
 import { getClubs } from "@/lib/actions/clubs";
 import { getYearbook } from "@/lib/actions/yearbook";
-import { getCourses } from "@/lib/actions/classes";
+import { getCatalogSubjectCount } from "@/lib/actions/academicCatalog";
 import { getCampuses } from "@/lib/actions/campuses";
 import { getUsers } from "@/lib/actions/users";
 import { getActivities } from "@/lib/actions/activities";
@@ -52,7 +52,7 @@ export default function AdminDashboardPage() {
         getClubs().catch(() => []),
         getYearbook().catch(() => []),
         getCampuses().catch(() => []),
-        getCourses().catch(() => []),
+        getCatalogSubjectCount().catch(() => 0),
         getActivities().catch(() => []),
       ]);
 
@@ -63,7 +63,7 @@ export default function AdminDashboardPage() {
       setClubCount(clubsData?.length || 0);
       setYearbookCount(yearbookData?.length || 0);
       setCampusCount(campusesData?.length || 0);
-      setCourseCount(coursesData?.length || 0);
+      setCourseCount(typeof coursesData === "number" ? coursesData : 0);
       setActivityCount(activitiesData?.length || 0);
 
       // If admin, fetch users count

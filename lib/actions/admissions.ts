@@ -6,7 +6,9 @@ import { requireAdmin, logAudit } from "@/lib/auth/rbac";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { sendAdmissionEmail } from "@/lib/email/email";
-import { getAdmissionOptions, getSubjectCatalog } from "@/lib/actions/siteContent";
+import { getAdmissionOptions } from "@/lib/actions/siteContent";
+import { DEFAULT_ADMISSION_OPTIONS } from "@/lib/content/defaults";
+import { validateAdmissionSubjects } from "@/lib/actions/academicCatalog";
 
 const admissionSchema = z.object({
   studentName: z.string().min(2).max(200),
@@ -15,6 +17,7 @@ const admissionSchema = z.object({
   nationality: z.string().default("Myanmar").optional().nullable(),
   grade: z.string().min(2),
   programLevel: z.enum(["lower_secondary", "igcse", "ial"]).optional().nullable(),
+  targetProgramId: z.string().min(2).max(100).optional().nullable(),
   finishedGrade: z.string().min(2).max(50).optional().nullable(),
   suggestedEntryYear: z.string().min(2).max(30).optional().nullable(),
   preferredRegion: z.enum(["Yangon", "Mawlamyine"]).optional().nullable(),
@@ -96,20 +99,23 @@ export async function submitPublicAdmissionAction(data: unknown) {
     };
   }
   const validated = validatedResult.data;
-  const [subjects, options] = await Promise.all([getSubjectCatalog(), getAdmissionOptions()]);
-  const activeSubjectNames = new Set(subjects.filter((subject) => {
-    if (!subject.isActive) return false;
-    if (validated.programLevel === "lower_secondary") return subject.level === "Lower Secondary";
-    return subject.level === "Both" || subject.level === (validated.programLevel === "ial" ? "IAL" : "IGCSE");
-  }).map((subject) => subject.name));
-  if (validated.selectedSubjects.some((subject) => !activeSubjectNames.has(subject))) {
-    return { success: false as const, error: "One or more selected subjects are no longer available. Please refresh and choose again." };
+  const options = await getAdmissionOptions();
+  const subjectCheck = await validateAdmissionSubjects(
+    validated.targetProgramId,
+    validated.selectedSubjects,
+    validated.programLevel
+  );
+  if (!subjectCheck.ok) {
+    return { success: false as const, error: subjectCheck.error };
   }
   if (validated.intendedStartTerm && !options.intendedStartTerms.includes(validated.intendedStartTerm)) {
     return { success: false as const, error: "The selected starting term is no longer available. Please refresh and choose again." };
   }
   if (validated.academicStream && !options.academicStreams.includes(validated.academicStream)) {
     return { success: false as const, error: "The selected academic stream is no longer available." };
+  }
+  if (validated.studyMode && !options.studyModes.includes(validated.studyMode)) {
+    return { success: false as const, error: "The selected study mode is no longer available." };
   }
   const db = await getDb();
 
@@ -127,6 +133,7 @@ export async function submitPublicAdmissionAction(data: unknown) {
         nationality: validated.nationality ?? "Myanmar",
         grade: validated.grade,
         programLevel: validated.programLevel ?? null,
+        targetProgramId: validated.targetProgramId ?? null,
         finishedGrade: validated.finishedGrade ?? null,
         suggestedEntryYear: validated.suggestedEntryYear ?? null,
         preferredRegion: validated.preferredRegion ?? null,
@@ -134,7 +141,7 @@ export async function submitPublicAdmissionAction(data: unknown) {
         selectedSubjects: JSON.stringify(validated.selectedSubjects),
         documentUrls: JSON.stringify(validated.documentUrls),
         intendedStartTerm: validated.intendedStartTerm ?? null,
-        studyMode: validated.studyMode ?? "Full-Time On-Campus",
+        studyMode: validated.studyMode ?? DEFAULT_ADMISSION_OPTIONS.studyModes[0],
         previousSchool: validated.previousSchool ?? null,
         parentName: validated.parentName ?? null,
         relationship: validated.relationship ?? "Parent",

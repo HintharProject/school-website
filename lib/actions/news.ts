@@ -8,8 +8,11 @@ import { revalidatePath } from "next/cache";
 
 const newsSchema = z.object({
   title: z.string().min(3).max(300),
+  titleMy: z.string().max(300).optional().nullable(),
   excerpt: z.string().max(500).optional().nullable(),
+  excerptMy: z.string().max(500).optional().nullable(),
   body: z.string().min(3).max(50000),
+  bodyMy: z.string().max(50000).optional().nullable(),
   category: z.string().max(60).default("Announcement"),
   image: z.string().max(500).optional().nullable(),
   status: z.enum(["published", "draft", "archived"]).default("published"),
@@ -18,8 +21,10 @@ const newsSchema = z.object({
 export interface PublicNewsItem {
   id: number;
   title: string;
+  titleMy: string | null;
   slug: string;
   excerpt: string | null;
+  excerptMy: string | null;
   category: string;
   image: string | null;
   publishedAt: string | null;
@@ -41,8 +46,10 @@ export async function getPublishedNews(limit = 50): Promise<PublicNewsItem[]> {
       .select({
         id: newsPosts.id,
         title: newsPosts.title,
+        titleMy: newsPosts.titleMy,
         slug: newsPosts.slug,
         excerpt: newsPosts.excerpt,
+        excerptMy: newsPosts.excerptMy,
         category: newsPosts.category,
         image: newsPosts.image,
         publishedAt: newsPosts.publishedAt,
@@ -59,7 +66,7 @@ export async function getPublishedNews(limit = 50): Promise<PublicNewsItem[]> {
 }
 
 /** Single published post by slug (public detail page). */
-export async function getNewsBySlug(slug: string): Promise<PublicNewsItem & { body: string } | null> {
+export async function getNewsBySlug(slug: string): Promise<PublicNewsItem & { body: string; bodyMy: string | null } | null> {
   if (!/^[a-z0-9-]{1,100}$/.test(slug)) return null;
   try {
     const db = await getDb();
@@ -73,12 +80,15 @@ export async function getNewsBySlug(slug: string): Promise<PublicNewsItem & { bo
     return {
       id: row.id,
       title: row.title,
+      titleMy: row.titleMy,
       slug: row.slug,
       excerpt: row.excerpt,
+      excerptMy: row.excerptMy,
       category: row.category,
       image: row.image,
       publishedAt: row.publishedAt,
       body: row.body,
+      bodyMy: row.bodyMy,
     };
   } catch (err) {
     console.warn("getNewsBySlug note:", err);
@@ -114,9 +124,12 @@ export async function createNewsAction(
 
   await db.insert(newsPosts).values({
     title: validated.title.trim(),
+    titleMy: validated.titleMy?.trim() || null,
     slug,
     excerpt: validated.excerpt?.trim() || validated.body.replace(/<[^>]*>/g, "").slice(0, 180),
+    excerptMy: validated.excerptMy?.trim() || null,
     body: validated.body.trim(),
+    bodyMy: validated.bodyMy?.trim() || null,
     category: validated.category.trim() || "Announcement",
     image: validated.image?.trim() || null,
     status: validated.status,
@@ -153,8 +166,11 @@ export async function updateNewsAction(
     .update(newsPosts)
     .set({
       title: validated.title.trim(),
+      titleMy: validated.titleMy?.trim() || null,
       excerpt: validated.excerpt?.trim() || null,
+      excerptMy: validated.excerptMy?.trim() || null,
       body: validated.body.trim(),
+      bodyMy: validated.bodyMy?.trim() || null,
       category: validated.category.trim() || "Announcement",
       image: validated.image?.trim() || null,
       status: validated.status,
@@ -167,7 +183,6 @@ export async function updateNewsAction(
     return { success: false, error: "News post not found." };
   }
 
-  // Stamp publishedAt on first publish
   if (validated.status === "published" && !updated[0].publishedAt) {
     await db.update(newsPosts).set({ publishedAt: new Date().toISOString() }).where(eq(newsPosts.id, id));
   }

@@ -9,6 +9,8 @@ import {
 } from "@/lib/actions/siteContent";
 import { DEFAULT_CONTACT_INFO } from "@/lib/content/defaults";
 import { useT } from "@/lib/i18n/useT";
+import { useLocale } from "@/lib/i18n/useT";
+import { locField } from "@/lib/i18n/loc";
 import { subscribeNewsletterAction } from "@/lib/actions/newsletter";
 import type { TranslateKey } from "@/lib/i18n";
 
@@ -91,6 +93,7 @@ function NewsletterSignup() {
 
 export default function FooterSection() {
   const t = useT();
+  const locale = useLocale();
   const [contactItems, setContactItems] = useState<ContactInfoItem[]>(DEFAULT_CONTACT_INFO);
 
   useEffect(() => {
@@ -168,7 +171,9 @@ export default function FooterSection() {
             {t("footer.campusLocation")}
           </h4>
           <div className="space-y-4 text-xs sm:text-sm font-light text-slate-300">
-            {contactItems.map((item) => (
+            {contactItems.map((item) => {
+              const text = locField(locale, item.text, item.textMy);
+              return (
               <div key={item.icon + item.text} className="flex gap-3.5 group">
                 <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center shrink-0 group-hover:bg-[#FFC700] group-hover:text-[#09234B] transition-colors">
                   <span aria-hidden="true" className="material-symbols-outlined text-white text-[18px] group-hover:text-[#09234B] transition-colors">
@@ -177,13 +182,14 @@ export default function FooterSection() {
                 </div>
                 {item.href ? (
                   <a href={item.href} className="self-center hover:text-[#FFC700] transition-colors leading-relaxed">
-                    {item.text}
+                    {text}
                   </a>
                 ) : (
-                  <p className="self-center leading-relaxed">{item.text}</p>
+                  <p className="self-center leading-relaxed">{text}</p>
                 )}
               </div>
-            ))}
+            );
+            })}
           </div>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import AdmissionForm from "./AdmissionForm";
 
 // The admission wizard submits a Server Action; keep the page dynamic so
@@ -12,5 +13,9 @@ export const metadata: Metadata = {
 };
 
 export default function AdmissionPage() {
-  return <AdmissionForm />;
+  return (
+    <Suspense fallback={<div className="min-h-screen pt-24 text-center text-sm text-slate-500">Loading admission form…</div>}>
+      <AdmissionForm />
+    </Suspense>
+  );
 }

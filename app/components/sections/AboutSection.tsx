@@ -2,8 +2,11 @@
 
 import Image from "next/image";
 import { motion } from "framer-motion";
+import { useT } from "@/lib/i18n/useT";
 
 export default function AboutSection() {
+  const t = useT();
+
   return (
     <section
       id="about"
@@ -11,7 +14,6 @@ export default function AboutSection() {
     >
       <div className="max-w-[1280px] mx-auto px-6 md:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-center">
-          {/* Image column */}
           <motion.div
             className="relative order-2 lg:order-1"
             initial={{ opacity: 0, x: -30 }}
@@ -19,7 +21,6 @@ export default function AboutSection() {
             viewport={{ once: true, margin: "-60px" }}
             transition={{ duration: 0.6 }}
           >
-            {/* Glowing background blob */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[110%] h-[110%] bg-[#0E3B7D]/10 rounded-full blur-3xl -z-10" />
 
             <div className="aspect-[4/5] sm:aspect-square lg:aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl border-4 border-white ring-1 ring-slate-200 max-w-md mx-auto lg:max-w-none relative group">
@@ -32,7 +33,6 @@ export default function AboutSection() {
               />
             </div>
 
-            {/* Quote card (Glassmorphism) */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -46,7 +46,7 @@ export default function AboutSection() {
                 </span>
               </div>
               <p className="text-xs sm:text-sm italic mb-4 leading-relaxed text-slate-700">
-                &quot;Join us and discover how Hinthar empowers every student to reach their academic dreams with confidence, discipline, and globally accredited qualifications.&quot;
+                &quot;{t("home.aboutQuote")}&quot;
               </p>
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-full bg-[#0E3B7D] text-[#FFC700] flex items-center justify-center font-black text-xs shadow-sm">
@@ -54,13 +54,12 @@ export default function AboutSection() {
                 </div>
                 <div>
                   <p className="text-xs sm:text-sm font-extrabold text-[#0E3B7D]">Dr. Kaung Myat Htut</p>
-                  <p className="text-[11px] font-medium text-slate-500">Principal &amp; Founder</p>
+                  <p className="text-[11px] font-medium text-slate-500">{t("home.aboutPrincipalRole")}</p>
                 </div>
               </div>
             </motion.div>
           </motion.div>
 
-          {/* Text column */}
           <motion.div
             className="space-y-6 order-1 lg:order-2"
             initial={{ opacity: 0, x: 30 }}
@@ -71,65 +70,52 @@ export default function AboutSection() {
             <div className="inline-flex items-center gap-2 bg-[#E8F0FE] px-3.5 py-1.5 rounded-full border border-[#0E3B7D]/20">
               <div className="w-2 h-2 rounded-full bg-[#0E3B7D] animate-pulse" />
               <span className="text-xs font-extrabold text-[#0E3B7D] uppercase tracking-wider">
-                About Hinthar International
+                {t("home.aboutBadge")}
               </span>
             </div>
 
             <h2 className="text-3xl md:text-4xl lg:text-[42px] font-black leading-[1.2] text-[#09234B] tracking-tight">
-              A Proven Standard of <span className="text-[#0E3B7D]">Academic Excellence</span>
+              {t("home.aboutTitle").replace(t("home.aboutTitleHighlight"), "")}{" "}
+              <span className="text-[#0E3B7D]">{t("home.aboutTitleHighlight")}</span>
             </h2>
 
             <div className="text-sm md:text-base text-slate-600 space-y-4 leading-relaxed font-normal">
-              <p>
-                Operating across <strong>4 dedicated campuses</strong> — including <strong>Ywarma, Shwe Padauk, and Shwe Pone Nyet in Yangon</strong> and our <strong>Mawlamyine Regional Campus</strong> — Hinthar International School provides world-class British education tailored to prepare Myanmar students for prestigious global universities.
-              </p>
-              <p>
-                Our rigorous academic continuum encompasses <strong>Lower Secondary Education (Year 7–9)</strong> progressing through to globally recognized <strong>Pearson Edexcel IGCSE (Year 10–11)</strong> and <strong>International Advanced Level (IAL / Year 12–13)</strong> qualifications.
-              </p>
+              <p>{t("home.aboutP1")}</p>
+              <p>{t("home.aboutP2")}</p>
               <div className="pt-1">
                 <a
                   href="/campuses"
                   className="inline-flex items-center gap-1.5 text-xs font-black text-[#0E3B7D] hover:text-[#FFC700] uppercase tracking-wider transition-colors"
                 >
-                  <span>Explore All 4 Campus Locations &amp; Facilities</span>
+                  <span>{t("home.aboutExploreCampuses")}</span>
                   <span aria-hidden="true" className="material-symbols-outlined text-sm font-black">arrow_forward</span>
                 </a>
               </div>
             </div>
 
-            {/* Bento Grid Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5 pt-3">
-              <motion.div
-                whileHover={{ y: -3 }}
-                className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm transition-all"
-              >
+              <motion.div whileHover={{ y: -3 }} className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm transition-all">
                 <div className="w-10 h-10 rounded-xl bg-[#E8F0FE] flex items-center justify-center mb-3 text-[#0E3B7D]">
                   <span aria-hidden="true" className="material-symbols-outlined text-xl">verified</span>
                 </div>
-                <p className="text-2xl sm:text-3xl font-black text-[#09234B] mb-0.5">Pearson</p>
-                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Edexcel Curriculum</p>
+                <p className="text-2xl sm:text-3xl font-black text-[#09234B] mb-0.5">{t("home.statPearson")}</p>
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{t("home.statEdexcel")}</p>
               </motion.div>
 
-              <motion.div
-                whileHover={{ y: -3 }}
-                className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm transition-all"
-              >
+              <motion.div whileHover={{ y: -3 }} className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm transition-all">
                 <div className="w-10 h-10 rounded-xl bg-[#E8F0FE] flex items-center justify-center mb-3 text-[#0E3B7D]">
                   <span aria-hidden="true" className="material-symbols-outlined text-xl">school</span>
                 </div>
-                <p className="text-2xl sm:text-3xl font-black text-[#09234B] mb-0.5">100%</p>
-                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">University Pass Rate</p>
+                <p className="text-2xl sm:text-3xl font-black text-[#09234B] mb-0.5">{t("home.statPassRate")}</p>
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{t("home.statUniversity")}</p>
               </motion.div>
 
-              <motion.div
-                whileHover={{ y: -3 }}
-                className="col-span-2 sm:col-span-1 bg-gradient-to-br from-[#09234B] to-[#0E3B7D] p-4 sm:p-5 rounded-2xl shadow-md transition-all text-white"
-              >
+              <motion.div whileHover={{ y: -3 }} className="col-span-2 sm:col-span-1 bg-gradient-to-br from-[#09234B] to-[#0E3B7D] p-4 sm:p-5 rounded-2xl shadow-md transition-all text-white">
                 <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center mb-3 text-[#FFC700]">
                   <span aria-hidden="true" className="material-symbols-outlined text-xl">emoji_events</span>
                 </div>
-                <p className="text-2xl sm:text-3xl font-black mb-0.5">15+</p>
-                <p className="text-[11px] font-bold text-[#FFC700] uppercase tracking-wider">Years of Dedication</p>
+                <p className="text-2xl sm:text-3xl font-black mb-0.5">{t("home.statYears")}</p>
+                <p className="text-[11px] font-bold text-[#FFC700] uppercase tracking-wider">{t("home.statDedication")}</p>
               </motion.div>
             </div>
           </motion.div>

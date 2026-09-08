@@ -1,23 +1,22 @@
 import type { Metadata } from "next";
 import ClassesView from "./ClassesView";
-import { getCourses, getBulletins } from "@/lib/actions/classes";
+import { getPublicPrograms } from "@/lib/actions/academicCatalog";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Classes & Announcements | Hinthar International School",
+  title: "Classes & Programs | Hinthar International School",
   description:
-    "Stay up to date with class schedules, courses, and the latest school news and announcements.",
+    "Explore Hinthar academic programs for 2026–2027 — Cambridge Checkpoint, Pearson Edexcel, O Level, A Level, vocational pathways, and university foundation tracks.",
 };
 
 export default async function ClassesPage() {
-  let initialCourses: Awaited<ReturnType<typeof getCourses>> = [];
-  let initialBulletins: Awaited<ReturnType<typeof getBulletins>> = [];
+  let initialPrograms: Awaited<ReturnType<typeof getPublicPrograms>> = [];
   try {
-    [initialCourses, initialBulletins] = await Promise.all([getCourses(), getBulletins()]);
+    initialPrograms = await getPublicPrograms();
   } catch (err) {
     console.warn("Classes SSR fetch note:", err);
   }
 
-  return <ClassesView initialCourses={initialCourses} initialBulletins={initialBulletins} />;
+  return <ClassesView initialPrograms={initialPrograms} />;
 }

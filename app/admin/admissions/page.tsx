@@ -85,6 +85,7 @@ export default function AdminAdmissionsPage() {
   const [subjectsSaving, setSubjectsSaving] = useState(false);
   const [newSubject, setNewSubject] = useState({
     name: "",
+    nameMy: "",
     track: "STEM" as SubjectEntry["track"],
     level: "Both" as SubjectEntry["level"],
     code: "",
@@ -343,12 +344,13 @@ export default function AdminAdmissionsPage() {
     setSubjects((current) => [...current, {
       id: `subject-${crypto.randomUUID()}`,
       name,
+      nameMy: newSubject.nameMy.trim() || undefined,
       track: newSubject.track,
       level: newSubject.level,
       code: newSubject.code.trim() || undefined,
       isActive: true,
     }]);
-    setNewSubject({ name: "", track: "STEM", level: "Both", code: "" });
+    setNewSubject({ name: "", nameMy: "", track: "STEM", level: "Both", code: "" });
   };
 
   const handleSaveSubjects = async () => {
@@ -665,6 +667,7 @@ export default function AdminAdmissionsPage() {
               {subjects.map((subject) => (
                 <div key={subject.id} className="grid items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2 sm:grid-cols-[1fr_130px_150px_90px_auto]">
                   <input value={subject.name} onChange={(event) => setSubjects((items) => items.map((item) => item.id === subject.id ? { ...item, name: event.target.value } : item))} className="rounded-lg border border-slate-200 bg-white p-2 text-xs" aria-label="Subject name" />
+                  <input value={subject.nameMy ?? ""} onChange={(event) => setSubjects((items) => items.map((item) => item.id === subject.id ? { ...item, nameMy: event.target.value } : item))} placeholder="Name (MY)" className="rounded-lg border border-slate-200 bg-white p-2 text-xs" aria-label="Subject name Myanmar" />
                   <select value={subject.track} onChange={(event) => setSubjects((items) => items.map((item) => item.id === subject.id ? { ...item, track: event.target.value as SubjectEntry["track"] } : item))} className="rounded-lg border border-slate-200 bg-white p-2 text-xs">
                     {["STEM", "Business", "Computing", "Languages", "General"].map((track) => <option key={track}>{track}</option>)}
                   </select>
@@ -680,6 +683,7 @@ export default function AdminAdmissionsPage() {
               ))}
               <div className="grid gap-2 rounded-xl border-2 border-dashed border-slate-200 p-3 sm:grid-cols-[1fr_130px_150px_90px_auto]">
                 <input value={newSubject.name} onChange={(event) => setNewSubject({ ...newSubject, name: event.target.value })} placeholder="New subject" className="rounded-lg border border-slate-200 p-2 text-xs" />
+                <input value={newSubject.nameMy} onChange={(event) => setNewSubject({ ...newSubject, nameMy: event.target.value })} placeholder="Name (MY)" className="rounded-lg border border-slate-200 p-2 text-xs" />
                 <select value={newSubject.track} onChange={(event) => setNewSubject({ ...newSubject, track: event.target.value as SubjectEntry["track"] })} className="rounded-lg border border-slate-200 p-2 text-xs">{["STEM", "Business", "Computing", "Languages", "General"].map((track) => <option key={track}>{track}</option>)}</select>
                 <select value={newSubject.level} onChange={(event) => setNewSubject({ ...newSubject, level: event.target.value as SubjectEntry["level"] })} className="rounded-lg border border-slate-200 p-2 text-xs">{["Lower Secondary", "IGCSE", "IAL", "Both"].map((level) => <option key={level}>{level}</option>)}</select>
                 <input value={newSubject.code} onChange={(event) => setNewSubject({ ...newSubject, code: event.target.value })} placeholder="Code" className="rounded-lg border border-slate-200 p-2 text-xs" />

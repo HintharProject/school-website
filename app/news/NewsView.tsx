@@ -3,6 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/useT";
+import { useLocale } from "@/lib/i18n/useT";
+import { locField } from "@/lib/i18n/loc";
 import type { PublicNewsItem } from "@/lib/actions/news";
 import { isR2AssetUrl } from "@/lib/utils/r2Image";
 
@@ -29,13 +31,14 @@ function formatDate(value: string | null): string {
 
 export default function NewsView({ posts }: { posts: PublicNewsItem[] }) {
   const t = useT();
+  const locale = useLocale();
 
   return (
     <>
       <div className="text-center mb-10">
         <div className="inline-flex items-center gap-2 bg-[#E8F0FE] px-4 py-1.5 rounded-full mb-4 border border-[#0E3B7D]/20">
           <span aria-hidden="true" className="material-symbols-outlined text-[#0E3B7D] text-sm font-bold">newspaper</span>
-          <span className="text-xs font-extrabold text-[#0E3B7D] uppercase tracking-wider">Hinthar Bulletin</span>
+          <span className="text-xs font-extrabold text-[#0E3B7D] uppercase tracking-wider">{t("news.badge")}</span>
         </div>
         <h1 className="text-3xl md:text-4xl font-black text-[#09234B] mb-3 tracking-tight">
           {t("news.pageTitle")}
@@ -52,7 +55,12 @@ export default function NewsView({ posts }: { posts: PublicNewsItem[] }) {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {posts.map((post) => (
+          {posts.map((post) => {
+            const title = locField(locale, post.title, post.titleMy);
+            const excerpt = post.excerpt || post.excerptMy
+              ? locField(locale, post.excerpt ?? "", post.excerptMy)
+              : null;
+            return (
             <Link
               key={post.id}
               href={`/news/${post.slug}`}
@@ -62,7 +70,7 @@ export default function NewsView({ posts }: { posts: PublicNewsItem[] }) {
                 {post.image ? (
                   <Image
                     src={post.image}
-                    alt={post.title}
+                    alt={title}
                     fill
                     unoptimized={isR2AssetUrl(post.image)}
                     className="object-cover group-hover:scale-105 transition-transform duration-500"
@@ -86,10 +94,10 @@ export default function NewsView({ posts }: { posts: PublicNewsItem[] }) {
                   {formatDate(post.publishedAt)}
                 </p>
                 <h2 className="text-sm font-black text-[#09234B] leading-snug line-clamp-2 group-hover:text-[#0E3B7D] transition-colors">
-                  {post.title}
+                  {title}
                 </h2>
-                {post.excerpt && (
-                  <p className="text-xs text-slate-500 font-light line-clamp-3">{post.excerpt}</p>
+                {excerpt && (
+                  <p className="text-xs text-slate-500 font-light line-clamp-3">{excerpt}</p>
                 )}
                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#0E3B7D] uppercase tracking-wider pt-1">
                   {t("common.readMore")}
@@ -97,7 +105,8 @@ export default function NewsView({ posts }: { posts: PublicNewsItem[] }) {
                 </span>
               </div>
             </Link>
-          ))}
+          );
+          })}
         </div>
       )}
     </>

@@ -63,7 +63,7 @@ export default function AdminSidebar({
       label: "Academics",
       icon: "menu_book",
       items: [
-        { label: "Classes & Syllabi", href: "/admin/classes", icon: "menu_book" },
+        { label: "Academic Catalog", href: "/admin/classes", icon: "menu_book" },
         { label: "Clubs & Activities", href: "/admin/clubs", icon: "groups" },
         { label: "Yearbook & Honors", href: "/admin/yearbook", icon: "auto_stories" },
         { label: "News & Notices", href: "/admin/news", icon: "newspaper" },

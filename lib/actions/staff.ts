@@ -9,9 +9,13 @@ import { revalidatePath } from "next/cache";
 const staffSchema = z.object({
   name: z.string().min(2).max(200),
   role: z.string().min(2).max(200),
+  roleMy: z.string().max(200).optional().nullable(),
   department: z.string().max(100).default("General"),
+  departmentMy: z.string().max(100).optional().nullable(),
   qualifications: z.string().max(500).optional().nullable(),
+  qualificationsMy: z.string().max(500).optional().nullable(),
   bio: z.string().max(3000).optional().nullable(),
+  bioMy: z.string().max(3000).optional().nullable(),
   email: z.string().max(200).optional().nullable(),
   phone: z.string().max(60).optional().nullable(),
   image: z.string().max(500).optional().nullable(),
@@ -24,9 +28,13 @@ export interface PublicStaffMember {
   id: number;
   name: string;
   role: string;
+  roleMy: string | null;
   department: string;
+  departmentMy: string | null;
   qualifications: string | null;
+  qualificationsMy: string | null;
   bio: string | null;
+  bioMy: string | null;
   email: string | null;
   phone: string | null;
   image: string | null;
@@ -42,9 +50,13 @@ export async function getPublishedStaff(): Promise<PublicStaffMember[]> {
         id: staffProfiles.id,
         name: staffProfiles.name,
         role: staffProfiles.role,
+        roleMy: staffProfiles.roleMy,
         department: staffProfiles.department,
+        departmentMy: staffProfiles.departmentMy,
         qualifications: staffProfiles.qualifications,
+        qualificationsMy: staffProfiles.qualificationsMy,
         bio: staffProfiles.bio,
+        bioMy: staffProfiles.bioMy,
         email: staffProfiles.email,
         phone: staffProfiles.phone,
         image: staffProfiles.image,
@@ -83,9 +95,13 @@ export async function createStaffAction(
     .values({
       name: validated.name.trim(),
       role: validated.role.trim(),
+      roleMy: validated.roleMy?.trim() || null,
       department: validated.department.trim() || "General",
+      departmentMy: validated.departmentMy?.trim() || null,
       qualifications: validated.qualifications?.trim() || null,
+      qualificationsMy: validated.qualificationsMy?.trim() || null,
       bio: validated.bio?.trim() || null,
+      bioMy: validated.bioMy?.trim() || null,
       email: validated.email?.trim() || null,
       phone: validated.phone?.trim() || null,
       image: validated.image?.trim() || null,
@@ -125,9 +141,13 @@ export async function updateStaffAction(
     .set({
       name: validated.name.trim(),
       role: validated.role.trim(),
+      roleMy: validated.roleMy?.trim() || null,
       department: validated.department.trim() || "General",
+      departmentMy: validated.departmentMy?.trim() || null,
       qualifications: validated.qualifications?.trim() || null,
+      qualificationsMy: validated.qualificationsMy?.trim() || null,
       bio: validated.bio?.trim() || null,
+      bioMy: validated.bioMy?.trim() || null,
       email: validated.email?.trim() || null,
       phone: validated.phone?.trim() || null,
       image: validated.image?.trim() || null,

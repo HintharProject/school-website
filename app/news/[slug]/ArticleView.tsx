@@ -3,10 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/useT";
+import { useLocale } from "@/lib/i18n/useT";
+import { locField } from "@/lib/i18n/loc";
 import type { PublicNewsItem } from "@/lib/actions/news";
 import { isR2AssetUrl } from "@/lib/utils/r2Image";
 
-type ArticleData = PublicNewsItem & { body: string };
+type ArticleData = PublicNewsItem & { body: string; bodyMy?: string | null };
 
 function formatDate(value: string | null): string {
   if (!value) return "";
@@ -41,6 +43,12 @@ function BodyParagraphs({ body }: { body: string }) {
 
 export default function ArticleView({ post }: { post: ArticleData }) {
   const t = useT();
+  const locale = useLocale();
+  const title = locField(locale, post.title, post.titleMy);
+  const excerpt = post.excerpt || post.excerptMy
+    ? locField(locale, post.excerpt ?? "", post.excerptMy)
+    : null;
+  const body = locField(locale, post.body, post.bodyMy);
 
   return (
     <article className="space-y-6">
@@ -64,16 +72,16 @@ export default function ArticleView({ post }: { post: ArticleData }) {
           </span>
         </div>
         <h1 className="text-2xl md:text-3xl font-black text-[#09234B] tracking-tight leading-tight">
-          {post.title}
+          {title}
         </h1>
-        {post.excerpt && <p className="text-sm text-slate-500 font-normal">{post.excerpt}</p>}
+        {excerpt && <p className="text-sm text-slate-500 font-normal">{excerpt}</p>}
       </header>
 
       {post.image && (
         <div className="relative h-64 sm:h-80 rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
           <Image
             src={post.image}
-            alt={post.title}
+            alt={title}
             fill
             unoptimized={isR2AssetUrl(post.image)}
             className="object-cover"
@@ -84,7 +92,7 @@ export default function ArticleView({ post }: { post: ArticleData }) {
       )}
 
       <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-sm">
-        <BodyParagraphs body={post.body} />
+        <BodyParagraphs body={body} />
       </div>
     </article>
   );
