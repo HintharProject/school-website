@@ -375,7 +375,9 @@ export default function StudentLifeView({
                             </p>
                             <p className="flex items-center gap-2">
                               <span aria-hidden="true" className="material-symbols-outlined text-sm text-[#0E3B7D]">apartment</span>
-                              <span className="font-bold text-[#0E3B7D]">{campusBadge}</span>
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${campusBadge.badgeClass}`}>
+                                {campusBadge.label}
+                              </span>
                             </p>
                           </div>
                         </div>
@@ -633,7 +635,7 @@ export default function StudentLifeView({
                 </div>
                 <div>
                   <span className="block text-slate-400 font-bold uppercase text-[10px]">Campus</span>
-                  <strong className="text-slate-800">{formatCampusBadge(selectedClub.campus)}</strong>
+                  <strong className="text-slate-800">{formatCampusBadge(selectedClub.campus).label}</strong>
                 </div>
                 <div>
                   <span className="block text-slate-400 font-bold uppercase text-[10px]">Members</span>
