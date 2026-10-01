@@ -28,11 +28,40 @@ type AdmissionDocument = {
   filename: string;
 };
 
+const STREAM_DETAILS: Record<string, { icon: string; badge: string; desc: string }> = {
+  Engineering: {
+    icon: "precision_manufacturing",
+    badge: "STEM & Mechanics",
+    desc: "Mathematics, Physics, Further Mechanics & Applied Technical Principles",
+  },
+  IT: {
+    icon: "terminal",
+    badge: "Computing & AI",
+    desc: "Computer Science, Software Engineering, AI & Digital Technologies",
+  },
+  Medicine: {
+    icon: "medical_services",
+    badge: "Pre-Med & Sciences",
+    desc: "Pure Biology, Chemistry, Human Physiology & Clinical Science Foundations",
+  },
+  "Business / Commerce": {
+    icon: "trending_up",
+    badge: "Economics & Finance",
+    desc: "Accounting, Micro/Macro Economics, Business Studies & Global Markets",
+  },
+  Others: {
+    icon: "category",
+    badge: "Interdisciplinary",
+    desc: "Humanities, Arts, Social Sciences, Law & Custom Career Pathways",
+  },
+};
+
 export default function AdmissionForm() {
   const t = useT();
   const locale = useLocale();
   const searchParams = useSearchParams();
   const [currentStep, setCurrentStep] = useState<Step>(1);
+  const [otherStreamNote, setOtherStreamNote] = useState("");
   const [uploadedDocuments, setUploadedDocuments] = useState<AdmissionDocument[]>([]);
   const [uploadingType, setUploadingType] = useState<AdmissionDocument["type"] | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -226,8 +255,11 @@ export default function AdmissionForm() {
         finishedGrade: formData.finishedGrade,
         suggestedEntryYear: `Year ${suggestedEntryYear}`,
         preferredRegion: formData.preferredRegion,
-        academicStream: formData.academicStream,
-        selectedSubjects: formData.selectedSubjects,
+        academicStream:
+          formData.academicStream === "Others" && otherStreamNote.trim()
+            ? `Others (${otherStreamNote.trim()})`
+            : formData.academicStream,
+        selectedSubjects: [],
         documentUrls: uploadedDocuments,
         intendedStartTerm: formData.intendedStartTerm,
         studyMode: formData.studyMode,
@@ -532,7 +564,7 @@ export default function AdmissionForm() {
             </div>
           )}
 
-          {/* STEP 2: Academic Track & Subjects */}
+          {/* STEP 2: Academic Focus Stream */}
           {currentStep === 2 && (
             <div className="space-y-6">
               <div className="border-b border-slate-100 pb-4">
@@ -540,72 +572,116 @@ export default function AdmissionForm() {
                   Step 2: {t("admission.stepCurriculum")}
                 </h2>
                 <p className="text-xs text-slate-500 mt-1 font-normal">
-                  Select your intended specialization track and subject preferences.
+                  Select your intended specialization track. Specific subject electives will be finalized with our Academic Dean.
                 </p>
               </div>
 
               {/* Stream Selection */}
-              <div className="space-y-3">
-                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  Academic Focus Track
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3" role="radiogroup" aria-label="Academic Focus Track">
-                  {admissionOptions.academicStreams.map((track) => (
-                    <button
-                      key={track}
-                      type="button"
-                      role="radio"
-                      aria-checked={formData.academicStream === track}
-                      onClick={() => setFormData({ ...formData, academicStream: track })}
-                      className={`p-4 rounded-2xl border text-left cursor-pointer transition-all ${
-                        formData.academicStream === track
-                          ? "border-[#0E3B7D] bg-[#E8F0FE] ring-2 ring-[#0E3B7D]/30"
-                          : "border-slate-200 hover:border-[#0E3B7D]/50 bg-slate-50"
-                      }`}
-                    >
-                      <span aria-hidden="true" className="material-symbols-outlined text-[#0E3B7D] text-2xl mb-1 font-bold block">
-                        school
-                      </span>
-                      <span className="block text-sm font-bold text-[#09234B]">{track}</span>
-                    </button>
-                  ))}
+              <div className="space-y-4">
+                <div>
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                    Academic Focus Stream
+                  </span>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Choose the specialization track that best aligns with your target degree and future ambitions.
+                  </p>
                 </div>
-              </div>
 
-              {/* Subject Checkboxes */}
-              <div className="space-y-3">
-                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  Select Target Electives / Subjects
-                </span>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5" role="group" aria-label="Select Target Electives / Subjects">
-                  {filteredSubjects.length === 0 ? (
-                    <p className="col-span-full text-xs text-slate-500 py-4">
-                      No subjects are linked to this program yet. Ask admin to link electives in the Academic Catalog, or continue and note preferences in Step 4.
-                    </p>
-                  ) : null}
-                  {filteredSubjects.map((entry) => {
-                    const subj = entry.name;
-                    const displayName = locField(locale, entry.name, entry.nameMy);
-                    const isSelected = formData.selectedSubjects.includes(subj);
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5" role="radiogroup" aria-label="Academic Focus Stream">
+                  {admissionOptions.academicStreams.map((track) => {
+                    const info = STREAM_DETAILS[track] || {
+                      icon: "school",
+                      badge: "Academic Track",
+                      desc: "Comprehensive UK curriculum specialization track.",
+                    };
+                    const isSelected = formData.academicStream === track;
+
                     return (
                       <button
+                        key={track}
                         type="button"
-                        key={subj}
-                        onClick={() => toggleSubject(subj)}
-                        aria-pressed={isSelected}
-                        className={`flex items-center gap-2 p-2.5 rounded-xl text-left text-xs font-semibold border transition-all cursor-pointer ${
+                        role="radio"
+                        aria-checked={isSelected}
+                        onClick={() => setFormData({ ...formData, academicStream: track })}
+                        className={`p-4 rounded-2xl border text-left cursor-pointer transition-all flex flex-col justify-between group ${
                           isSelected
-                            ? "bg-[#FFF8E1] border-[#FFC700] text-[#09234B]"
-                            : "bg-slate-50 border-slate-200 text-slate-600 hover:border-[#0E3B7D]/50"
+                            ? "border-[#0E3B7D] bg-gradient-to-br from-blue-50/90 to-indigo-50/50 ring-2 ring-[#0E3B7D]/30 shadow-sm"
+                            : "border-slate-200 hover:border-[#0E3B7D]/40 bg-white hover:bg-slate-50/60"
                         }`}
                       >
-                        <span aria-hidden="true" className="material-symbols-outlined text-base text-[#0E3B7D]">
-                          {isSelected ? "check_box" : "check_box_outline_blank"}
-                        </span>
-                        <span className="truncate">{displayName}</span>
+                        <div>
+                          <div className="flex items-center justify-between mb-2.5">
+                            <span
+                              aria-hidden="true"
+                              className={`material-symbols-outlined text-2xl p-2 rounded-xl transition-colors ${
+                                isSelected
+                                  ? "bg-[#0E3B7D] text-[#FFC700]"
+                                  : "bg-slate-100 text-[#0E3B7D] group-hover:bg-blue-100"
+                              }`}
+                            >
+                              {info.icon}
+                            </span>
+                            <span
+                              className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
+                                isSelected
+                                  ? "bg-[#0E3B7D] text-white"
+                                  : "bg-slate-100 text-slate-600"
+                              }`}
+                            >
+                              {info.badge}
+                            </span>
+                          </div>
+                          <span className="block text-sm font-black text-[#09234B] tracking-tight mb-1">
+                            {track}
+                          </span>
+                          <span className="text-[11px] text-slate-500 font-normal leading-relaxed block">
+                            {info.desc}
+                          </span>
+                        </div>
+
+                        <div className="mt-4 pt-3 border-t border-slate-100/80 flex items-center justify-between text-[11px] font-bold">
+                          <span className={isSelected ? "text-[#0E3B7D]" : "text-slate-400"}>
+                            {isSelected ? "Selected Stream" : "Choose Stream"}
+                          </span>
+                          <span
+                            aria-hidden="true"
+                            className={`material-symbols-outlined text-base ${
+                              isSelected ? "text-[#0E3B7D]" : "text-slate-300"
+                            }`}
+                          >
+                            {isSelected ? "check_circle" : "radio_button_unchecked"}
+                          </span>
+                        </div>
                       </button>
                     );
                   })}
+                </div>
+
+                {formData.academicStream === "Others" && (
+                  <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-2xl space-y-2">
+                    <label htmlFor="other-stream-input" className="text-xs font-bold text-amber-950 block">
+                      Specify Custom Stream or Career Focus (Optional)
+                    </label>
+                    <input
+                      id="other-stream-input"
+                      type="text"
+                      placeholder="e.g. Law, Architecture, International Relations, Psychology, Humanities..."
+                      value={otherStreamNote}
+                      onChange={(e) => setOtherStreamNote(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-white border border-amber-300 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#FFC700]"
+                    />
+                  </div>
+                )}
+
+                {/* Dean Subject Curation Notice */}
+                <div className="flex items-start gap-3 p-4 bg-blue-50/80 border border-blue-200/80 rounded-2xl text-xs text-slate-700">
+                  <span aria-hidden="true" className="material-symbols-outlined text-[#0E3B7D] text-xl shrink-0 mt-0.5">
+                    verified_user
+                  </span>
+                  <div>
+                    <strong className="text-[#09234B] block mb-0.5">Elective Subject Selection:</strong>
+                    Individual Pearson Edexcel subjects and syllabi will be finalized and curated directly with our Academic Dean during the entrance assessment to align with your university requirements.
+                  </div>
                 </div>
               </div>
 
@@ -839,7 +915,12 @@ export default function AdmissionForm() {
                   <div><strong>Region:</strong> {formData.preferredRegion}</div>
                   <div><strong>Parent:</strong> {formData.parentName}</div>
                   <div><strong>Contact:</strong> {formData.parentPhone}</div>
-                  <div className="col-span-2"><strong>Subjects:</strong> {formData.selectedSubjects.join(", ")}</div>
+                  <div className="col-span-2">
+                    <strong>Academic Stream:</strong>{" "}
+                    {formData.academicStream === "Others" && otherStreamNote.trim()
+                      ? `Others (${otherStreamNote.trim()})`
+                      : formData.academicStream}
+                  </div>
                 </div>
               </div>
 

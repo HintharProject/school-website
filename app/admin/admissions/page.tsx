@@ -757,6 +757,30 @@ export default function AdminAdmissionsPage() {
               </div>
             </div>
 
+            {/* Stream & Assigned Electives Status */}
+            <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-3.5 space-y-1.5 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-[#0E3B7D] uppercase text-[10px] tracking-wider">
+                  Academic Specialization &amp; Electives
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full bg-[#0E3B7D] text-[#FFC700] text-[10px] font-black">
+                  {selectedApp.academicStream || "General Stream"}
+                </span>
+              </div>
+              <p className="text-slate-700">
+                <strong>Assigned Subjects:</strong>{" "}
+                {(selectedApp.selectedSubjects?.length ?? 0) > 0 ? (
+                  <span className="text-[#09234B] font-semibold">
+                    {selectedApp.selectedSubjects?.join(", ")}
+                  </span>
+                ) : (
+                  <span className="text-slate-500 italic">
+                    None assigned yet. Click &quot;Edit Details&quot; to assign official syllabus subjects.
+                  </span>
+                )}
+              </p>
+            </div>
+
             {(selectedApp.documentUrls?.length ?? 0) > 0 && (
               <div className="space-y-2">
                 <h3 className="text-xs font-black uppercase tracking-wider text-[#09234B]">Supporting documents</h3>

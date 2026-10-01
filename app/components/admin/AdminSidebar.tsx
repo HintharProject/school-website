@@ -65,7 +65,6 @@ export default function AdminSidebar({
       items: [
         { label: "Academic Catalog", href: "/admin/classes", icon: "menu_book" },
         { label: "Clubs & Activities", href: "/admin/clubs", icon: "groups" },
-        { label: "Yearbook & Honors", href: "/admin/yearbook", icon: "auto_stories" },
         { label: "News & Notices", href: "/admin/news", icon: "newspaper" },
       ],
     },
@@ -75,7 +74,7 @@ export default function AdminSidebar({
       icon: "location_city",
       items: [
         { label: "Campuses (4)", href: "/admin/campuses", icon: "location_city" },
-        { label: "Staff Directory", href: "/admin/staff", icon: "badge" },
+        { label: "People & Directory", href: "/admin/people", icon: "badge" },
         { label: "Testimonials", href: "/admin/testimonials", icon: "reviews" },
         { label: "User Accounts", href: "/admin/users", icon: "manage_accounts" },
       ],
@@ -95,7 +94,7 @@ export default function AdminSidebar({
   // Student Contributor View — keep flat limited 6
   const studentItems = [
     { label: "Contributor Hub", href: "/admin", icon: "dashboard" },
-    { label: "Yearbook Entry", href: "/admin/yearbook", icon: "auto_stories" },
+    { label: "Yearbook Entry", href: "/admin/people?tab=yearbook", icon: "auto_stories" },
     { label: "Classes & Timetables", href: "/admin/classes", icon: "menu_book" },
     { label: "Clubs & Activities", href: "/admin/clubs", icon: "groups" },
     { label: "Noticeboard", href: "/admin/notices", icon: "campaign" },
@@ -258,7 +257,7 @@ export default function AdminSidebar({
                 </Link>
               )}
               <Link
-                href={isAdmin ? "/admin/admissions" : "/admin/yearbook"}
+                href={isAdmin ? "/admin/admissions" : "/admin/people?tab=yearbook"}
                 onClick={() => setProfileOpen(false)}
                 role="menuitem"
                 className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-slate-50 hover:text-[#0E3B7D] transition-colors cursor-pointer"

@@ -138,7 +138,7 @@ export default function AdminDashboardPage() {
             </Link>
           ) : (
             <Link
-              href="/admin/yearbook"
+              href="/admin/people?tab=yearbook"
               className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
             >
               <span aria-hidden="true" className="material-symbols-outlined text-sm">add</span>
@@ -253,7 +253,7 @@ export default function AdminDashboardPage() {
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {[
-              { href: "/admin/yearbook", icon: "auto_stories", title: "Yearbook Entry", desc: "Submit alumni honors" },
+              { href: "/admin/people?tab=yearbook", icon: "auto_stories", title: "Yearbook Entry", desc: "Submit alumni honors" },
               { href: "/admin/classes", icon: "menu_book", title: "Classes & Timetables", desc: "Browse course schedules" },
               { href: "/admin/clubs", icon: "groups", title: "Clubs & Activities", desc: "Propose societies & events" },
               { href: "/admin/notices", icon: "campaign", title: "Noticeboard", desc: "Messages & your tasks" },

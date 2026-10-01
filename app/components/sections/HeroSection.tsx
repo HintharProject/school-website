@@ -38,9 +38,9 @@ export default function HeroSection({
   return (
     <section
       id="home"
-      className="relative min-h-[100svh] lg:h-[100svh] flex flex-col justify-between overflow-hidden bg-[#06152B]"
+      className="relative min-h-[100svh] flex flex-col justify-between bg-[#06152B]"
     >
-      <div className="absolute inset-0 z-0">
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
         <Image
           src="/images/graduation.webp"
           alt="Hinthar International School Campus and Scholars"
@@ -56,7 +56,7 @@ export default function HeroSection({
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[520px] h-[520px] bg-[#FFC700]/10 rounded-full blur-[140px] pointer-events-none" />
       </div>
 
-      <div className="relative z-10 w-full max-w-[1080px] mx-auto px-6 md:px-8 pt-28 sm:pt-32 lg:pt-[8.5rem] pb-10 lg:pb-14 my-auto flex flex-col items-center justify-center text-center">
+      <div className="relative z-10 w-full max-w-[1080px] mx-auto px-4 sm:px-6 md:px-8 pt-24 sm:pt-28 lg:pt-32 pb-6 sm:pb-8 my-auto flex flex-col items-center justify-center text-center">
         <motion.div
           variants={containerVariants}
           initial="hidden"

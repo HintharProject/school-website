@@ -1,26 +1,29 @@
 import type { Metadata } from "next";
-import YearbookGallery from "./YearbookGallery";
+import PeopleAlumniView from "./PeopleAlumniView";
 import { getYearbook, getYearbookBatches } from "@/lib/actions/yearbook";
+import { getPublishedStaff } from "@/lib/actions/staff";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Year Book | Hinthar International School",
+  title: "People & Alumni — Yearbook & Faculty Directory | Hinthar International School",
   description:
-    "Explore Hinthar International School's annual yearbook — celebrating student achievements and memories.",
+    "Explore Hinthar International School's annual alumni yearbook and meet our certified Pearson Edexcel faculty across Yangon and Mawlamyine campuses.",
 };
 
 export default async function YearbookPage() {
-  let initialData: Awaited<ReturnType<typeof getYearbook>> = [];
-  let initialBatches: Awaited<ReturnType<typeof getYearbookBatches>> = [];
-  try {
-    [initialData, initialBatches] = await Promise.all([
-      getYearbook(),
-      getYearbookBatches(),
-    ]);
-  } catch (err) {
-    console.warn("Yearbook SSR fetch note:", err);
-  }
+  const [initialYearbook, initialBatches, initialStaff] = await Promise.all([
+    getYearbook().catch(() => []),
+    getYearbookBatches().catch(() => []),
+    getPublishedStaff().catch(() => []),
+  ]);
 
-  return <YearbookGallery initialData={initialData} initialBatches={initialBatches} />;
+  return (
+    <PeopleAlumniView
+      initialYearbook={initialYearbook}
+      initialBatches={initialBatches}
+      initialStaff={initialStaff}
+      initialTab="yearbook"
+    />
+  );
 }

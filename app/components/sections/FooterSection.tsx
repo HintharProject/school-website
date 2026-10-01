@@ -20,9 +20,7 @@ const quickLinks: { labelKey: TranslateKey; href: string }[] = [
   { labelKey: "nav.yearbook", href: "/yearbook" },
   { labelKey: "nav.clubs", href: "/clubs" },
   { labelKey: "nav.classes", href: "/classes" },
-  { labelKey: "nav.activities", href: "/activities" },
   { labelKey: "nav.news", href: "/news" },
-  { labelKey: "nav.staff", href: "/staff" },
   { labelKey: "nav.admission", href: "/admission" },
 ];
 

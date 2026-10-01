@@ -1,22 +1,27 @@
 import type { Metadata } from "next";
-import ActivitiesView from "./ActivitiesView";
+import StudentLifeView from "@/app/clubs/StudentLifeView";
+import { getClubs } from "@/lib/actions/clubs";
 import { getActivities } from "@/lib/actions/activities";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Activities & Announcements | Hinthar International School",
+  title: "School Events & Activities Calendar | Hinthar International School",
   description:
     "Explore upcoming academic competitions, school workshops, athletic meets, and campus events at Hinthar International School.",
 };
 
 export default async function ActivitiesPage() {
-  let initialData: Awaited<ReturnType<typeof getActivities>> = [];
-  try {
-    initialData = await getActivities();
-  } catch (err) {
-    console.warn("Activities SSR fetch note:", err);
-  }
+  const [initialClubs, initialActivities] = await Promise.all([
+    getClubs().catch(() => []),
+    getActivities().catch(() => []),
+  ]);
 
-  return <ActivitiesView initialData={initialData} />;
+  return (
+    <StudentLifeView
+      initialClubs={initialClubs}
+      initialActivities={initialActivities}
+      initialTab="activities"
+    />
+  );
 }
