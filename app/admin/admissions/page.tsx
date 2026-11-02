@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useTransition } from "react";
 import {
   AdmissionApplication,
   ApplicationStatus,
@@ -15,96 +15,72 @@ import {
   updateAdmissionStatusAction,
   updateAdmissionDetailsAction,
   deleteAdmissionAction,
-  submitPublicAdmissionAction,
 } from "@/lib/actions/admissions";
 import {
-  getAdmissionOptions,
-  getSubjectCatalog,
-  upsertSubjectCatalogAction,
-  upsertAdmissionOptionsAction,
-  resetAdmissionOptionsAction,
-  type AdmissionOptions,
-  type SubjectEntry,
+  getAdmissionsConfig,
+  upsertSiteContentAction,
 } from "@/lib/actions/siteContent";
-import { DEFAULT_ADMISSION_OPTIONS, DEFAULT_SUBJECT_CATALOG } from "@/lib/content/defaults";
+import type { AdmissionsConfigContent } from "@/lib/content/defaults";
+import { DEFAULT_ADMISSIONS_CONFIG } from "@/lib/content/defaults";
+import {
+  CheckCircle,
+  GraduationCap,
+  DownloadSimple,
+  Users,
+  Sliders,
+  FolderSimple,
+  ClockCountdown,
+  CalendarCheck,
+  SealCheck,
+  MagnifyingGlass,
+  PencilSimple,
+  Trash,
+  FloppyDisk,
+  X,
+  Plus,
+  FileText,
+  User,
+  AddressBook,
+  Paperclip,
+  Lock,
+  ArrowSquareOut,
+  WarningCircle,
+} from "@phosphor-icons/react";
 
 const statusBadgeClasses: Record<ApplicationStatus, string> = {
-  Pending: "bg-amber-100 text-amber-800 border border-amber-200",
-  "Assessment Scheduled": "bg-blue-100 text-blue-800 border border-blue-200",
-  Approved: "bg-emerald-100 text-emerald-800 border border-emerald-200",
-  Declined: "bg-rose-100 text-rose-800 border border-rose-200",
+  Pending: "bg-amber-50 text-amber-800 border border-amber-200",
+  "Assessment Scheduled": "bg-blue-50 text-blue-800 border border-blue-200",
+  Approved: "bg-emerald-50 text-emerald-800 border border-emerald-200",
+  Declined: "bg-rose-50 text-rose-800 border border-rose-200",
 };
 
-function subjectsForApplication(subjects: SubjectEntry[], application: AdmissionApplication) {
-  const program = application.programLevel
-    || (application.grade.includes("Lower Secondary") ? "lower_secondary" : application.grade.includes("IAL") ? "ial" : "igcse");
-  return subjects.filter((subject) => {
-    if (!subject.isActive) return false;
-    if (program === "lower_secondary") return subject.level === "Lower Secondary";
-    return subject.level === "Both" || subject.level === (program === "ial" ? "IAL" : "IGCSE");
-  });
-}
-
-function errorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
-}
-
 export default function AdminAdmissionsPage() {
+  const { data: session } = authClient.useSession();
+  const currentUser: UserProfile = session?.user
+    ? mapUserProfileRecord(session.user)
+    : FALLBACK_GUEST_USER;
+
+  const [activeTab, setActiveTab] = useState<"pipeline" | "settings">("pipeline");
   const [applications, setApplications] = useState<AdmissionApplication[]>([]);
-  const [currentUser, setCurrentUser] = useState<UserProfile>(FALLBACK_GUEST_USER);
+  const [config, setConfig] = useState<AdmissionsConfigContent>(DEFAULT_ADMISSIONS_CONFIG);
+  const [isLoading, setIsLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | "All">("All");
 
-  // Modals state
+  // Modals
   const [selectedApp, setSelectedApp] = useState<AdmissionApplication | null>(null);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingApp, setEditingApp] = useState<AdmissionApplication | null>(null);
   const [deletingApp, setDeletingApp] = useState<AdmissionApplication | null>(null);
 
-  // New Application Form State
-  const [newForm, setNewForm] = useState({
-    studentName: "",
-    dateOfBirth: "",
-    gender: "Male" as "Male" | "Female" | "Other",
-    grade: "Pearson IGCSE (Year 10)",
-    previousSchool: "",
-    parentName: "",
-    parentEmail: "",
-    parentPhone: "",
-    notes: "",
-  });
-
-  // Terms & Options catalog (4 lists) — shown in Terms tab
-  const [activeTab, setActiveTab] = useState<"pipeline" | "terms">("pipeline");
-  const [admissionOptions, setAdmissionOptions] = useState<AdmissionOptions>(DEFAULT_ADMISSION_OPTIONS);
-  const [termsSaving, setTermsSaving] = useState(false);
-  const [subjects, setSubjects] = useState<SubjectEntry[]>(DEFAULT_SUBJECT_CATALOG);
-  const [subjectsSaving, setSubjectsSaving] = useState(false);
-  const [newSubject, setNewSubject] = useState({
-    name: "",
-    nameMy: "",
-    track: "STEM" as SubjectEntry["track"],
-    level: "Both" as SubjectEntry["level"],
-    code: "",
-  });
-  const [newOptionInputs, setNewOptionInputs] = useState<Record<keyof AdmissionOptions, string>>({
-    intendedStartTerms: "",
-    studyModes: "",
-    academicStreams: "",
-    relationships: "",
-  });
-
-  const { data: session } = authClient.useSession();
-
-  useEffect(() => {
-    if (session?.user) {
-      const timer = window.setTimeout(() => setCurrentUser(mapUserProfileRecord(session.user)), 0);
-      return () => window.clearTimeout(timer);
-    }
-  }, [session]);
+  // New option input values for settings lists
+  const [newTermInput, setNewTermInput] = useState("");
+  const [newModeInput, setNewModeInput] = useState("");
+  const [newStreamInput, setNewStreamInput] = useState("");
+  const [newRelInput, setNewRelInput] = useState("");
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -113,1106 +89,986 @@ export default function AdminAdmissionsPage() {
 
   const loadData = async () => {
     try {
-      const [data, opts, subjectRows] = await Promise.all([
+      const [appsData, configData] = await Promise.all([
         getAdmissions(),
-        getAdmissionOptions().catch(() => DEFAULT_ADMISSION_OPTIONS),
-        getSubjectCatalog().catch(() => DEFAULT_SUBJECT_CATALOG),
+        getAdmissionsConfig(),
       ]);
-      setApplications(data.map(mapAdmissionRecord));
-      setAdmissionOptions(opts);
-      setSubjects(subjectRows);
+      setApplications(appsData.map(mapAdmissionRecord));
+      if (configData) setConfig(configData);
     } catch (err) {
-      console.warn("Failed to load admissions:", err);
+      console.warn("Failed to load admissions data:", err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    const timer = window.setTimeout(() => void loadData(), 0);
-    return () => window.clearTimeout(timer);
+    loadData();
   }, []);
+
+  // Filtered applications
+  const filteredApps = applications.filter((app) => {
+    if (statusFilter !== "All" && app.status !== statusFilter) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const matchName = app.studentName.toLowerCase().includes(q);
+      const matchEmail = app.parentEmail.toLowerCase().includes(q);
+      const matchPhone = app.parentPhone.toLowerCase().includes(q);
+      const matchGrade = app.grade.toLowerCase().includes(q);
+      return matchName || matchEmail || matchPhone || matchGrade;
+    }
+    return true;
+  });
+
+  // Stats
+  const totalCount = applications.length;
+  const pendingCount = applications.filter((a) => a.status === "Pending").length;
+  const scheduledCount = applications.filter(
+    (a) => a.status === "Assessment Scheduled"
+  ).length;
+  const approvedCount = applications.filter((a) => a.status === "Approved").length;
+  const declinedCount = applications.filter((a) => a.status === "Declined").length;
+
+  // Status updater
+  const handleUpdateStatus = (appId: string, nextStatus: ApplicationStatus) => {
+    startTransition(async () => {
+      const res = await updateAdmissionStatusAction(appId, nextStatus);
+      if (res?.success) {
+        showToast(`Status updated to "${nextStatus}"`);
+        setApplications((prev) =>
+          prev.map((a) => (a.id === appId ? { ...a, status: nextStatus } : a))
+        );
+        if (selectedApp && selectedApp.id === appId) {
+          setSelectedApp({ ...selectedApp, status: nextStatus });
+        }
+      } else {
+        showToast("Failed to update status");
+      }
+    });
+  };
+
+  // Edit save
+  const handleSaveAppDetails = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingApp) return;
+    startTransition(async () => {
+      const res = await updateAdmissionDetailsAction(editingApp.id, {
+        status: editingApp.status,
+        assessmentDate: editingApp.assessmentDate || null,
+        notes: editingApp.notes || null,
+        grade: editingApp.grade,
+        academicStream: editingApp.academicStream || null,
+        preferredRegion: editingApp.preferredRegion || "Yangon",
+      });
+      if (res?.success) {
+        showToast("Application updated successfully");
+        setApplications((prev) =>
+          prev.map((a) => (a.id === editingApp.id ? editingApp : a))
+        );
+        setEditingApp(null);
+      } else {
+        showToast("Failed to update application");
+      }
+    });
+  };
+
+  // Delete
+  const handleDeleteApp = () => {
+    if (!deletingApp) return;
+    startTransition(async () => {
+      const res = await deleteAdmissionAction(deletingApp.id);
+      if (res?.success) {
+        showToast("Application removed");
+        setApplications((prev) => prev.filter((a) => a.id !== deletingApp.id));
+        setDeletingApp(null);
+      } else {
+        showToast("Failed to delete application");
+      }
+    });
+  };
+
+  // CSV Export
+  const handleExportCSV = () => {
+    const headers = [
+      "Application ID",
+      "Student Name",
+      "Date of Birth",
+      "Gender",
+      "Nationality",
+      "Previous School",
+      "Preferred Region",
+      "Pearson Pathway",
+      "Academic Stream",
+      "Guardian Name",
+      "Relationship",
+      "Guardian Email",
+      "Guardian Phone",
+      "Intended Start Term",
+      "Study Mode",
+      "Status",
+      "Assessment Date",
+      "Submitted Date",
+      "Notes",
+    ];
+
+    const rows = filteredApps.map((a) => [
+      `"${a.id}"`,
+      `"${a.studentName.replace(/"/g, '""')}"`,
+      `"${a.dateOfBirth || ""}"`,
+      `"${a.gender || ""}"`,
+      `"${a.nationality || ""}"`,
+      `"${(a.previousSchool || "").replace(/"/g, '""')}"`,
+      `"${a.preferredRegion || "Yangon"}"`,
+      `"${(a.grade || "").replace(/"/g, '""')}"`,
+      `"${(a.academicStream || "").replace(/"/g, '""')}"`,
+      `"${(a.parentName || "").replace(/"/g, '""')}"`,
+      `"${(a.relationship || "").replace(/"/g, '""')}"`,
+      `"${a.parentEmail}"`,
+      `"${a.parentPhone}"`,
+      `"${(a.intendedStartTerm || "").replace(/"/g, '""')}"`,
+      `"${(a.studyMode || "").replace(/"/g, '""')}"`,
+      `"${a.status}"`,
+      `"${a.assessmentDate || ""}"`,
+      `"${a.submittedDate || ""}"`,
+      `"${(a.notes || "").replace(/"/g, '""')}"`,
+    ]);
+
+    const csvContent =
+      "data:text/csv;charset=utf-8," +
+      [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute(
+      "download",
+      `Hinthar_Admissions_Export_${new Date().toISOString().split("T")[0]}.csv`
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast(`Exported ${filteredApps.length} applications to CSV!`);
+  };
+
+  // Save Config Settings
+  const handleSaveConfig = () => {
+    startTransition(async () => {
+      const res = await upsertSiteContentAction("admissionsConfig", config);
+      if (res?.success) {
+        showToast("Admissions form settings saved successfully!");
+      } else {
+        showToast(res?.message || "Failed to save settings");
+      }
+    });
+  };
 
   if (currentUser?.role === "student") {
     return (
       <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-sm max-w-xl mx-auto my-12">
         <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto mb-4">
-          <span aria-hidden="true" className="material-symbols-outlined text-3xl">lock</span>
+          <Lock className="w-8 h-8" weight="bold" />
         </div>
-        <h2 className="text-xl font-black text-slate-800">Confidential Admissions Data</h2>
+        <h2 className="text-xl font-black text-slate-800">Admissions Pipeline Restricted</h2>
         <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-          Student applications and personal contact records are strictly confidential and restricted to School Administrators.
+          Access to student admissions records and applicant data is strictly restricted to School Administrators.
         </p>
       </div>
     );
   }
 
-  // Summary Metrics
-  const totalCount = applications.length;
-  const pendingCount = applications.filter((a) => a.status === "Pending").length;
-  const scheduledCount = applications.filter((a) => a.status === "Assessment Scheduled").length;
-  const approvedCount = applications.filter((a) => a.status === "Approved").length;
-
-  // Filtered List
-  const filteredApplications = applications.filter((app) => {
-    const matchesSearch =
-      app.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      app.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      app.grade.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (app.parentEmail && app.parentEmail.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (app.parentPhone && app.parentPhone.includes(searchQuery)) ||
-      (app.previousSchool && app.previousSchool.toLowerCase().includes(searchQuery.toLowerCase()));
-
-    const matchesStatus = statusFilter === "All" || app.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
-
-  // Action Handlers
-  const handleUpdateStatus = async (id: string, newStatus: ApplicationStatus) => {
-    try {
-      await updateAdmissionStatusAction(id, newStatus);
-      setApplications((prev) =>
-        prev.map((a) => (a.id === id ? { ...a, status: newStatus } : a))
-      );
-      if (selectedApp?.id === id) setSelectedApp((s) => (s ? { ...s, status: newStatus } : s));
-      showToast(`Application ${id} status updated to: ${newStatus}`);
-    } catch (err: unknown) {
-      showToast(`Error: ${errorMessage(err, "Failed to update status.")}`);
-    }
-  };
-
-  const handleSaveNotes = async (id: string, notes: string, assessmentDate?: string) => {
-    try {
-      const curApp = applications.find((a) => a.id === id);
-      await updateAdmissionStatusAction(
-        id,
-        curApp?.status || "Pending",
-        notes,
-        assessmentDate
-      );
-      setApplications((prev) =>
-        prev.map((a) =>
-          a.id === id
-            ? { ...a, notes, assessmentDate: assessmentDate ?? a.assessmentDate }
-            : a
-        )
-      );
-      if (selectedApp?.id === id)
-        setSelectedApp((s) =>
-          s ? { ...s, notes, assessmentDate: assessmentDate ?? s.assessmentDate } : s
-        );
-      showToast("Assessment details and remarks saved successfully.");
-    } catch (err: unknown) {
-      showToast(`Error: ${errorMessage(err, "Failed to save notes.")}`);
-    }
-  };
-
-  const handleSaveAdmissionEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingApp) return;
-    try {
-      await updateAdmissionDetailsAction(editingApp.id, editingApp);
-      setApplications((prev) =>
-        prev.map((a) => (a.id === editingApp.id ? editingApp : a))
-      );
-      if (selectedApp?.id === editingApp.id) {
-        setSelectedApp(editingApp);
-      }
-      setEditingApp(null);
-      showToast(`Application ${editingApp.id} (${editingApp.studentName}) updated successfully!`);
-    } catch (err: unknown) {
-      showToast(`Error: ${errorMessage(err, "Failed to save application updates.")}`);
-    }
-  };
-
-  const handleCreateApplication = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newForm.studentName || !newForm.parentEmail || !newForm.parentPhone) return;
-    try {
-      const res = await submitPublicAdmissionAction({
-        studentName: newForm.studentName,
-        dateOfBirth: newForm.dateOfBirth || null,
-        gender: newForm.gender,
-        grade: newForm.grade,
-        previousSchool: newForm.previousSchool || null,
-        parentName: newForm.parentName || null,
-        parentEmail: newForm.parentEmail,
-        parentPhone: newForm.parentPhone,
-        academicStream: "General",
-        studyMode: "Full-Time On-Campus",
-      });
-
-      if (!res.success || !res.applicationId) {
-        showToast(`Error: ${(res as { error?: string }).error || "Failed to create application."}`);
-        return;
-      }
-
-      const applicationId: string = res.applicationId;
-      const newRecord: AdmissionApplication = {
-        id: applicationId,
-        studentName: newForm.studentName,
-        dateOfBirth: newForm.dateOfBirth || undefined,
-        gender: newForm.gender,
-        grade: newForm.grade,
-        previousSchool: newForm.previousSchool || undefined,
-        parentName: newForm.parentName || undefined,
-        parentEmail: newForm.parentEmail,
-        parentPhone: newForm.parentPhone,
-        submittedDate: new Date().toISOString().split("T")[0],
-        status: "Pending",
-        notes: newForm.notes || undefined,
-      };
-
-      setApplications((prev) => [newRecord, ...prev]);
-      setNewForm({
-        studentName: "",
-        dateOfBirth: "",
-        gender: "Male",
-        grade: "Pearson IGCSE (Year 10)",
-        previousSchool: "",
-        parentName: "",
-        parentEmail: "",
-        parentPhone: "",
-        notes: "",
-      });
-      setIsAddModalOpen(false);
-      showToast(`Candidate ${newForm.studentName} registered (${applicationId}).`);
-    } catch (err: unknown) {
-      showToast(`Error: ${errorMessage(err, "Failed to create application.")}`);
-    }
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!deletingApp) return;
-    try {
-      await deleteAdmissionAction(deletingApp.id);
-      setApplications((prev) => prev.filter((a) => a.id !== deletingApp.id));
-      if (selectedApp?.id === deletingApp.id) setSelectedApp(null);
-      const removedId = deletingApp.id;
-      setDeletingApp(null);
-      showToast(`Application ${removedId} removed from registry.`);
-    } catch (err: unknown) {
-      showToast(`Error: ${errorMessage(err, "Failed to delete application.")}`);
-    }
-  };
-
-  // Terms & Options handlers (single page 4 lists)
-  const handleAddOption = (key: keyof AdmissionOptions) => {
-    const val = (newOptionInputs[key] || "").trim();
-    if (!val) return;
-    setAdmissionOptions((prev) => ({ ...prev, [key]: [...prev[key], val] }));
-    setNewOptionInputs((prev) => ({ ...prev, [key]: "" }));
-  };
-  const handleRemoveOption = (key: keyof AdmissionOptions, idx: number) => {
-    setAdmissionOptions((prev) => ({ ...prev, [key]: prev[key].filter((_, i) => i !== idx) }));
-  };
-  const handleMoveOption = (key: keyof AdmissionOptions, idx: number, direction: -1 | 1) => {
-    setAdmissionOptions((prev) => {
-      const next = [...prev[key]];
-      const target = idx + direction;
-      if (target < 0 || target >= next.length) return prev;
-      [next[idx], next[target]] = [next[target], next[idx]];
-      return { ...prev, [key]: next };
-    });
-  };
-  const handleSaveTerms = async () => {
-    setTermsSaving(true);
-    try {
-      const res = await upsertAdmissionOptionsAction(admissionOptions);
-      showToast(res.message);
-    } catch (err: unknown) {
-      showToast(`Error: ${errorMessage(err, "Failed to save terms.")}`);
-    } finally {
-      setTermsSaving(false);
-    }
-  };
-  const handleResetTerms = async () => {
-    if (!window.confirm("Reset all admission options to defaults?")) return;
-    setTermsSaving(true);
-    try {
-      await resetAdmissionOptionsAction();
-      setAdmissionOptions(DEFAULT_ADMISSION_OPTIONS);
-      showToast("Admission options reset to defaults.");
-    } catch (err: unknown) {
-      showToast(`Error: ${errorMessage(err, "Failed to reset.")}`);
-    } finally {
-      setTermsSaving(false);
-    }
-  };
-
-  const handleAddSubject = () => {
-    const name = newSubject.name.trim();
-    if (!name) return;
-    setSubjects((current) => [...current, {
-      id: `subject-${crypto.randomUUID()}`,
-      name,
-      nameMy: newSubject.nameMy.trim() || undefined,
-      track: newSubject.track,
-      level: newSubject.level,
-      code: newSubject.code.trim() || undefined,
-      isActive: true,
-    }]);
-    setNewSubject({ name: "", nameMy: "", track: "STEM", level: "Both", code: "" });
-  };
-
-  const handleSaveSubjects = async () => {
-    setSubjectsSaving(true);
-    try {
-      const result = await upsertSubjectCatalogAction(subjects);
-      showToast(result.message);
-    } finally {
-      setSubjectsSaving(false);
-    }
-  };
-
   return (
     <div className="space-y-6">
-      {/* Toast Notification */}
+      {/* Toast */}
       {toastMessage && (
-        <div role="status" aria-live="polite" className="fixed bottom-6 right-6 z-50 bg-[#0E3B7D] text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-[#FFC700] animate-fade-in">
-          <span aria-hidden="true" className="material-symbols-outlined text-[#FFC700]">check_circle</span>
+        <div className="fixed bottom-6 right-6 z-50 bg-[#0F2759] text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-[#FFD600] animate-fade-in">
+          <CheckCircle className="w-5 h-5 text-[#FFD600]" weight="fill" />
           <span className="text-sm font-bold">{toastMessage}</span>
         </div>
       )}
 
-      {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
         <div>
-          <div className="inline-flex items-center gap-2 bg-[#E8F0FE] px-3.5 py-1 rounded-full mb-2 border border-[#0E3B7D]/20">
-            <span aria-hidden="true" className="material-symbols-outlined text-[#0E3B7D] text-xs font-bold">school</span>
-            <span className="text-[11px] font-black text-[#0E3B7D] uppercase tracking-wider">
-              Admissions Workflow &amp; Candidate Pipeline
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-black text-[#0F2759]">Admissions &amp; Pipeline</h1>
+            <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-[#193E8A] font-extrabold text-xs">
+              {totalCount} Total Submissions
             </span>
           </div>
-          <h1 className="text-2xl font-black text-[#09234B] tracking-tight">
-            Admissions Pipeline (2026–2027)
-          </h1>
-          <p className="text-xs text-slate-500 font-normal mt-0.5">
-            Review online applications, schedule placement diagnostics, and confirm student enrollment across all 4 campuses.
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+            Manage student online applications, review uploaded documents, schedule assessments, and configure intake options.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <a
-            href="/api/admin/admissions/export?format=csv"
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-black text-xs uppercase tracking-wider shadow-sm transition-all active:scale-95 whitespace-nowrap cursor-pointer"
-          >
-            <span aria-hidden="true" className="material-symbols-outlined text-base font-bold">download</span>
-            <span>Export CSV</span>
-          </a>
+        <div className="flex items-center gap-3">
           <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] font-black text-xs uppercase tracking-wider shadow-sm transition-all active:scale-95 whitespace-nowrap cursor-pointer"
+            onClick={handleExportCSV}
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-extrabold text-xs uppercase tracking-wider transition-all cursor-pointer"
           >
-            <span aria-hidden="true" className="material-symbols-outlined text-base font-bold">person_add</span>
-            <span>Register Candidate</span>
+            <DownloadSimple className="w-4 h-4" weight="bold" />
+            <span>Export CSV</span>
           </button>
         </div>
       </div>
 
-      {/* Tab switcher */}
-      <div className="flex items-center gap-2 bg-white p-1.5 rounded-2xl border border-slate-200 w-fit shadow-sm">
+      {/* Tabs */}
+      <div className="flex items-center gap-2 border-b border-slate-200">
         <button
           onClick={() => setActiveTab("pipeline")}
-          className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === "pipeline" ? "bg-[#0E3B7D] text-white shadow-sm" : "text-slate-600 hover:text-[#0E3B7D] hover:bg-slate-50"}`}
+          className={`flex items-center gap-2 px-5 py-3 text-xs font-bold border-b-2 transition-all ${
+            activeTab === "pipeline"
+              ? "border-[#193E8A] text-[#193E8A]"
+              : "border-transparent text-slate-500 hover:text-slate-800"
+          }`}
         >
-          <span aria-hidden="true" className="material-symbols-outlined text-sm">group</span>
-          <span>Pipeline ({applications.length})</span>
+          <Users className="w-4 h-4" weight="bold" />
+          <span>Applications Pipeline ({filteredApps.length})</span>
         </button>
         <button
-          onClick={() => setActiveTab("terms")}
-          className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === "terms" ? "bg-[#FFC700] text-[#09234B] shadow-sm" : "text-slate-600 hover:text-[#0E3B7D] hover:bg-slate-50"}`}
+          onClick={() => setActiveTab("settings")}
+          className={`flex items-center gap-2 px-5 py-3 text-xs font-bold border-b-2 transition-all ${
+            activeTab === "settings"
+              ? "border-[#193E8A] text-[#193E8A]"
+              : "border-transparent text-slate-500 hover:text-slate-800"
+          }`}
         >
-          <span aria-hidden="true" className="material-symbols-outlined text-sm">tune</span>
-          <span>Terms & Options</span>
+          <Sliders className="w-4 h-4" weight="bold" />
+          <span>Form &amp; Upload Rules</span>
         </button>
       </div>
 
+      {/* TAB 1: PIPELINE */}
       {activeTab === "pipeline" && (
-        <>
-          {/* Metric Counters */}
+        <div className="space-y-6">
+          {/* Stats Bar */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl bg-blue-50 text-[#0E3B7D] flex items-center justify-center font-bold">
-            <span aria-hidden="true" className="material-symbols-outlined text-xl">folder_shared</span>
-          </div>
-          <div>
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Total Applications</span>
-            <span className="text-xl font-black text-[#09234B]">{totalCount}</span>
-          </div>
-        </div>
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                <ClockCountdown className="w-5 h-5" weight="bold" />
+              </div>
+              <div>
+                <span className="text-xl font-black text-slate-900">{pendingCount}</span>
+                <p className="text-[11px] font-bold text-slate-400">Under Review</p>
+              </div>
+            </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold">
-            <span aria-hidden="true" className="material-symbols-outlined text-xl">pending_actions</span>
-          </div>
-          <div>
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Pending Review</span>
-            <span className="text-xl font-black text-[#09234B]">{pendingCount}</span>
-          </div>
-        </div>
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <CalendarCheck className="w-5 h-5" weight="bold" />
+              </div>
+              <div>
+                <span className="text-xl font-black text-slate-900">{scheduledCount}</span>
+                <p className="text-[11px] font-bold text-slate-400">Assessment Scheduled</p>
+              </div>
+            </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center font-bold">
-            <span aria-hidden="true" className="material-symbols-outlined text-xl">event_available</span>
-          </div>
-          <div>
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Assessments</span>
-            <span className="text-xl font-black text-[#09234B]">{scheduledCount}</span>
-          </div>
-        </div>
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <SealCheck className="w-5 h-5" weight="bold" />
+              </div>
+              <div>
+                <span className="text-xl font-black text-slate-900">{approvedCount}</span>
+                <p className="text-[11px] font-bold text-slate-400">Approved</p>
+              </div>
+            </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
-            <span aria-hidden="true" className="material-symbols-outlined text-xl">verified</span>
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                <WarningCircle className="w-5 h-5" weight="bold" />
+              </div>
+              <div>
+                <span className="text-xl font-black text-slate-900">{declinedCount}</span>
+                <p className="text-[11px] font-bold text-slate-400">Declined / Closed</p>
+              </div>
+            </div>
           </div>
-          <div>
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Approved / Enrolled</span>
-            <span className="text-xl font-black text-[#09234B]">{approvedCount}</span>
+
+          {/* Filter Bar */}
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-2xl border border-slate-200">
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+              {(["All", "Pending", "Assessment Scheduled", "Approved", "Declined"] as const).map(
+                (status) => (
+                  <button
+                    key={status}
+                    onClick={() => setStatusFilter(status)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      statusFilter === status
+                        ? "bg-[#193E8A] text-white shadow-xs"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    }`}
+                  >
+                    {status}
+                  </button>
+                )
+              )}
+            </div>
+
+            <div className="relative w-full sm:w-72">
+              <MagnifyingGlass
+                className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                weight="bold"
+              />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search student, guardian, phone..."
+                className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-[#193E8A]"
+              />
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-2xl border border-slate-200">
-        <div className="relative w-full sm:w-80">
-          <span aria-hidden="true" className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base">
-            search
-          </span>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search candidate name, ID, phone, email..."
-            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
-          />
-        </div>
-
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as ApplicationStatus | "All")}
-            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none"
-          >
-            <option value="All">All Statuses</option>
-            <option value="Pending">Pending</option>
-            <option value="Assessment Scheduled">Assessment Scheduled</option>
-            <option value="Approved">Approved</option>
-            <option value="Declined">Declined</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Applications Table */}
-      <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 text-slate-500 font-bold border-b border-slate-100">
-              <tr>
-                <th className="p-4 pl-6">Reference ID</th>
-                <th className="p-4">Candidate Student</th>
-                <th className="p-4">Grade Continuum</th>
-                <th className="p-4">Parent &amp; Contacts</th>
-                <th className="p-4">Status</th>
-                <th className="p-4 pr-6 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-              {filteredApplications.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-400">
-                    No admission applications found matching filter criteria.
-                  </td>
-                </tr>
-              ) : (
-                filteredApplications.map((app) => (
-                  <tr key={app.id} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="p-4 pl-6 font-mono font-bold text-[#0E3B7D]">{app.id}</td>
-                    <td className="p-4">
-                      <p className="font-bold text-slate-900">{app.studentName}</p>
-                      <p className="text-[10px] text-slate-400">{app.gender || "Student"}</p>
-                    </td>
-                    <td className="p-4">{app.grade}</td>
-                    <td className="p-4">
-                      <p className="text-slate-900">{app.parentName || "Parent"}</p>
-                      <p className="text-[10px] text-slate-400">{app.parentEmail} • {app.parentPhone}</p>
-                    </td>
-                    <td className="p-4">
-                      <span
-                        className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                          statusBadgeClasses[app.status] || "bg-slate-100 text-slate-700"
-                        }`}
-                      >
-                        {app.status}
-                      </span>
-                    </td>
-                    <td className="p-4 pr-6 text-right">
-                      <div className="inline-flex items-center gap-1.5">
+          {/* Applications Table */}
+          <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-600">
+                <thead className="bg-slate-50 text-[11px] font-black uppercase tracking-wider text-slate-400 border-b border-slate-100">
+                  <tr>
+                    <th className="p-4 pl-6">Student &amp; Ref</th>
+                    <th className="p-4">Pearson Pathway &amp; Stream</th>
+                    <th className="p-4">Campus &amp; Term</th>
+                    <th className="p-4">Guardian Contact</th>
+                    <th className="p-4">Docs</th>
+                    <th className="p-4">Status</th>
+                    <th className="p-4 pr-6 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredApps.map((app) => (
+                    <tr key={app.id} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="p-4 pl-6">
                         <button
                           onClick={() => setSelectedApp(app)}
-                          className="px-2.5 py-1.5 rounded-lg bg-[#E8F0FE] text-[#0E3B7D] hover:bg-[#0E3B7D] hover:text-white font-bold text-[11px] transition-all cursor-pointer"
+                          className="font-extrabold text-[#0F2759] hover:underline block text-left"
                         >
-                          Review
+                          {app.studentName}
                         </button>
-                        <button aria-label="Edit"
-                          onClick={() => setEditingApp({ ...app })}
-                          className="px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold text-[11px] transition-all cursor-pointer flex items-center gap-1"
+                        <span className="font-mono text-[10px] text-slate-400">{app.id}</span>
+                      </td>
+                      <td className="p-4">
+                        <span className="font-bold text-slate-800 block">{app.grade}</span>
+                        <span className="text-[11px] text-slate-400">{app.academicStream || "General"}</span>
+                      </td>
+                      <td className="p-4">
+                        <span className="font-semibold text-slate-700 block">{app.preferredRegion || "Yangon"}</span>
+                        <span className="text-[11px] text-slate-400">{app.intendedStartTerm || "Term 1"}</span>
+                      </td>
+                      <td className="p-4">
+                        <span className="font-semibold text-slate-700 block">{app.parentName || "Guardian"}</span>
+                        <span className="text-[11px] text-slate-400 block">{app.parentPhone}</span>
+                      </td>
+                      <td className="p-4">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500">
+                          <Paperclip className="w-3.5 h-3.5 text-slate-400" />
+                          <span>{(app.documentUrls || []).length}</span>
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <span
+                          className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                            statusBadgeClasses[app.status]
+                          }`}
                         >
-                          <span aria-hidden="true" className="material-symbols-outlined text-xs">edit</span>
-                          <span>Edit</span>
-                        </button>
-                        <button aria-label="Delete"
-                          onClick={() => setDeletingApp(app)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
-                        >
-                          <span aria-hidden="true" className="material-symbols-outlined text-base">delete</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-          </>
-        )}
-
-      {activeTab === "terms" && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between flex-wrap gap-3">
-              <div>
-                <h2 className="text-base font-black text-[#09234B]">Admission Terms & Options Catalog</h2>
-                <p className="text-[11px] text-slate-500 mt-0.5">These options appear in the public Admission Form (Step 1–3) and in the admin Edit modal. Add/remove entries, then Save.</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button type="button" onClick={handleResetTerms} disabled={termsSaving} className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs disabled:opacity-50 flex items-center gap-1.5 cursor-pointer">
-                  <span aria-hidden="true" className="material-symbols-outlined text-sm">restart_alt</span>
-                  <span>Reset to Defaults</span>
-                </button>
-                <button type="button" onClick={handleSaveTerms} disabled={termsSaving} className="px-4 py-2 rounded-xl bg-[#0E3B7D] hover:bg-[#164E9A] text-white font-black text-xs shadow-sm disabled:opacity-60 flex items-center gap-1.5 cursor-pointer">
-                  {termsSaving ? <><span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /><span>Saving...</span></> : <><span aria-hidden="true" className="material-symbols-outlined text-sm">save</span><span>Save Terms</span></>}
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
-              {(["intendedStartTerms", "studyModes", "academicStreams", "relationships"] as const).map((key) => {
-                const labels: Record<string, string> = {
-                  intendedStartTerms: "Intended Start Terms",
-                  studyModes: "Study Modes",
-                  academicStreams: "Academic Streams",
-                  relationships: "Relationships",
-                };
-                const placeholder: Record<string, string> = {
-                  intendedStartTerms: "e.g. August 2027",
-                  studyModes: "e.g. Evening Classes",
-                  academicStreams: "e.g. Arts & Media",
-                  relationships: "e.g. Aunt",
-                };
-                return (
-                  <div key={key} className="p-4 space-y-3">
-                    <h3 className="text-xs font-black text-[#0E3B7D] uppercase tracking-wider flex items-center gap-1.5">
-                      <span aria-hidden="true" className="material-symbols-outlined text-sm">list</span>
-                      <span>{labels[key]} ({admissionOptions[key].length})</span>
-                    </h3>
-                    <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
-                      {admissionOptions[key].map((opt, idx) => (
-                        <div key={`${key}-${idx}`} className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs">
-                          <span className="flex-1 font-medium text-slate-800 truncate">{opt}</span>
-                          <button type="button" onClick={() => handleMoveOption(key, idx, -1)} disabled={idx === 0} className="p-1 text-slate-400 disabled:opacity-25" aria-label={`Move ${opt} up`}>
-                            <span aria-hidden="true" className="material-symbols-outlined text-sm">arrow_upward</span>
+                          {app.status}
+                        </span>
+                      </td>
+                      <td className="p-4 pr-6 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => setSelectedApp(app)}
+                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700"
+                            title="View Full Details"
+                          >
+                            <FileText className="w-3.5 h-3.5" weight="bold" />
                           </button>
-                          <button type="button" onClick={() => handleMoveOption(key, idx, 1)} disabled={idx === admissionOptions[key].length - 1} className="p-1 text-slate-400 disabled:opacity-25" aria-label={`Move ${opt} down`}>
-                            <span aria-hidden="true" className="material-symbols-outlined text-sm">arrow_downward</span>
+                          <button
+                            onClick={() => setEditingApp(app)}
+                            className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-[#193E8A]"
+                            title="Edit Status & Notes"
+                          >
+                            <PencilSimple className="w-3.5 h-3.5" weight="bold" />
                           </button>
-                          <button type="button" onClick={() => handleRemoveOption(key, idx)} className="text-slate-400 hover:text-red-600 hover:bg-red-50 p-1 rounded-lg transition-colors cursor-pointer" aria-label={`Remove ${opt}`}>
-                            <span aria-hidden="true" className="material-symbols-outlined text-sm">close</span>
+                          <button
+                            onClick={() => setDeletingApp(app)}
+                            className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600"
+                            title="Delete Application"
+                          >
+                            <Trash className="w-3.5 h-3.5" weight="bold" />
                           </button>
                         </div>
-                      ))}
-                      {admissionOptions[key].length === 0 && <p className="text-[11px] text-slate-400 text-center py-2">No entries — add one below.</p>}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={newOptionInputs[key]}
-                        onChange={(e) => setNewOptionInputs((prev) => ({ ...prev, [key]: e.target.value }))}
-                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddOption(key); } }}
-                        placeholder={placeholder[key]}
-                        className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-[#0E3B7D]"
-                      />
-                      <button type="button" onClick={() => handleAddOption(key)} disabled={!newOptionInputs[key].trim()} className="px-3 py-2 bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] font-black text-xs rounded-xl disabled:opacity-50 flex items-center gap-1 cursor-pointer">
-                        <span aria-hidden="true" className="material-symbols-outlined text-sm">add</span>
-                        <span>Add</span>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 p-5">
-              <div>
-                <h2 className="text-base font-black text-[#09234B]">Admission Subject Catalog</h2>
-                <p className="mt-0.5 text-[11px] text-slate-500">Subjects saved here populate the public application and admission edit form.</p>
-              </div>
-              <button type="button" onClick={handleSaveSubjects} disabled={subjectsSaving} className="rounded-xl bg-[#0E3B7D] px-4 py-2 text-xs font-black text-white disabled:opacity-60">
-                {subjectsSaving ? "Saving..." : "Save Subjects"}
-              </button>
-            </div>
-            <div className="space-y-2 p-4">
-              {subjects.map((subject) => (
-                <div key={subject.id} className="grid items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2 sm:grid-cols-[1fr_130px_150px_90px_auto]">
-                  <input value={subject.name} onChange={(event) => setSubjects((items) => items.map((item) => item.id === subject.id ? { ...item, name: event.target.value } : item))} className="rounded-lg border border-slate-200 bg-white p-2 text-xs" aria-label="Subject name" />
-                  <input value={subject.nameMy ?? ""} onChange={(event) => setSubjects((items) => items.map((item) => item.id === subject.id ? { ...item, nameMy: event.target.value } : item))} placeholder="Name (MY)" className="rounded-lg border border-slate-200 bg-white p-2 text-xs" aria-label="Subject name Myanmar" />
-                  <select value={subject.track} onChange={(event) => setSubjects((items) => items.map((item) => item.id === subject.id ? { ...item, track: event.target.value as SubjectEntry["track"] } : item))} className="rounded-lg border border-slate-200 bg-white p-2 text-xs">
-                    {["STEM", "Business", "Computing", "Languages", "General"].map((track) => <option key={track}>{track}</option>)}
-                  </select>
-                  <select value={subject.level} onChange={(event) => setSubjects((items) => items.map((item) => item.id === subject.id ? { ...item, level: event.target.value as SubjectEntry["level"] } : item))} className="rounded-lg border border-slate-200 bg-white p-2 text-xs">
-                    {["Lower Secondary", "IGCSE", "IAL", "Both"].map((level) => <option key={level}>{level}</option>)}
-                  </select>
-                  <input value={subject.code || ""} onChange={(event) => setSubjects((items) => items.map((item) => item.id === subject.id ? { ...item, code: event.target.value } : item))} placeholder="Code" className="rounded-lg border border-slate-200 bg-white p-2 text-xs" />
-                  <div className="flex gap-1">
-                    <button type="button" onClick={() => setSubjects((items) => items.map((item) => item.id === subject.id ? { ...item, isActive: !item.isActive } : item))} className={`rounded-lg px-2 py-2 text-[10px] font-bold ${subject.isActive ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"}`}>{subject.isActive ? "Active" : "Hidden"}</button>
-                    <button type="button" onClick={() => setSubjects((items) => items.filter((item) => item.id !== subject.id))} className="rounded-lg px-2 py-2 text-red-600" aria-label={`Remove ${subject.name}`}><span className="material-symbols-outlined text-sm">delete</span></button>
-                  </div>
-                </div>
-              ))}
-              <div className="grid gap-2 rounded-xl border-2 border-dashed border-slate-200 p-3 sm:grid-cols-[1fr_130px_150px_90px_auto]">
-                <input value={newSubject.name} onChange={(event) => setNewSubject({ ...newSubject, name: event.target.value })} placeholder="New subject" className="rounded-lg border border-slate-200 p-2 text-xs" />
-                <input value={newSubject.nameMy} onChange={(event) => setNewSubject({ ...newSubject, nameMy: event.target.value })} placeholder="Name (MY)" className="rounded-lg border border-slate-200 p-2 text-xs" />
-                <select value={newSubject.track} onChange={(event) => setNewSubject({ ...newSubject, track: event.target.value as SubjectEntry["track"] })} className="rounded-lg border border-slate-200 p-2 text-xs">{["STEM", "Business", "Computing", "Languages", "General"].map((track) => <option key={track}>{track}</option>)}</select>
-                <select value={newSubject.level} onChange={(event) => setNewSubject({ ...newSubject, level: event.target.value as SubjectEntry["level"] })} className="rounded-lg border border-slate-200 p-2 text-xs">{["Lower Secondary", "IGCSE", "IAL", "Both"].map((level) => <option key={level}>{level}</option>)}</select>
-                <input value={newSubject.code} onChange={(event) => setNewSubject({ ...newSubject, code: event.target.value })} placeholder="Code" className="rounded-lg border border-slate-200 p-2 text-xs" />
-                <button type="button" onClick={handleAddSubject} disabled={!newSubject.name.trim()} className="rounded-lg bg-[#FFC700] px-3 py-2 text-xs font-black text-[#09234B] disabled:opacity-50">Add</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* APPLICATION REVIEW MODAL */}
-      {selectedApp && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl p-6 sm:p-8 space-y-6">
-            <div className="flex justify-between items-start pb-4 border-b border-slate-100">
-              <div>
-                <span className="text-xs font-mono font-bold text-[#0E3B7D]">{selectedApp.id}</span>
-                <h2 className="text-xl font-black text-[#09234B]">{selectedApp.studentName}</h2>
-                <p className="text-xs text-slate-500">{selectedApp.grade} • {selectedApp.academicStream || "General Stream"}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    setEditingApp({ ...selectedApp });
-                    setSelectedApp(null);
-                  }}
-                  className="px-3 py-1.5 rounded-xl bg-[#0E3B7D] text-white hover:bg-[#164E9A] text-xs font-bold flex items-center gap-1 cursor-pointer"
-                >
-                  <span aria-hidden="true" className="material-symbols-outlined text-sm">edit_document</span>
-                  <span>Edit Details</span>
-                </button>
-                <button
-                  onClick={() => setSelectedApp(null)}
-                  className="text-slate-400 hover:text-slate-700"
-                >
-                  <span aria-hidden="true" className="material-symbols-outlined">close</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 text-xs">
-              <div className="p-3 bg-slate-50 rounded-xl space-y-1">
-                <span className="font-bold text-slate-400 uppercase text-[10px] block">Parent / Contact</span>
-                <p className="font-bold text-slate-900">{selectedApp.parentName || "Parent / Guardian"}</p>
-                <p className="text-slate-600">{selectedApp.parentEmail}</p>
-                <p className="text-slate-600">{selectedApp.parentPhone}</p>
-              </div>
-
-              <div className="p-3 bg-slate-50 rounded-xl space-y-1">
-                <span className="font-bold text-slate-400 uppercase text-[10px] block">Status &amp; Submission</span>
-                <p className="font-bold text-slate-900">Submitted: {selectedApp.submittedDate}</p>
-                <p className="text-slate-600">Current Status: <strong>{selectedApp.status}</strong></p>
-                {selectedApp.assessmentDate && (
-                  <p className="text-blue-700 font-semibold">Assessment: {selectedApp.assessmentDate}</p>
-                )}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 text-xs sm:grid-cols-3">
-              <div className="rounded-xl bg-slate-50 p-3">
-                <span className="block text-[10px] font-bold uppercase text-slate-400">Last completed</span>
-                <strong>{selectedApp.finishedGrade || "Not provided"}</strong>
-              </div>
-              <div className="rounded-xl bg-slate-50 p-3">
-                <span className="block text-[10px] font-bold uppercase text-slate-400">Suggested entry</span>
-                <strong>{selectedApp.suggestedEntryYear || selectedApp.grade}</strong>
-              </div>
-              <div className="rounded-xl bg-slate-50 p-3">
-                <span className="block text-[10px] font-bold uppercase text-slate-400">Preferred region</span>
-                <strong>{selectedApp.preferredRegion || "Not provided"}</strong>
-              </div>
-            </div>
-
-            {/* Stream & Assigned Electives Status */}
-            <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-3.5 space-y-1.5 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-[#0E3B7D] uppercase text-[10px] tracking-wider">
-                  Academic Specialization &amp; Electives
-                </span>
-                <span className="px-2.5 py-0.5 rounded-full bg-[#0E3B7D] text-[#FFC700] text-[10px] font-black">
-                  {selectedApp.academicStream || "General Stream"}
-                </span>
-              </div>
-              <p className="text-slate-700">
-                <strong>Assigned Subjects:</strong>{" "}
-                {(selectedApp.selectedSubjects?.length ?? 0) > 0 ? (
-                  <span className="text-[#09234B] font-semibold">
-                    {selectedApp.selectedSubjects?.join(", ")}
-                  </span>
-                ) : (
-                  <span className="text-slate-500 italic">
-                    None assigned yet. Click &quot;Edit Details&quot; to assign official syllabus subjects.
-                  </span>
-                )}
-              </p>
-            </div>
-
-            {(selectedApp.documentUrls?.length ?? 0) > 0 && (
-              <div className="space-y-2">
-                <h3 className="text-xs font-black uppercase tracking-wider text-[#09234B]">Supporting documents</h3>
-                <div className="grid gap-2 sm:grid-cols-3">
-                  {selectedApp.documentUrls?.map((document) => (
-                    <a
-                      key={document.type}
-                      href={document.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center gap-2 rounded-xl border border-slate-200 p-3 text-xs font-bold text-[#0E3B7D] hover:bg-blue-50"
-                    >
-                      <span aria-hidden="true" className="material-symbols-outlined text-base">download</span>
-                      <span className="truncate">{document.filename}</span>
-                    </a>
+                      </td>
+                    </tr>
                   ))}
+                </tbody>
+              </table>
+
+              {filteredApps.length === 0 && (
+                <div className="text-center py-12 text-xs text-slate-400">
+                  No applications found matching your criteria.
                 </div>
-              </div>
-            )}
-
-            {/* Assessment Date & Remarks */}
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
-                  Scheduled Entrance Assessment
-                </label>
-                <input
-                  type="datetime-local"
-                  defaultValue={selectedApp.assessmentDate || ""}
-                  id="assessment-date-input"
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
-                  Admissions Officer Notes
-                </label>
-                <textarea
-                  defaultValue={selectedApp.notes || ""}
-                  id="internal-notes-input"
-                  rows={3}
-                  placeholder="Record diagnostic marks, recommendations, interviewer remarks..."
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs"
-                />
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  const dateVal = (document.getElementById("assessment-date-input") as HTMLInputElement)?.value;
-                  const notesVal = (document.getElementById("internal-notes-input") as HTMLTextAreaElement)?.value;
-                  handleSaveNotes(selectedApp.id, notesVal, dateVal);
-                }}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1 cursor-pointer"
-              >
-                <span aria-hidden="true" className="material-symbols-outlined text-xs">save</span>
-                <span>Save Notes &amp; Date</span>
-              </button>
-            </div>
-
-            {/* Workflow Action Buttons */}
-            <div className="border-t border-slate-100 pt-4 flex flex-wrap gap-2.5">
-              <button
-                onClick={() => handleUpdateStatus(selectedApp.id, "Approved")}
-                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <span aria-hidden="true" className="material-symbols-outlined text-sm font-bold">check_circle</span>
-                <span>Approve &amp; Enroll</span>
-              </button>
-
-              <button
-                onClick={() => handleUpdateStatus(selectedApp.id, "Assessment Scheduled")}
-                className="py-2.5 px-4 rounded-xl bg-blue-50 hover:bg-blue-100 text-[#0E3B7D] text-xs font-bold uppercase tracking-wider transition-all cursor-pointer"
-              >
-                Schedule Assessment
-              </button>
-
-              <button
-                onClick={() => handleUpdateStatus(selectedApp.id, "Declined")}
-                className="py-2.5 px-4 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer"
-              >
-                Decline
-              </button>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* EDIT ADMISSION APPLICATION MODAL */}
-      {editingApp && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl p-6 sm:p-8 space-y-6">
-            <div className="flex justify-between items-center pb-4 border-b border-slate-100">
+      {/* TAB 2: SETTINGS (Admissions Form & Upload Rules) */}
+      {activeTab === "settings" && (
+        <div className="space-y-6">
+          {/* Document Upload Limits */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-200 space-y-4">
+            <h2 className="text-sm font-black text-[#0F2759] uppercase tracking-wider">
+              Document Upload Rules for Online Applicants
+            </h2>
+            <p className="text-xs text-slate-500">
+              Toggle whether documents are strictly required to submit the online form or optional.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+              <label className="flex items-center gap-3 p-4 rounded-2xl border border-slate-200 bg-slate-50/60 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={config.documentRules?.identityRequired ?? false}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      documentRules: {
+                        ...config.documentRules,
+                        identityRequired: e.target.checked,
+                      },
+                    })
+                  }
+                  className="w-4 h-4 accent-[#193E8A]"
+                />
+                <div>
+                  <span className="text-xs font-bold text-slate-800 block">
+                    Student ID / NRC / Birth Cert
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    {config.documentRules?.identityRequired ? "Mandatory for submit" : "Optional"}
+                  </span>
+                </div>
+              </label>
+
+              <label className="flex items-center gap-3 p-4 rounded-2xl border border-slate-200 bg-slate-50/60 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={config.documentRules?.reportRequired ?? false}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      documentRules: {
+                        ...config.documentRules,
+                        reportRequired: e.target.checked,
+                      },
+                    })
+                  }
+                  className="w-4 h-4 accent-[#193E8A]"
+                />
+                <div>
+                  <span className="text-xs font-bold text-slate-800 block">
+                    Prior Academic Transcript
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    {config.documentRules?.reportRequired ? "Mandatory for submit" : "Optional"}
+                  </span>
+                </div>
+              </label>
+
+              <label className="flex items-center gap-3 p-4 rounded-2xl border border-slate-200 bg-slate-50/60 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={config.documentRules?.photoRequired ?? false}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      documentRules: {
+                        ...config.documentRules,
+                        photoRequired: e.target.checked,
+                      },
+                    })
+                  }
+                  className="w-4 h-4 accent-[#193E8A]"
+                />
+                <div>
+                  <span className="text-xs font-bold text-slate-800 block">
+                    Passport-Size Portrait Photo
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    {config.documentRules?.photoRequired ? "Mandatory for submit" : "Optional"}
+                  </span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          {/* List Options */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Intended Start Terms */}
+            <div className="bg-white rounded-3xl p-6 border border-slate-200 space-y-4">
+              <h3 className="text-xs font-black text-[#0F2759] uppercase tracking-wider">
+                Intended Starting Terms
+              </h3>
+              <div className="space-y-2">
+                {(config.intendedStartTerms || []).map((term, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs"
+                  >
+                    <span>{term}</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setConfig({
+                          ...config,
+                          intendedStartTerms: config.intendedStartTerms.filter((_, i) => i !== idx),
+                        })
+                      }
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <Trash className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newTermInput}
+                  onChange={(e) => setNewTermInput(e.target.value)}
+                  placeholder="e.g. Term 4 (Summer 2027)"
+                  className="flex-1 text-xs p-2 rounded-xl border border-slate-200"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (newTermInput.trim()) {
+                      setConfig({
+                        ...config,
+                        intendedStartTerms: [...(config.intendedStartTerms || []), newTermInput.trim()],
+                      });
+                      setNewTermInput("");
+                    }
+                  }}
+                  className="px-3 py-2 rounded-xl bg-[#193E8A] text-white text-xs font-bold"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Academic Streams */}
+            <div className="bg-white rounded-3xl p-6 border border-slate-200 space-y-4">
+              <h3 className="text-xs font-black text-[#0F2759] uppercase tracking-wider">
+                Academic Streams
+              </h3>
+              <div className="space-y-2">
+                {(config.academicStreams || []).map((stream, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs"
+                  >
+                    <span>{stream}</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setConfig({
+                          ...config,
+                          academicStreams: config.academicStreams.filter((_, i) => i !== idx),
+                        })
+                      }
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <Trash className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newStreamInput}
+                  onChange={(e) => setNewStreamInput(e.target.value)}
+                  placeholder="e.g. Creative Arts & Media"
+                  className="flex-1 text-xs p-2 rounded-xl border border-slate-200"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (newStreamInput.trim()) {
+                      setConfig({
+                        ...config,
+                        academicStreams: [...(config.academicStreams || []), newStreamInput.trim()],
+                      });
+                      setNewStreamInput("");
+                    }
+                  }}
+                  className="px-3 py-2 rounded-xl bg-[#193E8A] text-white text-xs font-bold"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Study Modes */}
+            <div className="bg-white rounded-3xl p-6 border border-slate-200 space-y-4">
+              <h3 className="text-xs font-black text-[#0F2759] uppercase tracking-wider">
+                Study Modes
+              </h3>
+              <div className="space-y-2">
+                {(config.studyModes || []).map((mode, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs"
+                  >
+                    <span>{mode}</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setConfig({
+                          ...config,
+                          studyModes: config.studyModes.filter((_, i) => i !== idx),
+                        })
+                      }
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <Trash className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newModeInput}
+                  onChange={(e) => setNewModeInput(e.target.value)}
+                  placeholder="e.g. Weekend Intensive"
+                  className="flex-1 text-xs p-2 rounded-xl border border-slate-200"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (newModeInput.trim()) {
+                      setConfig({
+                        ...config,
+                        studyModes: [...(config.studyModes || []), newModeInput.trim()],
+                      });
+                      setNewModeInput("");
+                    }
+                  }}
+                  className="px-3 py-2 rounded-xl bg-[#193E8A] text-white text-xs font-bold"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Relationships */}
+            <div className="bg-white rounded-3xl p-6 border border-slate-200 space-y-4">
+              <h3 className="text-xs font-black text-[#0F2759] uppercase tracking-wider">
+                Guardian Relationships
+              </h3>
+              <div className="space-y-2">
+                {(config.relationships || []).map((rel, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs"
+                  >
+                    <span>{rel}</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setConfig({
+                          ...config,
+                          relationships: config.relationships.filter((_, i) => i !== idx),
+                        })
+                      }
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <Trash className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newRelInput}
+                  onChange={(e) => setNewRelInput(e.target.value)}
+                  placeholder="e.g. Grandparent"
+                  className="flex-1 text-xs p-2 rounded-xl border border-slate-200"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (newRelInput.trim()) {
+                      setConfig({
+                        ...config,
+                        relationships: [...(config.relationships || []), newRelInput.trim()],
+                      });
+                      setNewRelInput("");
+                    }
+                  }}
+                  className="px-3 py-2 rounded-xl bg-[#193E8A] text-white text-xs font-bold"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Save Button */}
+          <div className="flex justify-end pt-4">
+            <button
+              onClick={handleSaveConfig}
+              disabled={isPending}
+              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-[#FFD600] hover:bg-[#ECC300] text-[#162033] font-black text-xs uppercase tracking-wider shadow-sm transition-all cursor-pointer disabled:opacity-50"
+            >
+              <FloppyDisk className="w-4 h-4" weight="bold" />
+              <span>{isPending ? "Saving Settings..." : "Save Admissions Form Settings"}</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* DETAIL MODAL */}
+      {selectedApp && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 space-y-6 max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div>
-                <span className="text-xs font-mono font-bold text-[#0E3B7D]">{editingApp.id}</span>
-                <h2 className="text-xl font-black text-[#09234B]">Edit Admission Application</h2>
+                <h2 className="text-xl font-black text-[#0F2759]">
+                  {selectedApp.studentName}
+                </h2>
+                <p className="text-xs text-slate-400 font-mono mt-0.5">
+                  Ref Code: {selectedApp.id} · Submitted: {selectedApp.submittedDate}
+                </p>
               </div>
               <button
-                onClick={() => setEditingApp(null)}
-                className="text-slate-400 hover:text-slate-700"
+                onClick={() => setSelectedApp(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
               >
-                <span aria-hidden="true" className="material-symbols-outlined">close</span>
+                <X className="w-5 h-5" weight="bold" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveAdmissionEdit} className="space-y-5 text-xs">
-              {/* SECTION 1: ACADEMIC PATHWAY & CURRICULUM */}
-              <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-3">
-                <div className="flex items-center gap-1.5 text-[#0E3B7D] font-black uppercase text-[11px] tracking-wider">
-                  <span aria-hidden="true" className="material-symbols-outlined text-base">school</span>
-                  <span>Academic Curriculum &amp; Pathway</span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-4 text-xs">
+              {/* Student details */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                <h3 className="font-extrabold text-[#0F2759] uppercase tracking-wider text-[11px]">
+                  Student &amp; Academic Pathway
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
                   <div>
-                    <label className="font-bold text-slate-700 block mb-1">Curriculum Grade Level</label>
-                    <select
-                      value={editingApp.grade}
-                      onChange={(e) => setEditingApp({ ...editingApp, grade: e.target.value })}
-                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
-                    >
-                      <option value="Lower Secondary (Year 7)">Lower Secondary (Year 7)</option>
-                      <option value="Lower Secondary (Year 8)">Lower Secondary (Year 8)</option>
-                      <option value="Lower Secondary (Year 9)">Lower Secondary (Year 9)</option>
-                      <option value="Pearson IGCSE (Year 10)">Pearson IGCSE (Year 10)</option>
-                      <option value="Pearson IGCSE (Year 11)">Pearson IGCSE (Year 11)</option>
-                      <option value="Pearson IAL (Year 12)">Pearson IAL (Year 12)</option>
-                      <option value="Pearson IAL (Year 13)">Pearson IAL (Year 13)</option>
-                    </select>
+                    <span className="text-slate-400 block text-[10px]">DOB</span>
+                    <span className="font-semibold text-slate-800">{selectedApp.dateOfBirth || "N/A"}</span>
                   </div>
-
                   <div>
-                    <label className="font-bold text-slate-700 block mb-1">Academic Stream</label>
-                    <select
-                      value={editingApp.academicStream || admissionOptions.academicStreams[0] || "General Academic"}
-                      onChange={(e) => setEditingApp({ ...editingApp, academicStream: e.target.value })}
-                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
-                    >
-                      {admissionOptions.academicStreams.map((opt) => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
+                    <span className="text-slate-400 block text-[10px]">Gender</span>
+                    <span className="font-semibold text-slate-800">{selectedApp.gender || "N/A"}</span>
                   </div>
-
                   <div>
-                    <label className="font-bold text-slate-700 block mb-1">Intended Start Term</label>
-                    <select
-                      value={editingApp.intendedStartTerm || admissionOptions.intendedStartTerms[0] || "Term 1 (August 2026)"}
-                      onChange={(e) => setEditingApp({ ...editingApp, intendedStartTerm: e.target.value })}
-                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
-                    >
-                      {admissionOptions.intendedStartTerms.map((opt) => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
+                    <span className="text-slate-400 block text-[10px]">Nationality</span>
+                    <span className="font-semibold text-slate-800">{selectedApp.nationality || "N/A"}</span>
                   </div>
-
                   <div>
-                    <label className="font-bold text-slate-700 block mb-1">Study Mode</label>
-                    <select
-                      value={editingApp.studyMode || admissionOptions.studyModes[0] || "Full-Time On-Campus"}
-                      onChange={(e) => setEditingApp({ ...editingApp, studyMode: e.target.value })}
-                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
-                    >
-                      {admissionOptions.studyModes.map((opt) => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
+                    <span className="text-slate-400 block text-[10px]">Pathway / Level</span>
+                    <span className="font-semibold text-slate-800">{selectedApp.grade}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">Stream</span>
+                    <span className="font-semibold text-slate-800">{selectedApp.academicStream || "General"}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">Preferred Region</span>
+                    <span className="font-semibold text-slate-800">{selectedApp.preferredRegion || "Yangon"}</span>
                   </div>
                 </div>
               </div>
 
-              {/* SECTION 2: CANDIDATE STUDENT PROFILE */}
-              <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-3">
-                <div className="flex items-center gap-1.5 text-[#0E3B7D] font-black uppercase text-[11px] tracking-wider">
-                  <span aria-hidden="true" className="material-symbols-outlined text-base">person</span>
-                  <span>Student Profile</span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Guardian details */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                <h3 className="font-extrabold text-[#0F2759] uppercase tracking-wider text-[11px]">
+                  Guardian &amp; Contact Details
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
                   <div>
-                    <label className="font-bold text-slate-700 block mb-1">Student Full Name</label>
-                    <input
-                      type="text"
-                      required
-                      value={editingApp.studentName}
-                      onChange={(e) => setEditingApp({ ...editingApp, studentName: e.target.value })}
-                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
-                    />
+                    <span className="text-slate-400 block text-[10px]">Guardian Name</span>
+                    <span className="font-semibold text-slate-800">{selectedApp.parentName || "N/A"}</span>
                   </div>
-
                   <div>
-                    <label className="font-bold text-slate-700 block mb-1">Date of Birth</label>
-                    <input
-                      type="date"
-                      value={editingApp.dateOfBirth || ""}
-                      onChange={(e) => setEditingApp({ ...editingApp, dateOfBirth: e.target.value })}
-                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
-                    />
+                    <span className="text-slate-400 block text-[10px]">Relationship</span>
+                    <span className="font-semibold text-slate-800">{selectedApp.relationship || "N/A"}</span>
                   </div>
-
                   <div>
-                    <label className="font-bold text-slate-700 block mb-1">Gender</label>
-                    <select
-                      value={editingApp.gender || "Male"}
-                      onChange={(e) => setEditingApp({ ...editingApp, gender: e.target.value as AdmissionApplication["gender"] })}
-                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
-                    >
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                      <option value="Other">Other</option>
-                    </select>
+                    <span className="text-slate-400 block text-[10px]">Phone</span>
+                    <span className="font-semibold text-slate-800">{selectedApp.parentPhone}</span>
                   </div>
-
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Nationality</label>
-                    <input
-                      type="text"
-                      value={editingApp.nationality || "Myanmar"}
-                      onChange={(e) => setEditingApp({ ...editingApp, nationality: e.target.value })}
-                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
-                    />
-                  </div>
-
                   <div className="sm:col-span-2">
-                    <label className="font-bold text-slate-700 block mb-1">Previous School Attended</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Yangon International Academy"
-                      value={editingApp.previousSchool || ""}
-                      onChange={(e) => setEditingApp({ ...editingApp, previousSchool: e.target.value })}
-                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
-                    />
+                    <span className="text-slate-400 block text-[10px]">Email</span>
+                    <span className="font-semibold text-slate-800">{selectedApp.parentEmail}</span>
                   </div>
-
-                  <div className="sm:col-span-2">
-                    <label className="font-bold text-slate-700 block mb-1">Medical &amp; Dietary Notes</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Asthma, Peanut allergy, None"
-                      value={editingApp.medicalNotes || ""}
-                      onChange={(e) => setEditingApp({ ...editingApp, medicalNotes: e.target.value })}
-                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
-                    />
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">Address</span>
+                    <span className="font-semibold text-slate-800">{selectedApp.address || "N/A"}</span>
                   </div>
                 </div>
               </div>
 
-              {/* SECTION 3: PARENT & GUARDIAN CONTACTS */}
-              <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-3">
-                <div className="flex items-center gap-1.5 text-[#0E3B7D] font-black uppercase text-[11px] tracking-wider">
-                  <span aria-hidden="true" className="material-symbols-outlined text-base">contacts</span>
-                  <span>Parent &amp; Guardian Contacts</span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Parent / Guardian Name</label>
-                    <input
-                      type="text"
-                      value={editingApp.parentName || ""}
-                      onChange={(e) => setEditingApp({ ...editingApp, parentName: e.target.value })}
-                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Relationship</label>
-                    <select
-                      value={editingApp.relationship || admissionOptions.relationships[0] || "Parent"}
-                      onChange={(e) => setEditingApp({ ...editingApp, relationship: e.target.value })}
-                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
+              {/* Uploaded Documents */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                <h3 className="font-extrabold text-[#0F2759] uppercase tracking-wider text-[11px]">
+                  Uploaded Supporting Documents ({(selectedApp.documentUrls || []).length})
+                </h3>
+                <div className="space-y-2 pt-1">
+                  {(selectedApp.documentUrls || []).map((doc, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200"
                     >
-                      {admissionOptions.relationships.map((opt) => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Parent Email</label>
-                    <input
-                      type="email"
-                      required
-                      value={editingApp.parentEmail}
-                      onChange={(e) => setEditingApp({ ...editingApp, parentEmail: e.target.value })}
-                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Parent Phone Number</label>
-                    <input
-                      type="text"
-                      required
-                      value={editingApp.parentPhone}
-                      onChange={(e) => setEditingApp({ ...editingApp, parentPhone: e.target.value })}
-                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Emergency Contact</label>
-                    <input
-                      type="text"
-                      placeholder="+95 9..."
-                      value={editingApp.emergencyContact || ""}
-                      onChange={(e) => setEditingApp({ ...editingApp, emergencyContact: e.target.value })}
-                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Residential Address</label>
-                    <input
-                      type="text"
-                      placeholder="Township, City"
-                      value={editingApp.address || ""}
-                      onChange={(e) => setEditingApp({ ...editingApp, address: e.target.value })}
-                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
-                    />
-                  </div>
+                      <div className="flex items-center gap-2">
+                        <Paperclip className="w-4 h-4 text-[#193E8A]" />
+                        <span className="font-bold text-slate-800 uppercase text-[10px]">
+                          [{doc.type}]
+                        </span>
+                        <span className="text-slate-600 truncate max-w-xs">{doc.filename}</span>
+                      </div>
+                      <a
+                        href={doc.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:underline"
+                      >
+                        <ArrowSquareOut className="w-3.5 h-3.5" />
+                        <span>View / Download</span>
+                      </a>
+                    </div>
+                  ))}
+                  {(!selectedApp.documentUrls || selectedApp.documentUrls.length === 0) && (
+                    <p className="text-slate-400 text-xs italic">No documents uploaded.</p>
+                  )}
                 </div>
               </div>
 
-              {/* SECTION 4: ADMINISTRATIVE STATUS & REMARKS */}
-              <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-3">
-                <div className="flex items-center gap-1.5 text-[#0E3B7D] font-black uppercase text-[11px] tracking-wider">
-                  <span aria-hidden="true" className="material-symbols-outlined text-base">verified</span>
-                  <span>Administrative Status &amp; Assessment</span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Application Workflow Status</label>
-                    <select
-                      value={editingApp.status}
-                      onChange={(e) => setEditingApp({ ...editingApp, status: e.target.value as ApplicationStatus })}
-                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-bold"
-                    >
-                      <option value="Pending">Pending</option>
-                      <option value="Assessment Scheduled">Assessment Scheduled</option>
-                      <option value="Approved">Approved</option>
-                      <option value="Declined">Declined</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Scheduled Assessment Date</label>
-                    <input
-                      type="datetime-local"
-                      value={editingApp.assessmentDate || ""}
-                      onChange={(e) => setEditingApp({ ...editingApp, assessmentDate: e.target.value })}
-                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
-                    />
-                  </div>
-
-                  <div className="sm:col-span-2">
-                    <label className="font-bold text-slate-700 block mb-1">Admissions Officer Remarks &amp; Notes</label>
-                    <textarea
-                      rows={2}
-                      placeholder="Diagnostic marks, interview notes, fee payment references..."
-                      value={editingApp.notes || ""}
-                      onChange={(e) => setEditingApp({ ...editingApp, notes: e.target.value })}
-                      className="w-full p-2.5 bg-white border border-slate-200 rounded-xl"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* SECTION 5: SUBJECT SELECTION */}
-              <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-[#0E3B7D] font-black uppercase text-[11px] tracking-wider">
-                    <span aria-hidden="true" className="material-symbols-outlined text-base">menu_book</span>
-                    <span>Selected Subjects / Electives</span>
-                  </div>
-                  <span className="px-2 py-0.5 rounded-full bg-blue-50 text-[#0E3B7D] text-[10px] font-black">
-                    {(editingApp.selectedSubjects ?? []).length} selected
-                  </span>
-                </div>
-                <p className="text-[10px] text-slate-400">
-                  Toggle subject preferences for this applicant. Changes are saved with the rest of the form.
-                </p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2" role="group" aria-label="Subject selection">
-                  {subjectsForApplication(subjects, editingApp).map((subject) => {
-                    const subj = subject.name;
-                    const isSelected = (editingApp.selectedSubjects ?? []).includes(subj);
-                    return (
+              {/* Status & Assessment */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                <h3 className="font-extrabold text-[#0F2759] uppercase tracking-wider text-[11px]">
+                  Status &amp; Schedule
+                </h3>
+                <div className="flex flex-wrap items-center gap-2">
+                  {(["Pending", "Assessment Scheduled", "Approved", "Declined"] as const).map(
+                    (st) => (
                       <button
-                        key={subj}
-                        type="button"
-                        aria-pressed={isSelected}
-                        onClick={() => {
-                          const current = editingApp.selectedSubjects ?? [];
-                          setEditingApp({
-                            ...editingApp,
-                            selectedSubjects: isSelected
-                              ? current.filter((s) => s !== subj)
-                              : [...current, subj],
-                          });
-                        }}
-                        className={`flex items-center gap-1.5 p-2 rounded-xl text-left text-[11px] font-semibold border transition-all cursor-pointer ${
-                          isSelected
-                            ? "bg-[#FFF8E1] border-[#FFC700] text-[#09234B]"
-                            : "bg-white border-slate-200 text-slate-600 hover:border-[#0E3B7D]/50"
+                        key={st}
+                        onClick={() => handleUpdateStatus(selectedApp.id, st)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                          selectedApp.status === st
+                            ? "bg-[#193E8A] text-white shadow-xs"
+                            : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
                         }`}
                       >
-                        <span aria-hidden="true" className="material-symbols-outlined text-sm text-[#0E3B7D] shrink-0">
-                          {isSelected ? "check_box" : "check_box_outline_blank"}
-                        </span>
-                        <span className="truncate">{subj}</span>
+                        {st}
                       </button>
-                    );
-                  })}
+                    )
+                  )}
                 </div>
+                {selectedApp.notes && (
+                  <p className="text-slate-600 bg-white p-2.5 rounded-xl border border-slate-200">
+                    <span className="font-bold block text-[10px] text-slate-400 uppercase">
+                      Internal Notes:
+                    </span>
+                    {selectedApp.notes}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-4 border-t border-slate-100">
+              <button
+                onClick={() => setSelectedApp(null)}
+                className="px-5 py-2 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT MODAL */}
+      {editingApp && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h2 className="text-lg font-black text-[#0F2759]">Update Application</h2>
+              <button
+                onClick={() => setEditingApp(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-5 h-5" weight="bold" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveAppDetails} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Status</label>
+                <select
+                  value={editingApp.status}
+                  onChange={(e) =>
+                    setEditingApp({
+                      ...editingApp,
+                      status: e.target.value as ApplicationStatus,
+                    })
+                  }
+                  className="w-full p-2.5 rounded-xl border border-slate-200"
+                >
+                  <option value="Pending">Pending</option>
+                  <option value="Assessment Scheduled">Assessment Scheduled</option>
+                  <option value="Approved">Approved</option>
+                  <option value="Declined">Declined</option>
+                </select>
               </div>
 
-              <div className="flex justify-end gap-3 pt-2">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Assessment Date &amp; Time</label>
+                <input
+                  type="text"
+                  value={editingApp.assessmentDate || ""}
+                  onChange={(e) =>
+                    setEditingApp({ ...editingApp, assessmentDate: e.target.value })
+                  }
+                  placeholder="e.g. 2026-08-15 10:00 AM (Ywarma Campus)"
+                  className="w-full p-2.5 rounded-xl border border-slate-200"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Internal Admin Notes</label>
+                <textarea
+                  rows={3}
+                  value={editingApp.notes || ""}
+                  onChange={(e) =>
+                    setEditingApp({ ...editingApp, notes: e.target.value })
+                  }
+                  placeholder="Add counseling or interview notes..."
+                  className="w-full p-2.5 rounded-xl border border-slate-200"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setEditingApp(null)}
-                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-slate-600 bg-slate-100 font-bold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-[#0E3B7D] text-white font-bold hover:bg-[#164E9A] shadow-md transition-all cursor-pointer"
+                  disabled={isPending}
+                  className="px-5 py-2 rounded-xl text-[#162033] bg-[#FFD600] hover:bg-[#ECC300] font-black"
                 >
-                  Save Application Updates
+                  Save
                 </button>
               </div>
             </form>
@@ -1220,122 +1076,27 @@ export default function AdminAdmissionsPage() {
         </div>
       )}
 
-
-
-      {/* ADD CANDIDATE MODAL */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-4 shadow-2xl">
-            <h2 className="text-xl font-black text-[#09234B]">Manual Candidate Registration</h2>
-            <form onSubmit={handleCreateApplication} className="space-y-3 text-xs">
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Student Full Name</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Aung Kaung Myat"
-                  value={newForm.studentName}
-                  onChange={(e) => setNewForm({ ...newForm, studentName: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Target Grade</label>
-                  <select
-                    value={newForm.grade}
-                    onChange={(e) => setNewForm({ ...newForm, grade: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
-                  >
-                    <option value="Lower Secondary (Year 7)">Lower Secondary (Year 7)</option>
-                    <option value="Lower Secondary (Year 8)">Lower Secondary (Year 8)</option>
-                    <option value="Lower Secondary (Year 9)">Lower Secondary (Year 9)</option>
-                    <option value="Pearson IGCSE (Year 10)">Pearson IGCSE (Year 10)</option>
-                    <option value="Pearson IGCSE (Year 11)">Pearson IGCSE (Year 11)</option>
-                    <option value="Pearson IAL (Year 12)">Pearson IAL (Year 12)</option>
-                    <option value="Pearson IAL (Year 13)">Pearson IAL (Year 13)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Gender</label>
-                  <select
-                    value={newForm.gender}
-                    onChange={(e) => setNewForm({ ...newForm, gender: e.target.value as typeof newForm.gender })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
-                  >
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Parent Email</label>
-                  <input
-                    type="email"
-                    required
-                    placeholder="parent@gmail.com"
-                    value={newForm.parentEmail}
-                    onChange={(e) => setNewForm({ ...newForm, parentEmail: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
-                  />
-                </div>
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Parent Phone</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="+95 9..."
-                    value={newForm.parentPhone}
-                    onChange={(e) => setNewForm({ ...newForm, parentPhone: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#0E3B7D] text-white font-bold"
-                >
-                  Register Candidate
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* DELETE CONFIRMATION */}
+      {/* DELETE MODAL */}
       {deletingApp && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
-            <h3 className="text-base font-black text-[#09234B]">Delete Application?</h3>
-            <p className="text-xs text-slate-600">
-              Are you sure you want to delete application <strong>{deletingApp.id}</strong> ({deletingApp.studentName})?
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+              <WarningCircle className="w-6 h-6" weight="bold" />
+            </div>
+            <h3 className="text-lg font-black text-slate-800">Delete Application?</h3>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Are you sure you want to remove the application for <span className="font-bold text-slate-800">{deletingApp.studentName}</span> ({deletingApp.id})?
             </p>
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex gap-3 pt-2">
               <button
-                type="button"
                 onClick={() => setDeletingApp(null)}
-                className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs"
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold text-slate-600 bg-slate-100"
               >
                 Cancel
               </button>
               <button
-                type="button"
-                onClick={handleConfirmDelete}
-                className="px-4 py-1.5 rounded-xl bg-red-600 text-white font-bold text-xs"
+                onClick={handleDeleteApp}
+                className="flex-1 py-2.5 rounded-xl text-xs font-extrabold text-white bg-rose-600 hover:bg-rose-700"
               >
                 Delete
               </button>

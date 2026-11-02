@@ -17,11 +17,12 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "node scripts/migrate-local.mjs",
     "db:migrate:prod": "node scripts/migrate-prod.mjs",
-    "d1:seed:local": "wrangler d1 execute hinthar-db --local --file=scripts/seed.sql",
+    "d1:seed:local": "node scripts/seed-local.mjs",
     "d1:seed:prod": "wrangler d1 execute hinthar-db --remote --file=scripts/seed.sql",
     "postinstall": "node scripts/patch-miniflare.js"
   },
   "dependencies": {
+    "@phosphor-icons/react": "^2.1.10",
     "better-auth": "^1.1.21",
     "drizzle-orm": "^0.45.2",
     "framer-motion": "^12.42.2",

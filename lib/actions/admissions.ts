@@ -1,44 +1,46 @@
 "use server";
 
-import { getDb, admissions, NewAdmission } from "@/lib/db";
+import { getDb, admissions, type NewAdmission } from "@/lib/db";
 import { eq, desc } from "drizzle-orm";
 import { requireAdmin, logAudit } from "@/lib/auth/rbac";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { sendAdmissionEmail } from "@/lib/email/email";
-import { getAdmissionOptions } from "@/lib/actions/siteContent";
-import { DEFAULT_ADMISSION_OPTIONS } from "@/lib/content/defaults";
+import { getAdmissionsConfig } from "@/lib/actions/siteContent";
+import { DEFAULT_ADMISSIONS_CONFIG } from "@/lib/content/defaults";
 import { validateAdmissionSubjects } from "@/lib/actions/academicCatalog";
 
+const documentItemSchema = z.object({
+  type: z.enum(["identity", "report", "photo"]),
+  url: z.string().startsWith("/api/assets/admissions/"),
+  filename: z.string().min(1).max(255),
+});
+
 const admissionSchema = z.object({
-  studentName: z.string().min(2).max(200),
-  dateOfBirth: z.string().optional().nullable(),
+  studentName: z.string().trim().min(2).max(200),
+  dateOfBirth: z.string().trim().optional().nullable(),
   gender: z.enum(["Male", "Female", "Other"]).optional().nullable(),
-  nationality: z.string().default("Myanmar").optional().nullable(),
-  grade: z.string().min(2),
+  nationality: z.string().trim().default("Myanmar").optional().nullable(),
+  grade: z.string().trim().min(2),
   programLevel: z.enum(["lower_secondary", "igcse", "ial"]).optional().nullable(),
-  targetProgramId: z.string().min(2).max(100).optional().nullable(),
-  finishedGrade: z.string().min(2).max(50).optional().nullable(),
-  suggestedEntryYear: z.string().min(2).max(30).optional().nullable(),
+  targetProgramId: z.string().trim().max(100).optional().nullable(),
+  finishedGrade: z.string().trim().max(80).optional().nullable(),
+  suggestedEntryYear: z.string().trim().max(50).optional().nullable(),
   preferredRegion: z.enum(["Yangon", "Mawlamyine"]).optional().nullable(),
-  academicStream: z.string().optional().nullable(),
+  academicStream: z.string().trim().optional().nullable(),
   selectedSubjects: z.array(z.string()).default([]),
-  documentUrls: z.array(z.object({
-    type: z.enum(["identity", "report", "photo"]),
-    url: z.string().startsWith("/api/assets/admissions/"),
-    filename: z.string().min(1).max(255),
-  })).length(3).default([]),
-  intendedStartTerm: z.string().optional().nullable(),
-  studyMode: z.string().default("Full-Time On-Campus").optional().nullable(),
-  previousSchool: z.string().optional().nullable(),
-  parentName: z.string().optional().nullable(),
-  relationship: z.string().default("Parent").optional().nullable(),
-  parentEmail: z.string().email(),
-  parentPhone: z.string().min(5),
-  address: z.string().optional().nullable(),
-  emergencyContact: z.string().optional().nullable(),
-  medicalNotes: z.string().optional().nullable(),
-  howHeard: z.string().default("School Website").optional().nullable(),
+  documentUrls: z.array(documentItemSchema).max(3).default([]),
+  intendedStartTerm: z.string().trim().optional().nullable(),
+  studyMode: z.string().trim().default("Full-Time On-Campus (Mon–Fri)").optional().nullable(),
+  previousSchool: z.string().trim().optional().nullable(),
+  parentName: z.string().trim().min(2).max(200),
+  relationship: z.string().trim().default("Parent").optional().nullable(),
+  parentEmail: z.string().trim().email(),
+  parentPhone: z.string().trim().min(5),
+  address: z.string().trim().optional().nullable(),
+  emergencyContact: z.string().trim().optional().nullable(),
+  medicalNotes: z.string().trim().optional().nullable(),
+  howHeard: z.string().trim().default("School Website").optional().nullable(),
 });
 
 function parseSubjects(raw: unknown): string[] {
@@ -54,8 +56,8 @@ function parseSubjects(raw: unknown): string[] {
   return [];
 }
 
-function parseDocuments(raw: unknown) {
-  if (Array.isArray(raw)) return raw;
+function parseDocuments(raw: unknown): z.infer<typeof documentItemSchema>[] {
+  if (Array.isArray(raw)) return raw as z.infer<typeof documentItemSchema>[];
   if (typeof raw === "string" && raw.length > 0) {
     try {
       const parsed = JSON.parse(raw);
@@ -65,6 +67,16 @@ function parseDocuments(raw: unknown) {
     }
   }
   return [];
+}
+
+function safeRevalidate(paths: string[]) {
+  for (const p of paths) {
+    try {
+      revalidatePath(p);
+    } catch {
+      // Non-fatal
+    }
+  }
 }
 
 export async function getAdmissions() {
@@ -86,7 +98,8 @@ function generateApplicationId(): string {
   const random = new Uint32Array(1);
   crypto.getRandomValues(random);
   const secureNum = 100000 + (random[0] % 900000);
-  return `HIS-2026-${secureNum}`;
+  const year = new Date().getFullYear();
+  return `HIS-${year}-${secureNum}`;
 }
 
 export async function submitPublicAdmissionAction(data: unknown) {
@@ -94,32 +107,35 @@ export async function submitPublicAdmissionAction(data: unknown) {
   if (!validatedResult.success) {
     return {
       success: false as const,
-      error: "Please review the highlighted fields and try again.",
+      error: "Please check your student and guardian contact details and try again.",
       fieldErrors: validatedResult.error.flatten().fieldErrors,
     };
   }
   const validated = validatedResult.data;
-  const options = await getAdmissionOptions();
+  const config = await getAdmissionsConfig();
+
+  // Enforce Admin-configurable required document rules
+  const uploadedTypes = new Set(validated.documentUrls.map((d) => d.type));
+  if (config.documentRules.identityRequired && !uploadedTypes.has("identity")) {
+    return { success: false as const, error: "Please upload the Student Identity Document (Passport / NRC / Birth Certificate)." };
+  }
+  if (config.documentRules.reportRequired && !uploadedTypes.has("report")) {
+    return { success: false as const, error: "Please upload the Latest School Report / Transcript." };
+  }
+  if (config.documentRules.photoRequired && !uploadedTypes.has("photo")) {
+    return { success: false as const, error: "Please upload a Student Portrait Photo." };
+  }
+
   const subjectCheck = await validateAdmissionSubjects(
     validated.targetProgramId,
-    validated.selectedSubjects,
-    validated.programLevel
+    validated.selectedSubjects
   );
   if (!subjectCheck.ok) {
     return { success: false as const, error: subjectCheck.error };
   }
-  if (validated.intendedStartTerm && !options.intendedStartTerms.includes(validated.intendedStartTerm)) {
-    return { success: false as const, error: "The selected starting term is no longer available. Please refresh and choose again." };
-  }
-  if (validated.academicStream && !options.academicStreams.includes(validated.academicStream)) {
-    return { success: false as const, error: "The selected academic stream is no longer available." };
-  }
-  if (validated.studyMode && !options.studyModes.includes(validated.studyMode)) {
-    return { success: false as const, error: "The selected study mode is no longer available." };
-  }
+
   const db = await getDb();
 
-  // Insert with collision-safe retry (unique primary key)
   let applicationId = "";
   let inserted = false;
   for (let attempt = 0; attempt < 5 && !inserted; attempt++) {
@@ -128,32 +144,32 @@ export async function submitPublicAdmissionAction(data: unknown) {
       await db.insert(admissions).values({
         id: applicationId,
         studentName: validated.studentName,
-        dateOfBirth: validated.dateOfBirth ?? null,
-        gender: validated.gender ?? null,
-        nationality: validated.nationality ?? "Myanmar",
+        dateOfBirth: validated.dateOfBirth || null,
+        gender: validated.gender || null,
+        nationality: validated.nationality || "Myanmar",
         grade: validated.grade,
-        programLevel: validated.programLevel ?? null,
-        targetProgramId: validated.targetProgramId ?? null,
-        finishedGrade: validated.finishedGrade ?? null,
-        suggestedEntryYear: validated.suggestedEntryYear ?? null,
-        preferredRegion: validated.preferredRegion ?? null,
-        academicStream: validated.academicStream ?? null,
+        programLevel: validated.programLevel || null,
+        targetProgramId: validated.targetProgramId || null,
+        finishedGrade: validated.finishedGrade || null,
+        suggestedEntryYear: validated.suggestedEntryYear || null,
+        preferredRegion: validated.preferredRegion || null,
+        academicStream: validated.academicStream || null,
         selectedSubjects: JSON.stringify(validated.selectedSubjects),
         documentUrls: JSON.stringify(validated.documentUrls),
-        intendedStartTerm: validated.intendedStartTerm ?? null,
-        studyMode: validated.studyMode ?? DEFAULT_ADMISSION_OPTIONS.studyModes[0],
-        previousSchool: validated.previousSchool ?? null,
-        parentName: validated.parentName ?? null,
-        relationship: validated.relationship ?? "Parent",
-        parentEmail: validated.parentEmail.toLowerCase(), // normalize for portal lookup
+        intendedStartTerm: validated.intendedStartTerm || config.intendedStartTerms[0],
+        studyMode: validated.studyMode || DEFAULT_ADMISSIONS_CONFIG.studyModes[0],
+        previousSchool: validated.previousSchool || null,
+        parentName: validated.parentName,
+        relationship: validated.relationship || "Parent",
+        parentEmail: validated.parentEmail.toLowerCase(),
         parentPhone: validated.parentPhone,
-        address: validated.address ?? null,
-        emergencyContact: validated.emergencyContact ?? null,
-        medicalNotes: validated.medicalNotes ?? null,
-        howHeard: validated.howHeard ?? "School Website",
+        address: validated.address || null,
+        emergencyContact: validated.emergencyContact || null,
+        medicalNotes: validated.medicalNotes || null,
+        howHeard: validated.howHeard || "School Website",
         submittedDate: new Date().toISOString().split("T")[0],
         status: "Pending",
-        notes: `Stream: ${validated.academicStream || "General"} | Mode: ${validated.studyMode || "Full-Time"}`,
+        notes: validated.medicalNotes ? `Applicant Notes: ${validated.medicalNotes}` : null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
@@ -170,7 +186,6 @@ export async function submitPublicAdmissionAction(data: unknown) {
     return { success: false as const, error: "Could not register the application. Please try again." };
   }
 
-  // Trigger confirmation email (non-fatal)
   const emailResult = await sendAdmissionEmail({
     type: "admission_submitted",
     recipientEmail: validated.parentEmail,
@@ -181,7 +196,7 @@ export async function submitPublicAdmissionAction(data: unknown) {
     status: "Pending",
   });
 
-  revalidatePath("/admin/admissions");
+  safeRevalidate(["/admin", "/admin/admissions"]);
   return { success: true as const, applicationId, emailSent: emailResult.sent };
 }
 
@@ -200,10 +215,6 @@ export async function updateAdmissionStatusAction(
   }
   const validStatus = parsedStatus.data;
 
-  if (id && (id.includes("'") || id.includes('"') || id.includes(";"))) {
-    return { success: false as const, error: "Invalid admission id." };
-  }
-
   const db = await getDb();
 
   const updated = await db
@@ -218,10 +229,9 @@ export async function updateAdmissionStatusAction(
     .returning({ id: admissions.id });
 
   if (!updated.length) {
-    return { success: false as const, error: "Application not found. It may have been deleted." };
+    return { success: false as const, error: "Application not found." };
   }
 
-  // Notify the family about the status change / scheduled assessment
   let emailSent = false;
   try {
     const rows = await db
@@ -259,7 +269,7 @@ export async function updateAdmissionStatusAction(
     details: { status: validStatus, notes, assessmentDate },
   });
 
-  revalidatePath("/admin/admissions");
+  safeRevalidate(["/admin", "/admin/admissions"]);
   return { success: true as const, emailSent };
 }
 
@@ -276,11 +286,9 @@ export async function updateAdmissionDetailsAction(id: string, data: unknown) {
     return {
       success: false as const,
       error: "Please review the highlighted fields and try again.",
-      fieldErrors: validatedResult.error.flatten().fieldErrors,
     };
   }
   const validated = validatedResult.data;
-
   const db = await getDb();
 
   const updateData: Partial<NewAdmission> = {
@@ -297,7 +305,7 @@ export async function updateAdmissionDetailsAction(id: string, data: unknown) {
     .returning({ id: admissions.id });
 
   if (!updated.length) {
-    return { success: false as const, error: "Application not found. It may have been deleted." };
+    return { success: false as const, error: "Application not found." };
   }
 
   await logAudit({
@@ -305,35 +313,25 @@ export async function updateAdmissionDetailsAction(id: string, data: unknown) {
     action: "ADMIN_UPDATED_ADMISSION_DETAILS",
     resource: "admissions",
     resourceId: id,
-    details: { studentName: validated.studentName, grade: validated.grade },
   });
 
-  revalidatePath("/admin/admissions");
-  return { success: true };
+  safeRevalidate(["/admin", "/admin/admissions"]);
+  return { success: true as const };
 }
 
 export async function deleteAdmissionAction(id: string) {
   const user = await requireAdmin();
   const db = await getDb();
-
   await db.delete(admissions).where(eq(admissions.id, id));
-
   await logAudit({
     actor: user,
     action: "ADMIN_DELETED_ADMISSION",
     resource: "admissions",
     resourceId: id,
   });
-
-  revalidatePath("/admin/admissions");
-  return { success: true };
+  safeRevalidate(["/admin", "/admin/admissions"]);
+  return { success: true as const };
 }
-
-// ---------------------------------------------------------------------------
-// Student Portal — public application status lookup (no login required).
-// Access requires an exact match of the tracking reference AND the guardian
-// email used during submission, so application data cannot be enumerated.
-// ---------------------------------------------------------------------------
 
 export interface AdmissionStatusView {
   applicationId: string;
@@ -343,7 +341,6 @@ export interface AdmissionStatusView {
   submittedDate: string;
   assessmentDate: string | null;
   updatedAt: string;
-  // Extended details for portal "full details" card (names/grades/subjects stay EN per no-translate rule)
   academicStream?: string | null;
   intendedStartTerm?: string | null;
   studyMode?: string | null;
@@ -356,11 +353,10 @@ const statusLookupSchema = z.object({
     .string()
     .trim()
     .toUpperCase()
-    .regex(/^HIS-\d{4}-\d{6}$/, "Reference codes look like HIS-2026-123456."),
+    .regex(/^HIS-\d{4}-\d{4,6}$/, "Reference codes look like HIS-2026-123456."),
   parentEmail: z.string().trim().toLowerCase().email(),
 });
 
-// Best-effort per-isolate throttle: max 10 lookups per IP per 10 minutes.
 const lookupAttempts = new Map<string, { count: number; resetAt: number }>();
 const LOOKUP_LIMIT = 10;
 const LOOKUP_WINDOW_MS = 10 * 60 * 1000;
@@ -391,19 +387,19 @@ export async function checkAdmissionStatusAction(
 
   try {
     const { headers } = await import("next/headers");
+    const h = await headers();
     const ip =
-      (await headers()).get("cf-connecting-ip") ||
-      (await headers()).get("x-forwarded-for")?.split(",")[0].trim() ||
+      h.get("cf-connecting-ip") ||
+      h.get("x-forwarded-for")?.split(",")[0].trim() ||
       "unknown";
     if (isRateLimited(`${ip}:${applicationId}`)) {
       return { success: false, error: "Too many lookup attempts. Please try again in a few minutes." };
     }
   } catch {
-    // headers unavailable in some contexts — proceed without throttling
+    // Non-request context fallback
   }
 
   const db = await getDb();
-
   const rows = await db
     .select({
       applicationId: admissions.id,
@@ -425,28 +421,16 @@ export async function checkAdmissionStatusAction(
     .limit(1);
 
   const row = rows[0];
-  // Same generic response for "no such application" and "wrong email" so
-  // valid reference codes cannot be probed with arbitrary emails.
   if (!row || row.parentEmail?.trim().toLowerCase() !== parentEmail) {
-    return { success: false, error: "No application found for that reference code and guardian email combination." };
+    return {
+      success: false,
+      error: "No application found matching that reference code and guardian email.",
+    };
   }
 
-  const statusSchema = z.enum(["Pending", "Assessment Scheduled", "Approved", "Declined"]);
-  const statusParsed = statusSchema.safeParse(row.status);
-
-  const subjects = (() => {
-    const raw = row.selectedSubjects as unknown;
-    if (Array.isArray(raw)) return raw as string[];
-    if (typeof raw === "string" && raw.length > 2) {
-      try {
-        const parsed = JSON.parse(raw);
-        return Array.isArray(parsed) ? (parsed as string[]) : [];
-      } catch {
-        return [];
-      }
-    }
-    return [];
-  })();
+  const statusParsed = z
+    .enum(["Pending", "Assessment Scheduled", "Approved", "Declined"])
+    .safeParse(row.status);
 
   return {
     success: true,
@@ -461,7 +445,7 @@ export async function checkAdmissionStatusAction(
       academicStream: row.academicStream ?? null,
       intendedStartTerm: row.intendedStartTerm ?? null,
       studyMode: row.studyMode ?? null,
-      selectedSubjects: subjects,
+      selectedSubjects: parseSubjects(row.selectedSubjects),
       parentName: row.parentName ?? null,
     },
   };

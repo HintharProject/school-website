@@ -1,27 +1,37 @@
 import type { Metadata } from "next";
-import StudentLifeView from "./StudentLifeView";
-import { getClubs } from "@/lib/actions/clubs";
-import { getActivities } from "@/lib/actions/activities";
+import Navbar from "../components/Navbar";
+import FooterSection from "../components/sections/FooterSection";
+import ClubsActivitiesView from "./ClubsActivitiesView";
+import { getEffectiveSiteContent } from "@/lib/actions/siteContent";
+import { getPublicClubs } from "@/lib/actions/clubs";
+import { getPublicActivities } from "@/lib/actions/activities";
+
+export const metadata: Metadata = {
+  title: "Clubs & Activities",
+  description:
+    "Explore student-led STEM, Debate, Arts & Sports societies and annual school events across Hinthar International School.",
+};
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Student Life — Clubs, Societies & Activities | Hinthar International School",
-  description:
-    "Explore student-led societies, robotics teams, athletic competitions, and vibrant campus events across Hinthar International School.",
-};
-
-export default async function ClubsPage() {
-  const [initialClubs, initialActivities] = await Promise.all([
-    getClubs().catch(() => []),
-    getActivities().catch(() => []),
+export default async function ClubsAndActivitiesPage() {
+  const [content, clubs, activities] = await Promise.all([
+    getEffectiveSiteContent(),
+    getPublicClubs(),
+    getPublicActivities(),
   ]);
 
   return (
-    <StudentLifeView
-      initialClubs={initialClubs}
-      initialActivities={initialActivities}
-      initialTab="clubs"
-    />
+    <div className="min-h-screen flex flex-col bg-white">
+      <Navbar brand={content.brand} />
+      <main className="flex-1">
+        <ClubsActivitiesView
+          header={content.clubsPage}
+          clubs={clubs}
+          activities={activities}
+        />
+      </main>
+      <FooterSection brand={content.brand} />
+    </div>
   );
 }

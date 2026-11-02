@@ -1,39 +1,55 @@
 "use server";
 
-import { getDb, activities, NewActivity } from "@/lib/db";
-import { eq, desc, or } from "drizzle-orm";
-import { requireAdmin, requireStudentOrAdmin, logAudit, getServerSession } from "@/lib/auth/rbac";
+import { getDb, activities, type NewActivity } from "@/lib/db";
+import { and, desc, eq, or } from "drizzle-orm";
+import { requireAdmin, requireStudentOrAdmin, logAudit } from "@/lib/auth/rbac";
+import { cachedPublicRead, invalidatePublicCache } from "@/lib/cache/publicCache";
 import { z } from "zod";
-import { revalidatePath } from "next/cache";
 
 const activitySchema = z.object({
   clubId: z.number().optional().nullable(),
-  title: z.string().min(2).max(200),
+  title: z.string().trim().min(2).max(200),
+  titleMy: z.string().trim().max(200).optional().nullable(),
   category: z.enum(["academic", "sports", "cultural", "science"]),
-  date: z.string().min(2),
-  month: z.string().min(2).max(10),
-  day: z.string().min(1).max(5),
-  time: z.string().min(2),
-  location: z.string().min(2),
-  description: z.string().min(5),
-  image: z.string().default("/images/engineering.avif"),
+  date: z.string().trim().min(2),
+  month: z.string().trim().min(2).max(12),
+  day: z.string().trim().min(1).max(6),
+  time: z.string().trim().min(2),
+  location: z.string().trim().min(2),
+  locationMy: z.string().trim().max(200).optional().nullable(),
+  description: z.string().trim().min(5),
+  descriptionMy: z.string().trim().optional().nullable(),
+  image: z.string().trim().default("/images/engineering.avif"),
   status: z.enum(["Upcoming", "Active Registration", "Past Highlight"]).default("Upcoming"),
-  campus: z.string().default("both-campuses"),
+  campus: z.string().trim().default("both-campuses"),
   featured: z.boolean().default(false),
   isActive: z.boolean().default(true),
 });
 
-export async function getActivities() {
-  const db = await getDb();
-  const { user } = await getServerSession();
+function flushActivitiesCache() {
+  invalidatePublicCache(["activities"], ["/clubs", "/admin", "/admin/clubs"]);
+}
 
-  if (!user) {
-    return db
-      .select()
-      .from(activities)
-      .where(eq(activities.reviewStatus, "published"))
-      .orderBy(desc(activities.featured), desc(activities.id));
-  }
+/** Fast cached public reader — never calls getServerSession(). */
+export async function getPublicActivities() {
+  return cachedPublicRead("public-activities", ["activities"], async () => {
+    try {
+      const db = await getDb();
+      return await db
+        .select()
+        .from(activities)
+        .where(and(eq(activities.reviewStatus, "published"), eq(activities.isActive, true)))
+        .orderBy(desc(activities.featured), desc(activities.id));
+    } catch {
+      return [];
+    }
+  });
+}
+
+/** Authenticated Portal reader for Admins & Student Contributors. */
+export async function getPortalActivities() {
+  const user = await requireStudentOrAdmin();
+  const db = await getDb();
   if (user.role === "admin") {
     return db
       .select()
@@ -52,12 +68,26 @@ export async function createActivityAction(data: unknown) {
   const validated = activitySchema.parse(data);
   const db = await getDb();
 
-  const isAutoPublished = user.role === "admin";
-  const reviewStatus = isAutoPublished ? "published" : "pending_review";
+  const reviewStatus = user.role === "admin" ? "published" : "pending_review";
 
   const insertData: NewActivity = {
-    ...validated,
     clubId: validated.clubId ?? null,
+    title: validated.title,
+    titleMy: validated.titleMy || null,
+    category: validated.category,
+    date: validated.date,
+    month: validated.month,
+    day: validated.day,
+    time: validated.time,
+    location: validated.location,
+    locationMy: validated.locationMy || null,
+    description: validated.description,
+    descriptionMy: validated.descriptionMy || null,
+    image: validated.image,
+    status: validated.status,
+    campus: validated.campus,
+    featured: user.role === "admin" ? validated.featured : false,
+    isActive: validated.isActive,
     reviewStatus,
     submittedBy: user.id,
     createdAt: new Date().toISOString(),
@@ -71,12 +101,11 @@ export async function createActivityAction(data: unknown) {
     action: user.role === "admin" ? "ADMIN_CREATED_ACTIVITY" : "STUDENT_PROPOSED_ACTIVITY",
     resource: "activities",
     resourceId: String(result[0]?.id),
-    details: { title: validated.title, category: validated.category },
+    details: { title: validated.title, category: validated.category, reviewStatus },
   });
 
-  revalidatePath("/activities");
-  revalidatePath("/admin/clubs");
-  return { success: true, id: result[0]?.id };
+  flushActivitiesCache();
+  return { success: true as const, id: result[0]?.id, reviewStatus };
 }
 
 export async function updateActivityAction(id: number, data: unknown) {
@@ -90,12 +119,14 @@ export async function updateActivityAction(id: number, data: unknown) {
     if (!existing.length || existing[0].submittedBy !== user.id) {
       return { success: false as const, error: "You can only edit your own activity proposals." };
     }
-    resetToReview =
-      !existing[0].reviewStatus || existing[0].reviewStatus === "published" || existing[0].reviewStatus === "archived";
+    resetToReview = true;
   }
 
   const updateData: Partial<NewActivity> = {
     ...validated,
+    titleMy: validated.titleMy !== undefined ? validated.titleMy || null : undefined,
+    locationMy: validated.locationMy !== undefined ? validated.locationMy || null : undefined,
+    descriptionMy: validated.descriptionMy !== undefined ? validated.descriptionMy || null : undefined,
     clubId: validated.clubId !== undefined ? validated.clubId : undefined,
     updatedAt: new Date().toISOString(),
   };
@@ -110,7 +141,7 @@ export async function updateActivityAction(id: number, data: unknown) {
     .returning({ id: activities.id });
 
   if (!updated.length) {
-    return { success: false as const, error: "Activity not found. It may have been deleted." };
+    return { success: false as const, error: "Activity not found." };
   }
 
   await logAudit({
@@ -121,25 +152,48 @@ export async function updateActivityAction(id: number, data: unknown) {
     details: validated,
   });
 
-  revalidatePath("/activities");
-  revalidatePath("/admin/clubs");
-  return { success: true };
+  flushActivitiesCache();
+  return { success: true as const };
+}
+
+export async function setActivityReviewStatusAction(
+  id: number,
+  reviewStatus: "published" | "pending_review" | "archived"
+) {
+  const user = await requireAdmin();
+  const db = await getDb();
+  const validStatus = z.enum(["published", "pending_review", "archived"]).parse(reviewStatus);
+
+  const updated = await db
+    .update(activities)
+    .set({ reviewStatus: validStatus, updatedAt: new Date().toISOString() })
+    .where(eq(activities.id, id))
+    .returning({ id: activities.id });
+
+  if (!updated.length) return { success: false as const, error: "Activity not found." };
+
+  await logAudit({
+    actor: user,
+    action: `ADMIN_SET_ACTIVITY_STATUS_${validStatus.toUpperCase()}`,
+    resource: "activities",
+    resourceId: String(id),
+    details: { reviewStatus: validStatus },
+  });
+
+  flushActivitiesCache();
+  return { success: true as const };
 }
 
 export async function deleteActivityAction(id: number) {
   const user = await requireAdmin();
   const db = await getDb();
-
   await db.delete(activities).where(eq(activities.id, id));
-
   await logAudit({
     actor: user,
     action: "ADMIN_DELETED_ACTIVITY",
     resource: "activities",
     resourceId: String(id),
   });
-
-  revalidatePath("/activities");
-  revalidatePath("/admin/clubs");
-  return { success: true };
+  flushActivitiesCache();
+  return { success: true as const };
 }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Key, WarningCircle, CheckCircle, ArrowRight } from "@phosphor-icons/react";
 import { authClient } from "@/lib/auth/auth-client";
 
 export default function UpdatePasswordPage() {
@@ -30,9 +31,7 @@ export default function UpdatePasswordPage() {
     }
 
     setIsLoading(true);
-
     try {
-      // Use Better Auth changePassword
       const res = await authClient.changePassword({
         currentPassword,
         newPassword,
@@ -40,136 +39,119 @@ export default function UpdatePasswordPage() {
       });
 
       if (res.error) {
-        setErrorMsg(res.error.message || "Failed to update password. Please verify your current password.");
+        setErrorMsg(
+          res.error.message ||
+            "Failed to update password. Please verify your current password."
+        );
         setIsLoading(false);
         return;
       }
 
-      setSuccessMsg("Password successfully updated! Redirecting to Hinthar Portal...");
+      setSuccessMsg("Password updated! Redirecting to dashboard...");
       setTimeout(() => {
         router.push("/admin");
-      }, 1500);
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to update password.");
+      }, 1200);
+    } catch (err: unknown) {
+      setErrorMsg(
+        err instanceof Error ? err.message : "Failed to update password."
+      );
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#09234B] flex items-center justify-center p-4 relative overflow-hidden font-sans">
-      {/* Background Decor */}
-      <div className="absolute inset-0 bg-[radial-gradient(#1E40AF_1px,transparent_1px)] [background-size:24px_24px] opacity-20 pointer-events-none" />
-      <div className="absolute -top-40 -right-40 w-96 h-96 bg-[#FFC700]/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-
-      <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl p-8 sm:p-10 border border-slate-100">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-[#0E3B7D] rounded-2xl mx-auto flex items-center justify-center shadow-lg shadow-blue-900/20 mb-4 border border-[#FFC700]/40">
-            <span aria-hidden="true" className="material-symbols-outlined text-3xl text-[#FFC700]">lock_reset</span>
+    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-hinthar p-8 border border-slate-200">
+        <div className="text-center mb-6">
+          <div className="w-14 h-14 bg-[#EEF3FC] text-[#193E8A] rounded-2xl mx-auto flex items-center justify-center mb-3">
+            <Key className="w-7 h-7" weight="duotone" />
           </div>
-          <h1 className="text-2xl font-black text-[#09234B] tracking-tight">Change Password</h1>
-          <p className="text-sm text-slate-500 mt-1.5">
-            Update your <strong className="text-[#0E3B7D]">Hinthar International School</strong> account password.
+          <h1 className="text-2xl font-extrabold text-[#1E232B] tracking-tight">
+            Change Password
+          </h1>
+          <p className="text-xs text-slate-500 mt-1">
+            Update your Hinthar International School portal password.
           </p>
         </div>
 
-        {/* Feedback Alerts */}
         {errorMsg && (
-          <div role="alert" className="mb-6 p-4 rounded-xl bg-rose-50 border border-rose-200 flex items-start gap-3 text-rose-700 text-sm">
-            <span aria-hidden="true" className="material-symbols-outlined text-rose-500 text-lg flex-shrink-0 mt-0.5">error</span>
-            <div>
-              <p className="font-bold">Update Error</p>
-              <p className="text-xs text-rose-600 mt-0.5">{errorMsg}</p>
-            </div>
+          <div
+            role="alert"
+            className="mb-5 p-3.5 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2.5 text-red-700 text-xs font-semibold"
+          >
+            <WarningCircle className="w-4 h-4 shrink-0 mt-0.5" weight="fill" />
+            <span>{errorMsg}</span>
           </div>
         )}
 
         {successMsg && (
-          <div role="status" className="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-3 text-emerald-700 text-sm animate-pulse">
-            <span aria-hidden="true" className="material-symbols-outlined text-emerald-500 text-lg flex-shrink-0 mt-0.5">check_circle</span>
-            <div>
-              <p className="font-bold">Success</p>
-              <p className="text-xs text-emerald-600 mt-0.5">{successMsg}</p>
-            </div>
+          <div
+            role="status"
+            className="mb-5 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-2.5 text-emerald-700 text-xs font-semibold"
+          >
+            <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" weight="fill" />
+            <span>{successMsg}</span>
           </div>
         )}
 
-        {/* Form */}
         <form onSubmit={handleUpdatePassword} className="space-y-4">
           <div>
-            <label htmlFor="current-password" className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
+            <label className="block text-xs font-bold text-slate-700 mb-1">
               Current Password
             </label>
             <input
-              id="current-password"
               type="password"
               required
               autoComplete="current-password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              placeholder="••••••••••••"
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+              className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:border-[#193E8A] outline-none"
             />
           </div>
 
           <div>
-            <label htmlFor="new-password" className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
-              New Password
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              New Password (min. 8 characters)
             </label>
             <input
-              id="new-password"
               type="password"
               required
-              autoComplete="new-password"
               minLength={8}
+              autoComplete="new-password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="••••••••••••"
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+              className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:border-[#193E8A] outline-none"
             />
-            <p className="text-[11px] text-slate-500 mt-1">Minimum 8 characters.</p>
           </div>
 
           <div>
-            <label htmlFor="confirm-new-password" className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
+            <label className="block text-xs font-bold text-slate-700 mb-1">
               Confirm New Password
             </label>
             <input
-              id="confirm-new-password"
               type="password"
               required
               autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="••••••••••••"
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+              className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:border-[#193E8A] outline-none"
             />
           </div>
 
           <button
             type="submit"
             disabled={isLoading || Boolean(successMsg)}
-            className="w-full py-3.5 px-6 rounded-xl bg-[#0E3B7D] hover:bg-[#09234B] text-white text-sm font-bold shadow-lg shadow-blue-900/20 hover:shadow-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 mt-4 cursor-pointer"
+            className="w-full py-3 px-6 rounded-xl bg-[#193E8A] hover:bg-[#2352B0] text-white text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer transition-colors"
           >
-            {isLoading ? (
-              <>
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                <span>Updating Password...</span>
-              </>
-            ) : (
-              <>
-                <span>Save New Password</span>
-                <span aria-hidden="true" className="material-symbols-outlined text-sm text-[#FFC700]">arrow_forward</span>
-              </>
-            )}
+            <span>{isLoading ? "Updating..." : "Save New Password"}</span>
+            <ArrowRight className="w-4 h-4" weight="bold" />
           </button>
         </form>
 
         <div className="mt-6 pt-4 border-t border-slate-100 text-center">
           <Link
             href="/admin"
-            className="text-xs font-semibold text-slate-500 hover:text-[#0E3B7D] transition-colors"
+            className="text-xs font-bold text-[#193E8A] hover:underline"
           >
             Back to Dashboard
           </Link>

@@ -1,34 +1,48 @@
 import Navbar from "./components/Navbar";
+import AnnouncementTicker from "./components/sections/AnnouncementTicker";
 import HeroSection from "./components/sections/HeroSection";
 import AboutSection from "./components/sections/AboutSection";
-import SpecialisationsSection from "./components/sections/SpecialisationsSection";
+import ClassesSection from "./components/sections/ClassesSection";
+import CampusesPreviewSection from "./components/sections/CampusesPreviewSection";
 import TestimonialsSection from "./components/sections/TestimonialsSection";
 import FaqSection from "./components/sections/FaqSection";
 import FooterSection from "./components/sections/FooterSection";
-import { getSiteContentMap } from "@/lib/actions/siteContent";
+import { getEffectiveSiteContent } from "@/lib/actions/siteContent";
+import { getPublicPrograms } from "@/lib/actions/academicCatalog";
+import { getPublicCampuses } from "@/lib/actions/campuses";
 import { getPublishedTestimonials } from "@/lib/actions/testimonials";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const [content, testimonials] = await Promise.all([
-    getSiteContentMap(),
+  const [content, programs, campuses, testimonials] = await Promise.all([
+    getEffectiveSiteContent(),
+    getPublicPrograms(),
+    getPublicCampuses(),
     getPublishedTestimonials(),
   ]);
 
   return (
-    <>
-      <Navbar />
-      <main>
-        {/* AnnouncementTicker renders inside HeroSection so the bar
-            stays pinned to the hero's bottom edge within 100vh */}
-        <HeroSection highlights={content.heroHighlights} announcements={content.announcements} />
-        <AboutSection />
-        <SpecialisationsSection programs={content.programs} />
-        <TestimonialsSection items={testimonials} />
-        <FaqSection faqs={content.faqs} />
+    <div className="min-h-screen flex flex-col bg-white">
+      <AnnouncementTicker items={content.announcements} />
+      <Navbar brand={content.brand} />
+
+      <main className="flex-1">
+        <HeroSection hero={content.hero} />
+        <AboutSection about={content.aboutPrincipal} />
+        <ClassesSection programs={programs} sections={content.homeSections} />
+        <CampusesPreviewSection
+          campuses={campuses}
+          sections={content.homeSections}
+        />
+        <TestimonialsSection
+          testimonials={testimonials}
+          sections={content.homeSections}
+        />
+        <FaqSection faqs={content.faqs} sections={content.homeSections} />
       </main>
-      <FooterSection />
-    </>
+
+      <FooterSection brand={content.brand} />
+    </div>
   );
 }

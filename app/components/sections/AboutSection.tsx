@@ -1,124 +1,137 @@
 "use client";
 
 import Image from "next/image";
-import { motion } from "framer-motion";
-import { useT } from "@/lib/i18n/useT";
+import Link from "next/link";
+import { Quotes, Buildings, ArrowRight } from "@phosphor-icons/react";
+import type { AboutPrincipalContent } from "@/lib/content/defaults";
+import { useLocale } from "@/lib/i18n/useT";
+import { locField } from "@/lib/i18n/loc";
+import { isR2AssetUrl } from "@/lib/utils/r2Image";
 
-export default function AboutSection() {
-  const t = useT();
+export default function AboutSection({
+  about,
+}: {
+  about: AboutPrincipalContent;
+}) {
+  const locale = useLocale();
+
+  const badge = locField(locale, about.badgeEn, about.badgeMy);
+  const title = locField(locale, about.titleEn, about.titleMy);
+  const titleHighlight = locField(
+    locale,
+    about.titleHighlightEn,
+    about.titleHighlightMy
+  );
+  const p1 = locField(locale, about.paragraph1En, about.paragraph1My);
+  const p2 = locField(locale, about.paragraph2En, about.paragraph2My);
+  const cta = locField(
+    locale,
+    about.exploreCampusesCtaEn,
+    about.exploreCampusesCtaMy
+  );
+  const principalRole = locField(
+    locale,
+    about.principalRoleEn,
+    about.principalRoleMy
+  );
+  const principalQuote = locField(
+    locale,
+    about.principalQuoteEn,
+    about.principalQuoteMy
+  );
+  const portraitSrc = about.principalImageUrl || "/images/dr-kmh.webp";
 
   return (
     <section
       id="about"
-      className="bg-white py-[80px] md:py-[120px] scroll-mt-20 overflow-hidden border-b border-slate-200/80"
+      className="py-16 sm:py-24 bg-[#F8FAFC] scroll-mt-20 border-b border-slate-200/70"
     >
-      <div className="max-w-[1280px] mx-auto px-6 md:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-center">
-          <motion.div
-            className="relative order-2 lg:order-1"
-            initial={{ opacity: 0, x: -30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true, margin: "-60px" }}
-            transition={{ duration: 0.6 }}
-          >
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[110%] h-[110%] bg-[#0E3B7D]/10 rounded-full blur-3xl -z-10" />
-
-            <div className="aspect-[4/5] sm:aspect-square lg:aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl border-4 border-white ring-1 ring-slate-200 max-w-md mx-auto lg:max-w-none relative group">
-              <Image
-                src="/images/Dr_KMH.png"
-                alt="Dr. Kaung Myat Htut – Principal of Hinthar International School"
-                fill
-                className="object-cover transition-transform duration-700 group-hover:scale-105"
-                sizes="(max-width: 1024px) 100vw, 50vw"
-              />
-            </div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.2, duration: 0.5 }}
-              className="absolute -bottom-8 -right-4 sm:-right-8 lg:-bottom-10 lg:-right-8 bg-white/95 backdrop-blur-md p-6 rounded-2xl max-w-[320px] hidden sm:block border border-slate-200 shadow-xl"
-            >
-              <div className="w-10 h-10 bg-[#FFC700] rounded-full flex items-center justify-center mb-3 shadow-md">
-                <span aria-hidden="true" className="material-symbols-outlined text-[#09234B] text-xl font-bold">
-                  format_quote
-                </span>
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
+          {/* Principal Portrait & Message Card */}
+          <div className="lg:col-span-5">
+            <div className="rounded-3xl bg-white border border-slate-200/90 shadow-hinthar overflow-hidden">
+              <div className="relative aspect-[4/4] sm:aspect-[5/4] bg-gradient-to-b from-[#EEF3FC] to-slate-100">
+                <Image
+                  src={portraitSrc}
+                  alt={about.principalName}
+                  fill
+                  unoptimized={isR2AssetUrl(portraitSrc)}
+                  sizes="(max-width: 1024px) 100vw, 40vw"
+                  className="object-cover object-top"
+                />
               </div>
-              <p className="text-xs sm:text-sm italic mb-4 leading-relaxed text-slate-700">
-                &quot;{t("home.aboutQuote")}&quot;
-              </p>
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-[#0E3B7D] text-[#FFC700] flex items-center justify-center font-black text-xs shadow-sm">
-                  KMH
+
+              <div className="p-6 sm:p-7 space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-extrabold text-[#1E232B]">
+                      {about.principalName}
+                    </h3>
+                    <p className="text-xs sm:text-sm font-semibold text-[#193E8A] mt-0.5">
+                      {principalRole}
+                    </p>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-[#FFFBE6] text-[#193E8A] border border-[#FFD600]/60 flex items-center justify-center shrink-0">
+                    <Quotes className="w-5 h-5" weight="fill" />
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs sm:text-sm font-extrabold text-[#0E3B7D]">Dr. Kaung Myat Htut</p>
-                  <p className="text-[11px] font-medium text-slate-500">{t("home.aboutPrincipalRole")}</p>
-                </div>
+
+                <blockquote className="text-sm text-slate-600 leading-relaxed italic border-l-3 border-[#FFD600] pl-4">
+                  “{principalQuote}”
+                </blockquote>
               </div>
-            </motion.div>
-          </motion.div>
-
-          <motion.div
-            className="space-y-6 order-1 lg:order-2"
-            initial={{ opacity: 0, x: 30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true, margin: "-60px" }}
-            transition={{ duration: 0.6 }}
-          >
-            <div className="inline-flex items-center gap-2 bg-[#E8F0FE] px-3.5 py-1.5 rounded-full border border-[#0E3B7D]/20">
-              <div className="w-2 h-2 rounded-full bg-[#0E3B7D] animate-pulse" />
-              <span className="text-xs font-extrabold text-[#0E3B7D] uppercase tracking-wider">
-                {t("home.aboutBadge")}
-              </span>
             </div>
+          </div>
 
-            <h2 className="text-3xl md:text-4xl lg:text-[42px] font-black leading-[1.2] text-[#09234B] tracking-tight">
-              {t("home.aboutTitle").replace(t("home.aboutTitleHighlight"), "")}{" "}
-              <span className="text-[#0E3B7D]">{t("home.aboutTitleHighlight")}</span>
+          {/* Institutional Story & Key Facts */}
+          <div className="lg:col-span-7 space-y-6">
+            <span className="inline-flex items-center gap-2 rounded-full bg-[#EEF3FC] px-3.5 py-1.5 text-xs font-extrabold text-[#193E8A] uppercase tracking-wider">
+              <Buildings className="w-4 h-4" weight="duotone" />
+              <span>{badge}</span>
+            </span>
+
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#1E232B] tracking-tight leading-tight">
+              <span>{title} </span>
+              <span className="text-[#193E8A]">{titleHighlight}</span>
             </h2>
 
-            <div className="text-sm md:text-base text-slate-600 space-y-4 leading-relaxed font-normal">
-              <p>{t("home.aboutP1")}</p>
-              <p>{t("home.aboutP2")}</p>
-              <div className="pt-1">
-                <a
-                  href="/campuses"
-                  className="inline-flex items-center gap-1.5 text-xs font-black text-[#0E3B7D] hover:text-[#FFC700] uppercase tracking-wider transition-colors"
-                >
-                  <span>{t("home.aboutExploreCampuses")}</span>
-                  <span aria-hidden="true" className="material-symbols-outlined text-sm font-black">arrow_forward</span>
-                </a>
+            <div className="space-y-4 text-slate-600 text-sm sm:text-base leading-relaxed">
+              <p>{p1}</p>
+              {p2 && <p>{p2}</p>}
+            </div>
+
+            {about.stats?.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5 pt-2">
+                {about.stats.map((stat, idx) => (
+                  <div
+                    key={`${stat.value}-${idx}`}
+                    className="rounded-2xl bg-white border border-slate-200/90 px-4 py-3.5"
+                  >
+                    <p className="text-lg sm:text-xl font-extrabold text-[#193E8A]">
+                      {locField(locale, stat.value, stat.valueMy)}
+                    </p>
+                    <p className="text-xs font-semibold text-slate-600 mt-0.5">
+                      {locField(locale, stat.label, stat.labelMy)}
+                    </p>
+                  </div>
+                ))}
               </div>
+            )}
+
+            <div className="pt-2">
+              <Link
+                href="/campuses"
+                className="inline-flex items-center gap-2 text-sm font-extrabold text-[#193E8A] hover:text-[#2352B0] group"
+              >
+                <span>{cta}</span>
+                <ArrowRight
+                  className="w-4 h-4 transition-transform group-hover:translate-x-1"
+                  weight="bold"
+                />
+              </Link>
             </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5 pt-3">
-              <motion.div whileHover={{ y: -3 }} className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm transition-all">
-                <div className="w-10 h-10 rounded-xl bg-[#E8F0FE] flex items-center justify-center mb-3 text-[#0E3B7D]">
-                  <span aria-hidden="true" className="material-symbols-outlined text-xl">verified</span>
-                </div>
-                <p className="text-2xl sm:text-3xl font-black text-[#09234B] mb-0.5">{t("home.statPearson")}</p>
-                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{t("home.statEdexcel")}</p>
-              </motion.div>
-
-              <motion.div whileHover={{ y: -3 }} className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm transition-all">
-                <div className="w-10 h-10 rounded-xl bg-[#E8F0FE] flex items-center justify-center mb-3 text-[#0E3B7D]">
-                  <span aria-hidden="true" className="material-symbols-outlined text-xl">school</span>
-                </div>
-                <p className="text-2xl sm:text-3xl font-black text-[#09234B] mb-0.5">{t("home.statPassRate")}</p>
-                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{t("home.statUniversity")}</p>
-              </motion.div>
-
-              <motion.div whileHover={{ y: -3 }} className="col-span-2 sm:col-span-1 bg-gradient-to-br from-[#09234B] to-[#0E3B7D] p-4 sm:p-5 rounded-2xl shadow-md transition-all text-white">
-                <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center mb-3 text-[#FFC700]">
-                  <span aria-hidden="true" className="material-symbols-outlined text-xl">emoji_events</span>
-                </div>
-                <p className="text-2xl sm:text-3xl font-black mb-0.5">{t("home.statYears")}</p>
-                <p className="text-[11px] font-bold text-[#FFC700] uppercase tracking-wider">{t("home.statDedication")}</p>
-              </motion.div>
-            </div>
-          </motion.div>
+          </div>
         </div>
       </div>
     </section>

@@ -3,6 +3,21 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
+  House,
+  Buildings,
+  GraduationCap,
+  UsersThree,
+  IdentificationBadge,
+  CheckCircle,
+  ClockCountdown,
+  ArrowRight,
+  ShieldCheck,
+  UserCheck,
+  CalendarBlank,
+  BookOpenText,
+  UserPlus,
+} from "@phosphor-icons/react";
+import {
   AdmissionApplication,
   mapAdmissionRecord,
   UserProfile,
@@ -11,343 +26,577 @@ import {
 } from "./adminStore";
 import { authClient } from "@/lib/auth/auth-client";
 import { getAdmissions } from "@/lib/actions/admissions";
-import { getClubs } from "@/lib/actions/clubs";
-import { getYearbook } from "@/lib/actions/yearbook";
-import { getCatalogSubjectCount } from "@/lib/actions/academicCatalog";
-import { getCampuses } from "@/lib/actions/campuses";
-import { getUsers } from "@/lib/actions/users";
-import { getActivities } from "@/lib/actions/activities";
+import { getPortalClubs, setClubStatusAction } from "@/lib/actions/clubs";
+import {
+  getPortalYearbook,
+  setYearbookStatusAction,
+} from "@/lib/actions/yearbook";
+import { getCampusesForAdmin } from "@/lib/actions/campuses";
+import { getProgramsForAdmin } from "@/lib/actions/academicCatalog";
+import {
+  getPortalActivities,
+  setActivityReviewStatusAction,
+} from "@/lib/actions/activities";
 
 export default function AdminDashboardPage() {
-  const [applications, setApplications] = useState<AdmissionApplication[]>([]);
-  const [clubCount, setClubCount] = useState(0);
-  const [courseCount, setCourseCount] = useState(0);
-  const [campusCount, setCampusCount] = useState(0);
-  const [userCount, setUserCount] = useState(0);
-  const [yearbookCount, setYearbookCount] = useState(0);
-  const [activityCount, setActivityCount] = useState(0);
-  const [mySubmissionsCount, setMySubmissionsCount] = useState(0);
-  const [activeRole, setActiveRole] = useState<UserProfile>(FALLBACK_GUEST_USER);
+  const [currentUser, setCurrentUser] =
+    useState<UserProfile>(FALLBACK_GUEST_USER);
   const [isLoaded, setIsLoaded] = useState(false);
+
+  // Live Stats
+  const [applications, setApplications] = useState<AdmissionApplication[]>([]);
+  const [campusesCount, setCampusesCount] = useState(0);
+  const [programsCount, setProgramsCount] = useState(0);
+  const [clubsCount, setClubsCount] = useState(0);
+  const [yearbookCount, setYearbookCount] = useState(0);
+
+  // Unified Pending Review Queue (Yearbook, Clubs, Activities)
+  const [pendingYearbook, setPendingYearbook] = useState<any[]>([]);
+  const [pendingClubs, setPendingClubs] = useState<any[]>([]);
+  const [pendingActivities, setPendingActivities] = useState<any[]>([]);
+  const [actionInProgress, setActionInProgress] = useState<string | null>(null);
 
   const { data: session } = authClient.useSession();
 
   useEffect(() => {
     if (session?.user) {
-      setActiveRole(mapUserProfileRecord(session.user));
+      setCurrentUser(mapUserProfileRecord(session.user));
     }
   }, [session]);
 
-  const loadLiveStats = async () => {
+  const loadData = async () => {
     try {
       const [
         appsData,
+        campusesData,
+        programsData,
         clubsData,
         yearbookData,
-        campusesData,
-        coursesData,
         activitiesData,
       ] = await Promise.all([
         getAdmissions().catch(() => []),
-        getClubs().catch(() => []),
-        getYearbook().catch(() => []),
-        getCampuses().catch(() => []),
-        getCatalogSubjectCount().catch(() => 0),
-        getActivities().catch(() => []),
+        getCampusesForAdmin().catch(() => []),
+        getProgramsForAdmin().catch(() => []),
+        getPortalClubs().catch(() => []),
+        getPortalYearbook().catch(() => []),
+        getPortalActivities().catch(() => []),
       ]);
 
-      if (appsData && Array.isArray(appsData)) {
-        setApplications(appsData.slice(0, 5).map(mapAdmissionRecord));
+      if (Array.isArray(appsData)) {
+        setApplications(appsData.map(mapAdmissionRecord));
       }
-
-      setClubCount(clubsData?.length || 0);
+      setCampusesCount(campusesData?.length || 0);
+      setProgramsCount(programsData?.length || 0);
+      setClubsCount(clubsData?.length || 0);
       setYearbookCount(yearbookData?.length || 0);
-      setCampusCount(campusesData?.length || 0);
-      setCourseCount(typeof coursesData === "number" ? coursesData : 0);
-      setActivityCount(activitiesData?.length || 0);
 
-      // If admin, fetch users count
-      try {
-        const usersData = await getUsers();
-        setUserCount(usersData?.length || 0);
-      } catch {
-        setUserCount(0);
+      // Filter pending items
+      if (Array.isArray(yearbookData)) {
+        setPendingYearbook(
+          yearbookData.filter((y: any) => y.status === "pending_review")
+        );
       }
-
-      // Count my submissions if student
-      if (session?.user?.id && Array.isArray(yearbookData)) {
-        const myCnt = yearbookData.filter((y: any) => y.submittedBy === session.user.id).length;
-        setMySubmissionsCount(myCnt);
+      if (Array.isArray(clubsData)) {
+        setPendingClubs(
+          clubsData.filter((c: any) => c.status === "pending_review")
+        );
+      }
+      if (Array.isArray(activitiesData)) {
+        setPendingActivities(
+          activitiesData.filter((a: any) => a.reviewStatus === "pending_review")
+        );
       }
     } catch (err) {
-      console.warn("Dashboard stats query note:", err);
+      console.warn("Dashboard data query note:", err);
     } finally {
       setIsLoaded(true);
     }
   };
 
   useEffect(() => {
-    loadLiveStats();
+    loadData();
   }, [session]);
 
-  const isAdmin = (activeRole?.role ?? "admin") === "admin";
-  const isStudent = (activeRole?.role ?? "") === "student";
+  const isAdmin = currentUser.role === "admin";
+  const pendingAdmissionsCount = applications.filter(
+    (a) => a.status === "Pending"
+  ).length;
+  const totalPendingReview =
+    pendingYearbook.length + pendingClubs.length + pendingActivities.length;
 
-  const pendingCount = applications.filter((a) => a.status === "Pending").length;
-
-  const statusBadgeClasses: Record<string, string> = {
-    Pending: "bg-amber-100 text-amber-800 border border-amber-200",
-    "Assessment Scheduled": "bg-blue-100 text-blue-800 border border-blue-200",
-    Approved: "bg-emerald-100 text-emerald-800 border border-emerald-200",
-    Declined: "bg-rose-100 text-rose-800 border border-rose-200",
+  const handleApproveYearbook = async (id: number) => {
+    setActionInProgress(`yb-${id}`);
+    try {
+      await setYearbookStatusAction(id, "published");
+      await loadData();
+    } finally {
+      setActionInProgress(null);
+    }
   };
 
+  const handleApproveClub = async (id: number) => {
+    setActionInProgress(`club-${id}`);
+    try {
+      await setClubStatusAction(id, "published");
+      await loadData();
+    } finally {
+      setActionInProgress(null);
+    }
+  };
+
+  const handleApproveActivity = async (id: number) => {
+    setActionInProgress(`act-${id}`);
+    try {
+      await setActivityReviewStatusAction(id, "published");
+      await loadData();
+    } finally {
+      setActionInProgress(null);
+    }
+  };
+
+  // Student Contributor Focused Hub
+  if (!isAdmin) {
+    return (
+      <div className="space-y-6">
+        <div className="rounded-3xl bg-white border border-slate-200/90 p-6 sm:p-8 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1 text-xs font-extrabold mb-2">
+              <UserCheck className="w-4 h-4" weight="bold" />
+              Student Contributor
+            </span>
+            <h1 className="text-2xl font-extrabold text-[#1E232B]">
+              Welcome, {currentUser.fullName}
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-600 mt-1">
+              Submit and update your Student Yearbook entry, propose club
+              activities, and collaborate on school life chronicles.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Link
+            href="/admin/yearbook"
+            className="rounded-3xl bg-white border border-slate-200/90 hover:border-[#193E8A]/40 p-6 shadow-xs hover:shadow-hinthar transition-all flex flex-col justify-between space-y-4 group"
+          >
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-[#EEF3FC] text-[#193E8A] flex items-center justify-center shrink-0">
+                <GraduationCap className="w-6 h-6" weight="duotone" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-[#1E232B] group-hover:text-[#193E8A] transition-colors">
+                  Student Yearbook Entry
+                </h3>
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                  Submit or edit your senior profile, Pearson subjects, quote,
+                  and university placement.
+                </p>
+              </div>
+            </div>
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-[#193E8A]">
+              <span>Manage My Entry</span>
+              <ArrowRight className="w-4 h-4" weight="bold" />
+            </div>
+          </Link>
+
+          <Link
+            href="/admin/clubs"
+            className="rounded-3xl bg-white border border-slate-200/90 hover:border-[#193E8A]/40 p-6 shadow-xs hover:shadow-hinthar transition-all flex flex-col justify-between space-y-4 group"
+          >
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-[#FFFBE6] text-[#162033] flex items-center justify-center shrink-0">
+                <UsersThree className="w-6 h-6" weight="duotone" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-[#1E232B] group-hover:text-[#193E8A] transition-colors">
+                  Clubs & Activity Drafts
+                </h3>
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                  Propose student club meetings, rosters, and activity draft
+                  events for administrative review.
+                </p>
+              </div>
+            </div>
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-[#193E8A]">
+              <span>Manage Club Drafts</span>
+              <ArrowRight className="w-4 h-4" weight="bold" />
+            </div>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // School Administrator Master Dashboard & Unified Approvals Queue
   return (
     <div className="space-y-8">
-      {/* Header Greeting with Role Persona */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+      {/* Top Welcome & Master Admin Banner */}
+      <div className="rounded-3xl bg-white border border-slate-200/90 p-6 sm:p-8 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div>
-          <div className="inline-flex items-center gap-2 bg-[#E8F0FE] px-3.5 py-1 rounded-full mb-2 border border-[#0E3B7D]/20">
-            <span
-              className={`w-2 h-2 rounded-full ${
-                isAdmin ? "bg-[#FFC700]" : "bg-emerald-600"
-              }`}
-            />
-            <span className="text-[11px] font-black text-[#0E3B7D] uppercase tracking-wider">
-              {isAdmin ? "Administrator Authority" : "Student Contributor"}
-            </span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-[#09234B] tracking-tight">
-            Welcome back, {activeRole?.fullName || "Administrator"}
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FFD600] text-[#162033] px-3.5 py-1 text-xs font-extrabold mb-2">
+            <ShieldCheck className="w-4 h-4" weight="bold" />
+            School Administrator Portal
+          </span>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1E232B] tracking-tight">
+            Institutional CMS & Moderation Overview
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            {isAdmin
-              ? "Oversee 4 campuses across Yangon & Mawlamyine, admissions pipeline, curriculum, and user directory."
-              : "Submit extracurricular club proposals, class timetable entries, and alumni yearbook honors."}
+          <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-2xl leading-relaxed">
+            Every section on the public website is 100% editable from this
+            portal. Changes publish instantly to the Cloudflare network.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          {isAdmin ? (
-            <Link
-              href="/admin/users"
-              className="px-4 py-2.5 rounded-xl bg-[#0E3B7D] hover:bg-[#164E9A] text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
-            >
-              <span aria-hidden="true" className="material-symbols-outlined text-sm">person_add</span>
-              <span>Invite Account</span>
-            </Link>
-          ) : (
-            <Link
-              href="/admin/people?tab=yearbook"
-              className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
-            >
-              <span aria-hidden="true" className="material-symbols-outlined text-sm">add</span>
-              <span>Submit Yearbook Entry</span>
-            </Link>
-          )}
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          <Link
+            href="/admin/home"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#193E8A] hover:bg-[#2352B0] text-white text-xs font-extrabold transition-colors shadow-2xs"
+          >
+            <House className="w-4 h-4" weight="fill" />
+            <span>Edit Home & Classes</span>
+          </Link>
+          <Link
+            href="/admin/admissions"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#FFD600] hover:bg-[#ECC300] text-[#162033] text-xs font-extrabold transition-colors shadow-2xs"
+          >
+            <IdentificationBadge className="w-4 h-4" weight="bold" />
+            <span>Admissions ({pendingAdmissionsCount} Pending)</span>
+          </Link>
         </div>
       </div>
 
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        {isAdmin ? (
-          <>
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-blue-50 text-[#0E3B7D] flex items-center justify-center font-bold">
-                <span aria-hidden="true" className="material-symbols-outlined text-2xl">school</span>
-              </div>
-              <div>
-                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Admissions</p>
-                <h3 className="text-2xl font-black text-[#09234B] mt-0.5">{applications.length}</h3>
-                <p className="text-[10px] text-amber-600 font-semibold">{pendingCount} pending review</p>
-              </div>
-            </div>
+      {/* 5-Page Key Statistics Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-5">
+        <Link
+          href="/admin/home"
+          className="rounded-2xl bg-white border border-slate-200/90 p-4 sm:p-5 hover:border-[#193E8A]/40 shadow-2xs hover:shadow-sm transition-all"
+        >
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            Pearson Pathways
+          </p>
+          <p className="text-2xl font-extrabold text-[#193E8A] mt-1">
+            {programsCount}
+          </p>
+          <p className="text-[11px] text-slate-500 mt-0.5">
+            Year 7–9 · IGCSE · IAL
+          </p>
+        </Link>
 
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold">
-                <span aria-hidden="true" className="material-symbols-outlined text-2xl">location_city</span>
-              </div>
-              <div>
-                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Campuses</p>
-                <h3 className="text-2xl font-black text-[#09234B] mt-0.5">{campusCount || 4}</h3>
-                <p className="text-[10px] text-slate-400">Yangon &amp; Mawlamyine</p>
-              </div>
-            </div>
+        <Link
+          href="/admin/campuses"
+          className="rounded-2xl bg-white border border-slate-200/90 p-4 sm:p-5 hover:border-[#193E8A]/40 shadow-2xs hover:shadow-sm transition-all"
+        >
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            Campuses
+          </p>
+          <p className="text-2xl font-extrabold text-[#193E8A] mt-1">
+            {campusesCount}
+          </p>
+          <p className="text-[11px] text-slate-500 mt-0.5">
+            3 Yangon + 1 Mawlamyine
+          </p>
+        </Link>
 
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center font-bold">
-                <span aria-hidden="true" className="material-symbols-outlined text-2xl">menu_book</span>
-              </div>
-              <div>
-                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Classes &amp; Syllabi</p>
-                <h3 className="text-2xl font-black text-[#09234B] mt-0.5">{courseCount}</h3>
-                <p className="text-[10px] text-slate-400">IAL, IGCSE, Secondary</p>
-              </div>
-            </div>
+        <Link
+          href="/admin/yearbook"
+          className="rounded-2xl bg-white border border-slate-200/90 p-4 sm:p-5 hover:border-[#193E8A]/40 shadow-2xs hover:shadow-sm transition-all"
+        >
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            Yearbook Scholars
+          </p>
+          <p className="text-2xl font-extrabold text-[#193E8A] mt-1">
+            {yearbookCount}
+          </p>
+          <p className="text-[11px] text-slate-500 mt-0.5">
+            Students & Alumni
+          </p>
+        </Link>
 
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
-                <span aria-hidden="true" className="material-symbols-outlined text-2xl">manage_accounts</span>
-              </div>
-              <div>
-                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">User Directory</p>
-                <h3 className="text-2xl font-black text-[#09234B] mt-0.5">{userCount}</h3>
-                <p className="text-[10px] text-emerald-600 font-semibold">Active accounts</p>
-              </div>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="bg-white p-5 rounded-2xl border border-[#FFC700]/60 ring-1 ring-[#FFC700]/30 shadow-sm flex items-center gap-4 sm:col-span-2 xl:col-span-1">
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
-                <span aria-hidden="true" className="material-symbols-outlined text-2xl">auto_stories</span>
-              </div>
-              <div>
-                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">My Submissions</p>
-                <h3 className="text-2xl font-black text-[#09234B] mt-0.5">{mySubmissionsCount}</h3>
-                <p className="text-[10px] text-slate-400">Yearbook records</p>
-              </div>
-            </div>
+        <Link
+          href="/admin/clubs"
+          className="rounded-2xl bg-white border border-slate-200/90 p-4 sm:p-5 hover:border-[#193E8A]/40 shadow-2xs hover:shadow-sm transition-all"
+        >
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            Clubs & Societies
+          </p>
+          <p className="text-2xl font-extrabold text-[#193E8A] mt-1">
+            {clubsCount}
+          </p>
+          <p className="text-[11px] text-slate-500 mt-0.5">Student-led</p>
+        </Link>
 
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-blue-50 text-[#0E3B7D] flex items-center justify-center font-bold">
-                <span aria-hidden="true" className="material-symbols-outlined text-2xl">groups</span>
-              </div>
-              <div>
-                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Student Societies</p>
-                <h3 className="text-2xl font-black text-[#09234B] mt-0.5">{clubCount}</h3>
-                <p className="text-[10px] text-slate-400">Active clubs</p>
-              </div>
-            </div>
-
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center font-bold">
-                <span aria-hidden="true" className="material-symbols-outlined text-2xl">event</span>
-              </div>
-              <div>
-                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Events &amp; Activities</p>
-                <h3 className="text-2xl font-black text-[#09234B] mt-0.5">{activityCount}</h3>
-                <p className="text-[10px] text-slate-400">School calendar</p>
-              </div>
-            </div>
-
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold">
-                <span aria-hidden="true" className="material-symbols-outlined text-2xl">menu_book</span>
-              </div>
-              <div>
-                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Course Schedules</p>
-                <h3 className="text-2xl font-black text-[#09234B] mt-0.5">{courseCount}</h3>
-                <p className="text-[10px] text-slate-400">Timetable directory</p>
-              </div>
-            </div>
-          </>
-        )}
+        <Link
+          href="/admin/admissions"
+          className="col-span-2 lg:col-span-1 rounded-2xl bg-[#FFFBE6] border border-[#FFD600] p-4 sm:p-5 hover:shadow-sm transition-all"
+        >
+          <p className="text-xs font-extrabold text-[#162033] uppercase tracking-wider">
+            Total Admissions
+          </p>
+          <p className="text-2xl font-extrabold text-[#162033] mt-1">
+            {applications.length}
+          </p>
+          <p className="text-[11px] font-bold text-amber-900 mt-0.5">
+            {pendingAdmissionsCount} Awaiting Review
+          </p>
+        </Link>
       </div>
 
-      {/* Contributor Quick Actions */}
-      {!isAdmin && (
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-          <h2 className="text-base font-black text-[#09234B] uppercase tracking-wider mb-4">
-            Quick Actions
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {[
-              { href: "/admin/people?tab=yearbook", icon: "auto_stories", title: "Yearbook Entry", desc: "Submit alumni honors" },
-              { href: "/admin/classes", icon: "menu_book", title: "Classes & Timetables", desc: "Browse course schedules" },
-              { href: "/admin/clubs", icon: "groups", title: "Clubs & Activities", desc: "Propose societies & events" },
-              { href: "/admin/notices", icon: "campaign", title: "Noticeboard", desc: "Messages & your tasks" },
-            ].map((a) => (
-              <Link
-                key={a.href}
-                href={a.href}
-                className="group p-4 rounded-2xl border border-slate-200 hover:border-[#0E3B7D]/50 hover:bg-[#E8F0FE]/40 transition-all"
+      {/* UNIFIED PENDING REVIEW QUEUE (Contributor Drafts) */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-extrabold text-[#1E232B] flex items-center gap-2">
+              <ClockCountdown className="w-5 h-5 text-[#193E8A]" weight="bold" />
+              <span>Contributor Pending Review Queue</span>
+              {totalPendingReview > 0 && (
+                <span className="rounded-full bg-[#FFD600] px-2.5 py-0.5 text-xs font-extrabold text-[#162033]">
+                  {totalPendingReview}
+                </span>
+              )}
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Review and approve Student Contributor draft submissions before they
+              appear on the public website.
+            </p>
+          </div>
+        </div>
+
+        {totalPendingReview === 0 ? (
+          <div className="rounded-3xl bg-white border border-slate-200/90 p-8 text-center space-y-2">
+            <CheckCircle className="w-10 h-10 text-emerald-600 mx-auto" weight="fill" />
+            <p className="text-sm font-bold text-[#1E232B]">
+              No pending contributor drafts
+            </p>
+            <p className="text-xs text-slate-500">
+              All student yearbook entries, club updates, and activity proposals
+              are up to date.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {/* Pending Yearbook Entries */}
+            {pendingYearbook.map((item) => (
+              <div
+                key={`yb-${item.id}`}
+                className="rounded-2xl bg-white border border-amber-300 p-5 shadow-2xs space-y-3 flex flex-col justify-between"
               >
-                <span aria-hidden="true" className="material-symbols-outlined text-2xl text-[#0E3B7D]">{a.icon}</span>
-                <p className="text-xs font-black text-[#09234B] mt-2 group-hover:text-[#0E3B7D]">{a.title}</p>
-                <p className="text-[10px] text-slate-500 mt-0.5">{a.desc}</p>
-              </Link>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="rounded-full bg-[#EEF3FC] text-[#193E8A] px-2.5 py-0.5 text-[10px] font-extrabold uppercase">
+                      Yearbook Entry
+                    </span>
+                    <span className="text-[11px] font-bold text-amber-800">
+                      Pending
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-extrabold text-[#1E232B]">
+                    {item.name}
+                  </h3>
+                  <p className="text-xs text-slate-600 font-medium">
+                    {item.role}
+                  </p>
+                  <p className="text-xs text-slate-500 line-clamp-2 italic">
+                    “{item.quote}”
+                  </p>
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                  <Link
+                    href="/admin/yearbook"
+                    className="text-xs font-bold text-[#193E8A] hover:underline"
+                  >
+                    View in Yearbook
+                  </Link>
+                  <button
+                    type="button"
+                    disabled={actionInProgress === `yb-${item.id}`}
+                    onClick={() => handleApproveYearbook(item.id)}
+                    className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold transition-colors disabled:opacity-50 cursor-pointer"
+                  >
+                    {actionInProgress === `yb-${item.id}`
+                      ? "Publishing..."
+                      : "Publish"}
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {/* Pending Club Drafts */}
+            {pendingClubs.map((club) => (
+              <div
+                key={`club-${club.id}`}
+                className="rounded-2xl bg-white border border-amber-300 p-5 shadow-2xs space-y-3 flex flex-col justify-between"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="rounded-full bg-[#FFFBE6] text-[#162033] px-2.5 py-0.5 text-[10px] font-extrabold uppercase">
+                      Club Proposal
+                    </span>
+                    <span className="text-[11px] font-bold text-amber-800">
+                      Pending
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-extrabold text-[#1E232B]">
+                    {club.name}
+                  </h3>
+                  <p className="text-xs text-slate-600 line-clamp-2">
+                    {club.description}
+                  </p>
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                  <Link
+                    href="/admin/clubs"
+                    className="text-xs font-bold text-[#193E8A] hover:underline"
+                  >
+                    View in Clubs
+                  </Link>
+                  <button
+                    type="button"
+                    disabled={actionInProgress === `club-${club.id}`}
+                    onClick={() => handleApproveClub(club.id)}
+                    className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold transition-colors disabled:opacity-50 cursor-pointer"
+                  >
+                    {actionInProgress === `club-${club.id}`
+                      ? "Publishing..."
+                      : "Publish"}
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {/* Pending Activity Drafts */}
+            {pendingActivities.map((act) => (
+              <div
+                key={`act-${act.id}`}
+                className="rounded-2xl bg-white border border-amber-300 p-5 shadow-2xs space-y-3 flex flex-col justify-between"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="rounded-full bg-purple-50 text-purple-800 px-2.5 py-0.5 text-[10px] font-extrabold uppercase">
+                      Activity Draft
+                    </span>
+                    <span className="text-[11px] font-bold text-amber-800">
+                      Pending
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-extrabold text-[#1E232B]">
+                    {act.title}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {act.date} · {act.location}
+                  </p>
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                  <Link
+                    href="/admin/clubs"
+                    className="text-xs font-bold text-[#193E8A] hover:underline"
+                  >
+                    View in Activities
+                  </Link>
+                  <button
+                    type="button"
+                    disabled={actionInProgress === `act-${act.id}`}
+                    onClick={() => handleApproveActivity(act.id)}
+                    className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold transition-colors disabled:opacity-50 cursor-pointer"
+                  >
+                    {actionInProgress === `act-${act.id}`
+                      ? "Publishing..."
+                      : "Publish"}
+                  </button>
+                </div>
+              </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </section>
 
-      {/* Admin Recent Applications Table */}
-      {isAdmin && (
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-black text-[#09234B] uppercase tracking-wider">
-                Recent Admissions Applications
-              </h2>
-              <p className="text-xs text-slate-400">Live incoming enrollment requests</p>
-            </div>
-            <Link
-              href="/admin/admissions"
-              className="text-xs font-bold text-[#0E3B7D] hover:underline flex items-center gap-1"
-            >
-              <span>View All Pipeline</span>
-              <span aria-hidden="true" className="material-symbols-outlined text-sm">arrow_forward</span>
-            </Link>
+      {/* Recent Admissions Preview */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-extrabold text-[#1E232B]">
+              Latest Admission Applications
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Live admissions pipeline with guardian contacts & Pearson pathway.
+            </p>
           </div>
+          <Link
+            href="/admin/admissions"
+            className="text-xs font-extrabold text-[#193E8A] hover:underline inline-flex items-center gap-1"
+          >
+            <span>View All ({applications.length})</span>
+            <ArrowRight className="w-3.5 h-3.5" weight="bold" />
+          </Link>
+        </div>
 
+        <div className="rounded-3xl bg-white border border-slate-200/90 overflow-hidden shadow-2xs">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-slate-500 font-bold border-b border-slate-100">
+              <thead className="bg-[#F8FAFC] border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[11px]">
                 <tr>
-                  <th className="p-4 pl-6">Reference ID</th>
-                  <th className="p-4">Applicant</th>
-                  <th className="p-4">Target Grade</th>
-                  <th className="p-4">Parent / Contact</th>
-                  <th className="p-4">Status</th>
-                  <th className="p-4 pr-6 text-right">Action</th>
+                  <th className="py-3.5 px-5">Ref / Student</th>
+                  <th className="py-3.5 px-4">Pathway</th>
+                  <th className="py-3.5 px-4">Region</th>
+                  <th className="py-3.5 px-4">Guardian Contact</th>
+                  <th className="py-3.5 px-4">Status</th>
+                  <th className="py-3.5 px-5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                {applications.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="p-8 text-center text-slate-400">
-                      No applications recorded yet.
+              <tbody className="divide-y divide-slate-100">
+                {applications.slice(0, 5).map((app) => (
+                  <tr key={app.id} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="py-3.5 px-5">
+                      <p className="font-extrabold text-[#1E232B]">
+                        {app.studentName}
+                      </p>
+                      <p className="font-mono text-[11px] text-[#193E8A]">
+                        {app.id}
+                      </p>
+                    </td>
+                    <td className="py-3.5 px-4 font-semibold text-slate-700">
+                      {app.grade}
+                    </td>
+                    <td className="py-3.5 px-4 text-slate-600">
+                      {app.preferredRegion || "Yangon"}
+                    </td>
+                    <td className="py-3.5 px-4 text-slate-600">
+                      <p className="font-medium text-[#1E232B]">
+                        {app.parentName || "Guardian"}
+                      </p>
+                      <p className="text-[11px] text-slate-500">{app.parentPhone}</p>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-extrabold ${
+                          app.status === "Approved"
+                            ? "bg-emerald-100 text-emerald-800"
+                            : app.status === "Assessment Scheduled"
+                              ? "bg-[#FFD600] text-[#162033]"
+                              : app.status === "Declined"
+                                ? "bg-slate-100 text-slate-700"
+                                : "bg-[#EEF3FC] text-[#193E8A]"
+                        }`}
+                      >
+                        {app.status}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-5 text-right">
+                      <Link
+                        href={`/admin/admissions`}
+                        className="font-extrabold text-[#193E8A] hover:underline"
+                      >
+                        Manage →
+                      </Link>
                     </td>
                   </tr>
-                ) : (
-                  applications.map((app) => (
-                    <tr key={app.id} className="hover:bg-slate-50/60 transition-colors">
-                      <td className="p-4 pl-6 font-mono font-bold text-[#0E3B7D]">{app.id}</td>
-                      <td className="p-4">
-                        <p className="font-bold text-slate-900">{app.studentName}</p>
-                        <p className="text-[10px] text-slate-400">{app.gender || "Student"}</p>
-                      </td>
-                      <td className="p-4">{app.grade}</td>
-                      <td className="p-4">
-                        <p className="text-slate-900">{app.parentName || "Parent"}</p>
-                        <p className="text-[10px] text-slate-400">{app.parentEmail}</p>
-                      </td>
-                      <td className="p-4">
-                        <span
-                          className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                            statusBadgeClasses[app.status] || "bg-slate-100 text-slate-700"
-                          }`}
-                        >
-                          {app.status}
-                        </span>
-                      </td>
-                      <td className="p-4 pr-6 text-right">
-                        <Link
-                          href="/admin/admissions"
-                          className="px-3 py-1.5 rounded-lg bg-[#E8F0FE] text-[#0E3B7D] font-bold text-[11px] hover:bg-[#0E3B7D] hover:text-white transition-all"
-                        >
-                          Review
-                        </Link>
-                      </td>
-                    </tr>
-                  ))
-                )}
+                ))}
               </tbody>
             </table>
           </div>
         </div>
-      )}
+      </section>
     </div>
   );
 }

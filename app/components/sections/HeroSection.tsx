@@ -1,141 +1,171 @@
 "use client";
 
-import { motion, Variants } from "framer-motion";
-import Link from "next/link";
 import Image from "next/image";
-import AnnouncementTicker from "./AnnouncementTicker";
-import { DEFAULT_HIGHLIGHTS, type KeyHighlight, type AnnouncementItem } from "@/lib/content/defaults";
-import { useLocale, useT } from "@/lib/i18n/useT";
+import Link from "next/link";
+import {
+  ArrowRight,
+  GraduationCap,
+  SealCheck,
+  BookOpenText,
+} from "@phosphor-icons/react";
+import type { HeroContent } from "@/lib/content/defaults";
+import { useLocale } from "@/lib/i18n/useT";
 import { locField } from "@/lib/i18n/loc";
+import { isR2AssetUrl } from "@/lib/utils/r2Image";
 
-const containerVariants: Variants = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.12, delayChildren: 0.15 },
-  },
-};
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 24 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: { type: "spring", stiffness: 75, damping: 18 },
-  },
-};
-
-export default function HeroSection({
-  highlights = DEFAULT_HIGHLIGHTS,
-  announcements,
-}: {
-  highlights?: KeyHighlight[];
-  announcements?: AnnouncementItem[] | string[];
-}) {
-  const t = useT();
+export default function HeroSection({ hero }: { hero: HeroContent }) {
   const locale = useLocale();
 
+  const credentialBadge = locField(
+    locale,
+    hero.credentialBadgeEn,
+    hero.credentialBadgeMy
+  );
+  const intakePill = locField(locale, hero.intakePillEn, hero.intakePillMy);
+  const titleLine1 = locField(locale, hero.titleLine1En, hero.titleLine1My);
+  const titleHighlight = locField(
+    locale,
+    hero.titleHighlightEn,
+    hero.titleHighlightMy
+  );
+  const subtitle = locField(locale, hero.subtitleEn, hero.subtitleMy);
+  const primaryCta = locField(locale, hero.primaryCtaEn, hero.primaryCtaMy);
+  const secondaryCta = locField(
+    locale,
+    hero.secondaryCtaEn,
+    hero.secondaryCtaMy
+  );
+  const trustNote = locField(locale, hero.trustNoteEn, hero.trustNoteMy);
+  const imageCaption = locField(
+    locale,
+    hero.heroImageCaptionEn,
+    hero.heroImageCaptionMy
+  );
+  const heroImg = hero.heroImageUrl || "/images/graduation.webp";
+
   return (
-    <section
-      id="home"
-      className="relative min-h-[100svh] flex flex-col justify-between bg-[#06152B]"
-    >
-      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-        <Image
-          src="/images/graduation.webp"
-          alt="Hinthar International School Campus and Scholars"
-          fill
-          sizes="100vw"
-          className="object-cover object-center scale-105"
-          priority
-          quality={95}
-        />
-        <div className="absolute inset-0 bg-[#06152B]/40" />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#09234B]/75 via-transparent to-[#06152B]/90" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_45%,rgba(6,21,43,0.15)_0%,rgba(6,21,43,0.65)_100%)]" />
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[520px] h-[520px] bg-[#FFC700]/10 rounded-full blur-[140px] pointer-events-none" />
-      </div>
+    <section className="relative bg-white overflow-hidden pt-8 pb-14 sm:pt-12 sm:pb-20 lg:pt-16 lg:pb-24 border-b border-slate-100">
+      {/* Subtle White-First Ambient Cobalt Wash */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-32 right-0 w-[560px] h-[560px] rounded-full bg-[#EEF3FC]/80 blur-3xl"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute top-40 -left-28 w-[360px] h-[360px] rounded-full bg-[#FFFBE6]/80 blur-3xl"
+      />
 
-      <div className="relative z-10 w-full max-w-[1080px] mx-auto px-4 sm:px-6 md:px-8 pt-24 sm:pt-28 lg:pt-32 pb-6 sm:pb-8 my-auto flex flex-col items-center justify-center text-center">
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="show"
-          className="w-full flex flex-col items-center text-center"
-        >
-            <motion.div
-              variants={itemVariants}
-              className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-[#FFC700]/40 shadow-sm mb-6"
-            >
-              <div className="w-2 h-2 rounded-full bg-[#FFC700] animate-pulse" />
-              <span className="text-[11px] font-extrabold text-[#FFC700] tracking-[0.16em] uppercase">
-                {t("home.heroBadge")}
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        {/* Split Framed Hero Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+          {/* Left Column: Authoritative Institutional Copy */}
+          <div className="lg:col-span-7 space-y-6">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EEF3FC] border border-[#193E8A]/15 px-3.5 py-1.5 text-xs font-bold text-[#193E8A]">
+                <SealCheck className="w-4 h-4 text-[#193E8A] shrink-0" weight="fill" />
+                <span>{credentialBadge}</span>
               </span>
-            </motion.div>
+              {intakePill && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FFD600] px-3 py-1.5 text-xs font-extrabold text-[#162033]">
+                  <span>{intakePill}</span>
+                </span>
+              )}
+            </div>
 
-            <motion.h1
-              variants={itemVariants}
-              className="text-4xl sm:text-5xl md:text-6xl xl:text-[64px] font-black text-white leading-[1.08] tracking-tight mb-5 drop-shadow-[0_2px_16px_rgba(4,14,30,0.85)]"
-            >
-              {t("home.heroTitle1")}{" "}
-              <span className="block mt-1 text-transparent bg-clip-text bg-gradient-to-r from-[#FFC700] via-[#FFE48A] to-[#FFC700]">
-                {t("home.heroTitle2")}
-              </span>
-            </motion.h1>
+            <h1 className={`font-extrabold text-[#1E232B] ${locale === "my" ? "text-2xl sm:text-3xl md:text-[32px] lg:text-[36px] xl:text-[40px] leading-[1.34] tracking-normal" : "text-2xl sm:text-3xl md:text-4xl lg:text-[40px] xl:text-[44px] leading-[1.16] tracking-tight"}`}>
+              <span className="block">{titleLine1}</span>
+              <span className="block text-[#193E8A] mt-1">{titleHighlight}</span>
+            </h1>
 
-            <motion.p
-              variants={itemVariants}
-              className="text-base sm:text-lg text-slate-200 leading-relaxed max-w-3xl mx-auto mb-8 font-normal"
-            >
-              {t("home.heroSubtitle")}
-            </motion.p>
+            <p className="text-base sm:text-lg text-slate-600 leading-relaxed max-w-2xl">
+              {subtitle}
+            </p>
 
-            <motion.div
-              variants={itemVariants}
-              className="flex flex-wrap items-center justify-center gap-3.5 sm:gap-4 mb-8 lg:mb-9 w-full"
-            >
+            <div className="flex flex-wrap items-center gap-3.5 pt-1">
               <Link
                 href="/admission"
-                className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] font-black text-xs uppercase tracking-wider shadow-lg shadow-[#FFC700]/25 hover:scale-[1.03] active:scale-[0.98] transition-all"
+                className="inline-flex items-center justify-center gap-2.5 min-h-12 px-7 py-3.5 rounded-full bg-[#FFD600] hover:bg-[#ECC300] text-[#162033] text-sm font-extrabold shadow-gold transition-all active:scale-[0.98]"
               >
-                <span>{t("home.heroCtaApply")}</span>
-                <span aria-hidden="true" className="material-symbols-outlined text-base font-black">arrow_forward</span>
+                <span>{primaryCta}</span>
+                <ArrowRight className="w-4 h-4 shrink-0" weight="bold" />
               </Link>
 
-              <Link
-                href="/classes"
-                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/25 text-white font-bold text-xs uppercase tracking-wider hover:scale-[1.03] active:scale-[0.98] transition-all"
+              <a
+                href="#classes"
+                className="inline-flex items-center justify-center gap-2 min-h-12 px-6 py-3.5 rounded-full bg-white hover:bg-[#EEF3FC] text-[#193E8A] border-2 border-[#193E8A]/20 hover:border-[#193E8A]/40 text-sm font-extrabold transition-all"
               >
-                <span aria-hidden="true" className="material-symbols-outlined text-base">menu_book</span>
-                <span>{t("home.heroCtaCurriculum")}</span>
-              </Link>
-            </motion.div>
+                <BookOpenText className="w-4 h-4 shrink-0" weight="duotone" />
+                <span>{secondaryCta}</span>
+              </a>
+            </div>
 
-            <motion.div
-              variants={itemVariants}
-              className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 w-full max-w-4xl mx-auto pt-6"
-            >
-              {highlights.map((stat, i) => (
-                <div
-                  key={i}
-                  className="flex flex-col items-center text-center rounded-2xl border border-white/15 bg-white/8 px-3 py-4 backdrop-blur-md transition-colors hover:bg-white/12"
-                >
-                  <span className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                    {locField(locale, stat.value, stat.valueMy)}
-                  </span>
-                  <span className="text-[10px] sm:text-[11px] font-bold text-[#FFC700] uppercase tracking-wider mt-1">
-                    {locField(locale, stat.label, stat.labelMy)}
-                  </span>
-                  <span className="text-[9px] sm:text-[10px] text-slate-300/90 font-light mt-0.5 leading-snug">
-                    {locField(locale, stat.sub, stat.subMy)}
-                  </span>
+            {trustNote && (
+              <p className="text-xs sm:text-sm font-medium text-slate-500 flex items-center gap-2 pt-1">
+                <GraduationCap className="w-4 h-4 text-[#193E8A] shrink-0" weight="duotone" />
+                <span>{trustNote}</span>
+              </p>
+            )}
+          </div>
+
+          {/* Right Column: Framed Photograph with Cobalt & Gold Identity Frame */}
+          <div className="lg:col-span-5">
+            <div className="relative mx-auto max-w-lg lg:max-w-none">
+              <div
+                aria-hidden="true"
+                className="absolute -inset-2.5 rounded-[28px] bg-gradient-to-br from-[#193E8A] via-[#2352B0] to-[#FFD600] opacity-15 blur-xs"
+              />
+              <div className="relative rounded-3xl overflow-hidden bg-slate-100 border-2 border-slate-200/90 shadow-hinthar aspect-[4/3] sm:aspect-[5/4]">
+                <Image
+                  src={heroImg}
+                  alt={imageCaption || "Hinthar International School Scholars"}
+                  fill
+                  priority
+                  unoptimized={isR2AssetUrl(heroImg)}
+                  sizes="(max-width: 1024px) 100vw, 44vw"
+                  className="object-cover"
+                />
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#0F2759]/90 via-[#0F2759]/45 to-transparent p-4 sm:p-5">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-[#FFD600] px-2.5 py-0.5 text-[10px] font-extrabold text-[#162033] mb-1.5">
+                    Pearson Edexcel
+                  </div>
+                  <p className="text-xs sm:text-sm font-semibold text-white leading-snug">
+                    {imageCaption}
+                  </p>
                 </div>
-              ))}
-            </motion.div>
-        </motion.div>
-      </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
-      <AnnouncementTicker messages={announcements} />
+        {/* 4 Key Highlight Stat Cards */}
+        {hero.highlights?.length > 0 && (
+          <div className="mt-12 sm:mt-16 grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-5">
+            {hero.highlights.map((item, idx) => {
+              const val = locField(locale, item.value, item.valueMy);
+              const label = locField(locale, item.label, item.labelMy);
+              const sub = locField(locale, item.sub, item.subMy);
+              return (
+                <div
+                  key={`${item.value}-${idx}`}
+                  className="rounded-2xl bg-[#F8FAFC] border border-slate-200/90 p-4 sm:p-5 hover:border-[#193E8A]/30 hover:bg-white hover:shadow-sm transition-all"
+                >
+                  <p className="text-xl sm:text-2xl font-extrabold text-[#193E8A] tracking-tight">
+                    {val}
+                  </p>
+                  <p className="text-xs sm:text-sm font-bold text-[#1E232B] mt-1">
+                    {label}
+                  </p>
+                  {sub && (
+                    <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5 leading-snug">
+                      {sub}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </section>
   );
 }

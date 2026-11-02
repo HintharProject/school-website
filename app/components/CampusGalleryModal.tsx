@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { motion } from "framer-motion";
+import { X, CaretLeft, CaretRight, CornersOut } from "@phosphor-icons/react";
 import { isR2AssetUrl } from "@/lib/utils/r2Image";
 
 interface CampusGalleryModalProps {
@@ -16,8 +16,8 @@ interface CampusGalleryModalProps {
 function galleryLayout(count: number, index: number): string {
   if (count === 1) return "col-span-2 sm:col-span-3 aspect-[16/10]";
   if (count === 2) return "col-span-1 aspect-[4/3]";
-  if (count === 3 && index === 0) return "col-span-2 row-span-2 aspect-auto min-h-[180px] sm:min-h-[240px]";
-  if (count >= 4 && index === 0) return "col-span-2 row-span-2 aspect-auto min-h-[180px] sm:min-h-[260px]";
+  if (count >= 3 && index === 0)
+    return "col-span-2 row-span-2 aspect-auto min-h-[190px] sm:min-h-[260px]";
   return "col-span-1 aspect-[4/3]";
 }
 
@@ -40,6 +40,14 @@ export default function CampusGalleryModal({
       if (event.key === "Escape") {
         if (expandedIndex !== null) setExpandedIndex(null);
         else onClose();
+      } else if (expandedIndex !== null && images.length > 1) {
+        if (event.key === "ArrowRight") {
+          setExpandedIndex((prev) => ((prev ?? 0) + 1) % images.length);
+        } else if (event.key === "ArrowLeft") {
+          setExpandedIndex(
+            (prev) => ((prev ?? 0) - 1 + images.length) % images.length
+          );
+        }
       }
     };
 
@@ -49,13 +57,13 @@ export default function CampusGalleryModal({
       document.body.style.overflow = "";
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen, onClose, expandedIndex]);
+  }, [isOpen, onClose, expandedIndex, images.length]);
 
   if (!isOpen || images.length === 0) return null;
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/25 backdrop-blur-sm p-3 sm:p-6"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-[#0F2759]/50 backdrop-blur-xs p-3 sm:p-6 animate-fade-in"
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -63,71 +71,65 @@ export default function CampusGalleryModal({
       aria-modal="true"
       aria-label={`${campusName} photo gallery`}
     >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.96, y: 12 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.25 }}
-        className="relative flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
+      <div
+        className="relative flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl border border-slate-200"
         onClick={(event) => event.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex shrink-0 items-center justify-between gap-4 border-b border-slate-100 px-5 py-4 sm:px-6">
           <div className="min-w-0">
             {city && (
-              <span className="inline-flex items-center rounded-full bg-[#FFC700] px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-[#09234B]">
+              <span className="inline-flex items-center rounded-full bg-[#FFD600] px-2.5 py-0.5 text-[11px] font-extrabold text-[#162033] mb-1">
                 {city}
               </span>
             )}
-            <h3 className="truncate text-lg font-black text-[#09234B] sm:text-xl">{campusName}</h3>
-            <p className="text-xs font-semibold text-slate-500">
+            <h3 className="truncate text-lg font-extrabold text-[#1E232B] sm:text-xl">
+              {campusName}
+            </h3>
+            <p className="text-xs font-medium text-slate-500">
               {images.length} {images.length === 1 ? "photo" : "photos"}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="shrink-0 rounded-full p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+            className="shrink-0 inline-flex items-center justify-center h-10 w-10 rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-[#193E8A] cursor-pointer"
             aria-label="Close gallery"
           >
-            <span aria-hidden="true" className="material-symbols-outlined text-2xl">
-              close
-            </span>
+            <X className="w-5 h-5" weight="bold" />
           </button>
         </div>
 
-        {/* Flexible grid — all photos visible at once */}
-        <div className="overflow-y-auto overscroll-contain p-3 sm:p-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 auto-rows-fr">
+        <div className="overflow-y-auto overscroll-contain p-3 sm:p-5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3.5 auto-rows-fr">
             {images.map((image, index) => (
               <button
                 key={`${image}-${index}`}
                 type="button"
-                aria-label={`View ${campusName} photo ${index + 1} full size`}
+                aria-label={`View ${campusName} photo ${index + 1}`}
                 onClick={() => setExpandedIndex(index)}
-                className={`group relative overflow-hidden rounded-xl bg-slate-100 ${galleryLayout(images.length, index)}`}
+                className={`group relative overflow-hidden rounded-2xl bg-slate-100 cursor-pointer ${galleryLayout(images.length, index)}`}
               >
                 <Image
                   src={image}
                   alt={`${campusName} — photo ${index + 1}`}
                   fill
                   unoptimized={isR2AssetUrl(image)}
-                  className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-                  sizes="(max-width: 640px) 50vw, 280px"
+                  className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                  sizes="(max-width: 640px) 50vw, 300px"
                 />
-                <div className="pointer-events-none absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/10" />
-                <span className="pointer-events-none absolute bottom-2 right-2 rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-bold text-white opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100">
-                  Expand
+                <div className="pointer-events-none absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/15" />
+                <span className="pointer-events-none absolute bottom-2.5 right-2.5 inline-flex items-center gap-1 rounded-full bg-[#0F2759]/80 px-2.5 py-1 text-[11px] font-bold text-white opacity-0 backdrop-blur-xs transition-opacity group-hover:opacity-100">
+                  <CornersOut className="w-3.5 h-3.5" weight="bold" />
                 </span>
               </button>
             ))}
           </div>
         </div>
-      </motion.div>
+      </div>
 
-      {/* Optional full-size expand overlay — only when a tile is clicked */}
       {expandedIndex !== null && (
         <div
-          className="fixed inset-0 z-[210] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 sm:p-8"
+          className="fixed inset-0 z-[210] flex items-center justify-center bg-[#0F2759]/85 backdrop-blur-sm p-4 sm:p-8"
           onClick={() => setExpandedIndex(null)}
           role="dialog"
           aria-label="Expanded photo"
@@ -135,16 +137,43 @@ export default function CampusGalleryModal({
           <button
             type="button"
             onClick={() => setExpandedIndex(null)}
-            className="absolute top-4 right-4 z-10 rounded-full bg-white/10 p-2.5 text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+            className="absolute top-4 right-4 z-10 inline-flex items-center justify-center h-11 w-11 rounded-full bg-white/15 text-white hover:bg-white/25 transition-colors cursor-pointer"
             aria-label="Close expanded photo"
           >
-            <span aria-hidden="true" className="material-symbols-outlined text-2xl">
-              close
-            </span>
+            <X className="w-5 h-5" weight="bold" />
           </button>
 
+          {images.length > 1 && (
+            <>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setExpandedIndex(
+                    (expandedIndex - 1 + images.length) % images.length
+                  );
+                }}
+                aria-label="Previous photo"
+                className="absolute left-3 sm:left-6 z-10 inline-flex items-center justify-center h-11 w-11 rounded-full bg-white/15 text-white hover:bg-white/25 transition-colors cursor-pointer"
+              >
+                <CaretLeft className="w-5 h-5" weight="bold" />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setExpandedIndex((expandedIndex + 1) % images.length);
+                }}
+                aria-label="Next photo"
+                className="absolute right-3 sm:right-6 z-10 inline-flex items-center justify-center h-11 w-11 rounded-full bg-white/15 text-white hover:bg-white/25 transition-colors cursor-pointer"
+              >
+                <CaretRight className="w-5 h-5" weight="bold" />
+              </button>
+            </>
+          )}
+
           <div
-            className="relative h-full w-full max-h-[85vh] max-w-5xl"
+            className="relative h-full w-full max-h-[84vh] max-w-5xl"
             onClick={(event) => event.stopPropagation()}
           >
             <Image
@@ -159,8 +188,8 @@ export default function CampusGalleryModal({
           </div>
 
           {images.length > 1 && (
-            <p className="absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full bg-black/50 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
-              {expandedIndex + 1} / {images.length} — click outside to return to grid
+            <p className="absolute bottom-5 left-1/2 -translate-x-1/2 rounded-full bg-black/55 px-3.5 py-1 text-xs font-semibold text-white">
+              {expandedIndex + 1} / {images.length}
             </p>
           )}
         </div>

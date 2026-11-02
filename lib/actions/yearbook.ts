@@ -8,23 +8,25 @@ import {
 } from "@/lib/db";
 import { and, asc, desc, eq, getTableColumns, or } from "drizzle-orm";
 import {
-  getServerSession,
   logAudit,
   requireAdmin,
   requireStudentOrAdmin,
 } from "@/lib/auth/rbac";
-import { revalidatePath } from "next/cache";
+import { cachedPublicRead, invalidatePublicCache } from "@/lib/cache/publicCache";
 import { z } from "zod";
 
 const yearbookSchema = z.object({
   name: z.string().trim().min(2).max(200),
   batchId: z.string().trim().min(1).max(100),
   role: z.string().trim().min(2).max(200),
+  roleMy: z.string().trim().max(200).optional().nullable(),
   destination: z.string().trim().max(300).optional().nullable(),
   subjects: z.string().trim().max(500).optional().nullable(),
   quote: z.string().trim().min(5).max(1000),
+  quoteMy: z.string().trim().max(1000).optional().nullable(),
   image: z.string().trim().min(1).default("/images/g5.jpg"),
   badge: z.string().trim().max(120).optional().nullable(),
+  badgeMy: z.string().trim().max(120).optional().nullable(),
 });
 
 const batchSchema = z.object({
@@ -42,9 +44,8 @@ const yearbookSelection = {
   batchIsActive: yearbookBatches.isActive,
 };
 
-function revalidateYearbook() {
-  revalidatePath("/yearbook");
-  revalidatePath("/admin/yearbook");
+function flushYearbookCache() {
+  invalidatePublicCache(["yearbook"], ["/yearbook", "/admin", "/admin/yearbook"]);
 }
 
 async function requireBatch(batchId: string, activeOnly: boolean) {
@@ -58,26 +59,86 @@ async function requireBatch(batchId: string, activeOnly: boolean) {
         : eq(yearbookBatches.id, batchId)
     )
     .limit(1);
-  if (!rows[0]) throw new Error("Please select an active Yearbook batch.");
+  if (!rows[0]) throw new Error("Please select a valid Yearbook batch.");
   return rows[0];
 }
 
-export async function getYearbookBatches(options?: { includeInactive?: boolean }) {
+/** Fast cached public reader — never calls getServerSession(). */
+export async function getPublicYearbookBatches() {
+  return cachedPublicRead("public-yearbook-batches", ["yearbook"], async () => {
+    try {
+      const db = await getDb();
+      return await db
+        .select()
+        .from(yearbookBatches)
+        .where(eq(yearbookBatches.isActive, true))
+        .orderBy(asc(yearbookBatches.region), desc(yearbookBatches.sortOrder), desc(yearbookBatches.createdAt));
+    } catch {
+      return [];
+    }
+  });
+}
+
+/** Fast cached public reader — strictly published entries in active batches. */
+export async function getPublicYearbook() {
+  return cachedPublicRead("public-yearbook-entries", ["yearbook"], async () => {
+    try {
+      const db = await getDb();
+      return await db
+        .select(yearbookSelection)
+        .from(yearbookAlumni)
+        .innerJoin(yearbookBatches, eq(yearbookAlumni.batchId, yearbookBatches.id))
+        .where(and(eq(yearbookAlumni.status, "published"), eq(yearbookBatches.isActive, true)))
+        .orderBy(asc(yearbookBatches.region), desc(yearbookBatches.sortOrder), desc(yearbookAlumni.id));
+    } catch {
+      return [];
+    }
+  });
+}
+
+/** Authenticated Portal reader for Admins & Student Contributors. */
+export async function getPortalYearbookBatches(includeInactive = false) {
+  const user = await requireStudentOrAdmin();
   const db = await getDb();
-  const includeInactive = options?.includeInactive === true;
-  if (includeInactive) await requireAdmin();
+  const showInactive = includeInactive && user.role === "admin";
   return db
     .select()
     .from(yearbookBatches)
-    .where(includeInactive ? undefined : eq(yearbookBatches.isActive, true))
+    .where(showInactive ? undefined : eq(yearbookBatches.isActive, true))
     .orderBy(asc(yearbookBatches.region), desc(yearbookBatches.sortOrder), desc(yearbookBatches.createdAt));
+}
+
+export async function getPortalYearbook() {
+  const user = await requireStudentOrAdmin();
+  const db = await getDb();
+  const baseOrder = [
+    asc(yearbookBatches.region),
+    desc(yearbookBatches.sortOrder),
+    desc(yearbookAlumni.id),
+  ] as const;
+
+  if (user.role === "admin") {
+    return db
+      .select(yearbookSelection)
+      .from(yearbookAlumni)
+      .innerJoin(yearbookBatches, eq(yearbookAlumni.batchId, yearbookBatches.id))
+      .orderBy(...baseOrder);
+  }
+
+  return db
+    .select(yearbookSelection)
+    .from(yearbookAlumni)
+    .innerJoin(yearbookBatches, eq(yearbookAlumni.batchId, yearbookBatches.id))
+    .where(or(eq(yearbookAlumni.status, "published"), eq(yearbookAlumni.submittedBy, user.id)))
+    .orderBy(...baseOrder);
 }
 
 export async function createYearbookBatchAction(data: unknown) {
   const user = await requireAdmin();
   const validated = batchSchema.parse(data);
   const db = await getDb();
-  const id = `${validated.region.toLowerCase()}-${crypto.randomUUID()}`;
+  const slug = validated.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  const id = `${validated.region.toLowerCase()}-${slug || Date.now()}`;
   await db.insert(yearbookBatches).values({
     id,
     ...validated,
@@ -91,7 +152,7 @@ export async function createYearbookBatchAction(data: unknown) {
     resourceId: id,
     details: validated,
   });
-  revalidateYearbook();
+  flushYearbookCache();
   return { success: true as const, id };
 }
 
@@ -112,72 +173,75 @@ export async function updateYearbookBatchAction(id: string, data: unknown) {
     resourceId: id,
     details: validated,
   });
-  revalidateYearbook();
+  flushYearbookCache();
   return { success: true as const };
 }
 
-export async function getYearbook() {
+export async function deleteYearbookBatchAction(id: string) {
+  const user = await requireAdmin();
   const db = await getDb();
-  const { user } = await getServerSession();
-  const baseOrder = [
-    asc(yearbookBatches.region),
-    desc(yearbookBatches.sortOrder),
-    desc(yearbookAlumni.id),
-  ] as const;
-
-  if (!user) {
-    return db
-      .select(yearbookSelection)
-      .from(yearbookAlumni)
-      .innerJoin(yearbookBatches, eq(yearbookAlumni.batchId, yearbookBatches.id))
-      .where(and(eq(yearbookAlumni.status, "published"), eq(yearbookBatches.isActive, true)))
-      .orderBy(...baseOrder);
-  }
-  if (user.role === "admin") {
-    return db
-      .select(yearbookSelection)
-      .from(yearbookAlumni)
-      .innerJoin(yearbookBatches, eq(yearbookAlumni.batchId, yearbookBatches.id))
-      .orderBy(...baseOrder);
-  }
-  return db
-    .select(yearbookSelection)
+  const inUse = await db
+    .select({ id: yearbookAlumni.id })
     .from(yearbookAlumni)
-    .innerJoin(yearbookBatches, eq(yearbookAlumni.batchId, yearbookBatches.id))
-    .where(or(eq(yearbookAlumni.status, "published"), eq(yearbookAlumni.submittedBy, user.id)))
-    .orderBy(...baseOrder);
+    .where(eq(yearbookAlumni.batchId, id))
+    .limit(1);
+  if (inUse.length > 0) {
+    return {
+      success: false as const,
+      error: "Cannot delete a batch that still contains student entries. Reassign or delete those entries first.",
+    };
+  }
+  await db.delete(yearbookBatches).where(eq(yearbookBatches.id, id));
+  await logAudit({
+    actor: user,
+    action: "ADMIN_DELETED_YEARBOOK_BATCH",
+    resource: "yearbook_batches",
+    resourceId: id,
+  });
+  flushYearbookCache();
+  return { success: true as const };
 }
 
 export async function createYearbookAction(data: unknown) {
   const user = await requireStudentOrAdmin();
   const validated = yearbookSchema.parse(data);
-  const batch = await requireBatch(validated.batchId, true);
+  const batch = await requireBatch(validated.batchId, user.role !== "admin");
   const db = await getDb();
   const status = user.role === "admin" ? "published" : "pending_review";
+
   const insertData: NewYearbookScholar = {
-    ...validated,
+    name: validated.name,
+    batchId: batch.id,
     category: batch.name,
     campus: batch.region === "Yangon" ? "yangon-all" : "mawlamyine-campus",
+    role: validated.role,
+    roleMy: validated.roleMy || null,
     destination: validated.destination || null,
     subjects: validated.subjects || null,
+    quote: validated.quote,
+    quoteMy: validated.quoteMy || null,
+    image: validated.image || "/images/g5.jpg",
     badge: validated.badge || null,
+    badgeMy: validated.badgeMy || null,
     status,
     submittedBy: user.id,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
+
   const result = await db
     .insert(yearbookAlumni)
     .values(insertData)
     .returning({ id: yearbookAlumni.id });
+
   await logAudit({
     actor: user,
     action: user.role === "admin" ? "ADMIN_CREATED_YEARBOOK_ENTRY" : "STUDENT_SUBMITTED_YEARBOOK_ENTRY",
     resource: "yearbook_alumni",
     resourceId: String(result[0]?.id),
-    details: { name: validated.name, batchId: batch.id, batchName: batch.name, region: batch.region, status },
+    details: { name: validated.name, batchId: batch.id, status },
   });
-  revalidateYearbook();
+  flushYearbookCache();
   return { success: true as const, id: result[0]?.id, status };
 }
 
@@ -185,47 +249,76 @@ export async function updateYearbookAction(id: number, data: unknown) {
   const user = await requireStudentOrAdmin();
   const validated = yearbookSchema.partial().parse(data);
   const db = await getDb();
+
   const existing = await db.select().from(yearbookAlumni).where(eq(yearbookAlumni.id, id)).limit(1);
-  if (!existing[0]) return { success: false as const, error: "Yearbook entry not found." };
-  if (user.role === "student" && existing[0].submittedBy !== user.id) {
-    return { success: false as const, error: "You can only edit your own yearbook submissions." };
+  if (!existing.length) {
+    return { success: false as const, error: "Yearbook entry not found." };
   }
 
-  const updateData: Partial<NewYearbookScholar> = {
-    ...validated,
-    updatedAt: new Date().toISOString(),
-  };
+  let nextStatus = existing[0].status;
+  if (user.role === "student") {
+    if (existing[0].submittedBy !== user.id) {
+      return { success: false as const, error: "You can only edit your own Yearbook submission." };
+    }
+    nextStatus = "pending_review";
+  }
+
+  let category = existing[0].category;
+  let campus = existing[0].campus;
   if (validated.batchId) {
-    const batch = await requireBatch(validated.batchId, user.role === "student");
-    updateData.category = batch.name;
-    updateData.campus = batch.region === "Yangon" ? "yangon-all" : "mawlamyine-campus";
-  }
-  if (user.role === "student" && existing[0].status !== "pending_review") {
-    updateData.status = "pending_review";
+    const batch = await requireBatch(validated.batchId, user.role !== "admin");
+    category = batch.name;
+    campus = batch.region === "Yangon" ? "yangon-all" : "mawlamyine-campus";
   }
 
-  await db.update(yearbookAlumni).set(updateData).where(eq(yearbookAlumni.id, id));
+  await db
+    .update(yearbookAlumni)
+    .set({
+      ...validated,
+      roleMy: validated.roleMy !== undefined ? validated.roleMy || null : undefined,
+      quoteMy: validated.quoteMy !== undefined ? validated.quoteMy || null : undefined,
+      badgeMy: validated.badgeMy !== undefined ? validated.badgeMy || null : undefined,
+      destination: validated.destination !== undefined ? validated.destination || null : undefined,
+      subjects: validated.subjects !== undefined ? validated.subjects || null : undefined,
+      badge: validated.badge !== undefined ? validated.badge || null : undefined,
+      category,
+      campus,
+      status: nextStatus,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(yearbookAlumni.id, id));
+
   await logAudit({
     actor: user,
     action: user.role === "admin" ? "ADMIN_UPDATED_YEARBOOK_ENTRY" : "STUDENT_UPDATED_YEARBOOK_ENTRY",
     resource: "yearbook_alumni",
     resourceId: String(id),
-    details: validated,
   });
-  revalidateYearbook();
+  flushYearbookCache();
   return { success: true as const };
 }
 
-export async function setYearbookStatusAction(id: number, status: string, reviewerNotes?: string) {
+export async function setYearbookStatusAction(
+  id: number,
+  status: "published" | "pending_review" | "archived",
+  reviewerNotes?: string
+) {
   const user = await requireAdmin();
-  const validStatus = z.enum(["published", "pending_review", "archived"]).parse(status);
   const db = await getDb();
+  const validStatus = z.enum(["published", "pending_review", "archived"]).parse(status);
+
   const updated = await db
     .update(yearbookAlumni)
-    .set({ status: validStatus, reviewerNotes, updatedAt: new Date().toISOString() })
+    .set({
+      status: validStatus,
+      reviewerNotes: reviewerNotes ?? null,
+      updatedAt: new Date().toISOString(),
+    })
     .where(eq(yearbookAlumni.id, id))
     .returning({ id: yearbookAlumni.id });
-  if (!updated.length) return { success: false as const, error: "Yearbook entry not found." };
+
+  if (!updated.length) return { success: false as const, error: "Entry not found." };
+
   await logAudit({
     actor: user,
     action: `ADMIN_SET_YEARBOOK_STATUS_${validStatus.toUpperCase()}`,
@@ -233,7 +326,7 @@ export async function setYearbookStatusAction(id: number, status: string, review
     resourceId: String(id),
     details: { status: validStatus, reviewerNotes },
   });
-  revalidateYearbook();
+  flushYearbookCache();
   return { success: true as const };
 }
 
@@ -247,6 +340,6 @@ export async function deleteYearbookAction(id: number) {
     resource: "yearbook_alumni",
     resourceId: String(id),
   });
-  revalidateYearbook();
+  flushYearbookCache();
   return { success: true as const };
 }

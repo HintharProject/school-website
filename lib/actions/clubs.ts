@@ -1,13 +1,13 @@
 "use server";
 
-import { getDb, clubs, NewClub } from "@/lib/db";
-import { eq, desc, or } from "drizzle-orm";
-import { requireAdmin, requireStudentOrAdmin, logAudit, getServerSession } from "@/lib/auth/rbac";
+import { getDb, clubs, type NewClub } from "@/lib/db";
+import { and, desc, eq, or } from "drizzle-orm";
+import { requireAdmin, requireStudentOrAdmin, logAudit } from "@/lib/auth/rbac";
+import { cachedPublicRead, invalidatePublicCache } from "@/lib/cache/publicCache";
 import { z } from "zod";
-import { revalidatePath } from "next/cache";
 
 const clubSchema = z.object({
-  name: z.string().min(2).max(200),
+  name: z.string().trim().min(2).max(200),
   category: z.enum([
     "STEM & Tech",
     "Academic & Debate",
@@ -15,33 +15,47 @@ const clubSchema = z.object({
     "Creative Arts",
     "Sports & Fitness",
   ]),
-  icon: z.string().default("groups"),
-  members: z.string().default("25+ Scholars"),
-  meetingTime: z.string().min(2),
-  leadership: z.string().min(2),
-  description: z.string().min(5),
-  image: z.string().default("/images/g2.jpg"),
-  galleryUrls: z.array(z.string().min(1)).max(12).default([]),
-  campus: z.string().default("both-campuses"),
+  icon: z.string().trim().default("users"),
+  members: z.string().trim().default("25+ Scholars"),
+  meetingTime: z.string().trim().min(2),
+  meetingTimeMy: z.string().trim().optional().nullable(),
+  leadership: z.string().trim().min(2),
+  leadershipMy: z.string().trim().optional().nullable(),
+  description: z.string().trim().min(5),
+  descriptionMy: z.string().trim().optional().nullable(),
+  image: z.string().trim().default("/images/g2.jpg"),
+  galleryUrls: z.array(z.string().trim().min(1)).max(12).default([]),
+  campus: z.string().trim().default("both-campuses"),
   isActive: z.boolean().default(true),
 });
 
-export async function getClubs() {
-  const db = await getDb();
-  const { user } = await getServerSession();
+function flushClubsCache() {
+  invalidatePublicCache(["clubs"], ["/clubs", "/admin", "/admin/clubs"]);
+}
 
-  // Unauthenticated visitors only ever see published clubs.
-  if (!user) {
-    return db
-      .select()
-      .from(clubs)
-      .where(eq(clubs.status, "published"))
-      .orderBy(desc(clubs.id));
-  }
+/** Fast cached public reader — never calls getServerSession(). */
+export async function getPublicClubs() {
+  return cachedPublicRead("public-clubs", ["clubs"], async () => {
+    try {
+      const db = await getDb();
+      return await db
+        .select()
+        .from(clubs)
+        .where(and(eq(clubs.status, "published"), eq(clubs.isActive, true)))
+        .orderBy(desc(clubs.id));
+    } catch {
+      return [];
+    }
+  });
+}
+
+/** Authenticated Portal reader for Admins & Student Contributors. */
+export async function getPortalClubs() {
+  const user = await requireStudentOrAdmin();
+  const db = await getDb();
   if (user.role === "admin") {
     return db.select().from(clubs).orderBy(desc(clubs.id));
   }
-  // Students: published clubs plus their own submissions in any state.
   return db
     .select()
     .from(clubs)
@@ -54,12 +68,23 @@ export async function createClubAction(data: unknown) {
   const validated = clubSchema.parse(data);
   const db = await getDb();
 
-  const isAutoPublished = user.role === "admin";
-  const status = isAutoPublished ? "published" : "pending_review";
+  const status = user.role === "admin" ? "published" : "pending_review";
 
   const insertData: NewClub = {
-    ...validated,
+    name: validated.name,
+    category: validated.category,
+    icon: validated.icon,
+    members: validated.members,
+    meetingTime: validated.meetingTime,
+    meetingTimeMy: validated.meetingTimeMy || null,
+    leadership: validated.leadership,
+    leadershipMy: validated.leadershipMy || null,
+    description: validated.description,
+    descriptionMy: validated.descriptionMy || null,
+    image: validated.image,
     galleryUrls: JSON.stringify(validated.galleryUrls),
+    campus: validated.campus,
+    isActive: validated.isActive,
     status,
     submittedBy: user.id,
     createdAt: new Date().toISOString(),
@@ -76,9 +101,8 @@ export async function createClubAction(data: unknown) {
     details: { name: validated.name, status },
   });
 
-  revalidatePath("/clubs");
-  revalidatePath("/admin/clubs");
-  return { success: true, id: result[0]?.id, status };
+  flushClubsCache();
+  return { success: true as const, id: result[0]?.id, status };
 }
 
 export async function updateClubAction(id: number, data: unknown) {
@@ -86,20 +110,20 @@ export async function updateClubAction(id: number, data: unknown) {
   const validated = clubSchema.partial().parse(data);
   const db = await getDb();
 
-  // If student, verify ownership and preserve moderation flow
   let resetToReview = false;
   if (user.role === "student") {
     const existing = await db.select().from(clubs).where(eq(clubs.id, id)).limit(1);
     if (!existing.length || existing[0].submittedBy !== user.id) {
       return { success: false as const, error: "You can only edit your own club proposals." };
     }
-    if (!existing[0].status || existing[0].status === "published" || existing[0].status === "archived") {
-      resetToReview = true;
-    }
+    resetToReview = true;
   }
 
   const updateData: Partial<NewClub> = {
     ...validated,
+    meetingTimeMy: validated.meetingTimeMy !== undefined ? validated.meetingTimeMy || null : undefined,
+    leadershipMy: validated.leadershipMy !== undefined ? validated.leadershipMy || null : undefined,
+    descriptionMy: validated.descriptionMy !== undefined ? validated.descriptionMy || null : undefined,
     galleryUrls: validated.galleryUrls ? JSON.stringify(validated.galleryUrls) : undefined,
     updatedAt: new Date().toISOString(),
   };
@@ -114,7 +138,7 @@ export async function updateClubAction(id: number, data: unknown) {
     .returning({ id: clubs.id });
 
   if (!updated.length) {
-    return { success: false as const, error: "Club not found. It may have been deleted." };
+    return { success: false as const, error: "Club not found." };
   }
 
   await logAudit({
@@ -125,34 +149,25 @@ export async function updateClubAction(id: number, data: unknown) {
     details: validated,
   });
 
-  revalidatePath("/clubs");
-  revalidatePath("/admin/clubs");
-  return { success: true };
+  flushClubsCache();
+  return { success: true as const };
 }
 
-export async function setClubStatusAction(id: number, status: string) {
+export async function setClubStatusAction(
+  id: number,
+  status: "published" | "pending_review" | "archived"
+) {
   const user = await requireAdmin();
   const db = await getDb();
-
-  const statusSchema = z.enum(["published", "pending_review", "archived"]);
-  const parsed = statusSchema.safeParse(status);
-  if (!parsed.success) {
-    return { success: false as const, error: "Invalid club status." };
-  }
-  const validStatus = parsed.data;
+  const validStatus = z.enum(["published", "pending_review", "archived"]).parse(status);
 
   const updated = await db
     .update(clubs)
-    .set({
-      status: validStatus,
-      updatedAt: new Date().toISOString(),
-    })
+    .set({ status: validStatus, updatedAt: new Date().toISOString() })
     .where(eq(clubs.id, id))
     .returning({ id: clubs.id });
 
-  if (!updated.length) {
-    return { success: false as const, error: "Club not found. It may have been deleted." };
-  }
+  if (!updated.length) return { success: false as const, error: "Club not found." };
 
   await logAudit({
     actor: user,
@@ -162,25 +177,20 @@ export async function setClubStatusAction(id: number, status: string) {
     details: { status: validStatus },
   });
 
-  revalidatePath("/clubs");
-  revalidatePath("/admin/clubs");
-  return { success: true };
+  flushClubsCache();
+  return { success: true as const };
 }
 
 export async function deleteClubAction(id: number) {
   const user = await requireAdmin();
   const db = await getDb();
-
   await db.delete(clubs).where(eq(clubs.id, id));
-
   await logAudit({
     actor: user,
     action: "ADMIN_DELETED_CLUB",
     resource: "clubs",
     resourceId: String(id),
   });
-
-  revalidatePath("/clubs");
-  revalidatePath("/admin/clubs");
-  return { success: true };
+  flushClubsCache();
+  return { success: true as const };
 }

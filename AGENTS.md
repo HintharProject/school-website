@@ -8,48 +8,56 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
-# Hinthar International School — System Architecture & Role-Based Access Control
+# Hinthar International School — Engineering & Architecture Guide (`AGENTS.md`)
 
-## Overview
-Hinthar International School (Yangon & Mawlamyine) web platform built on **Next.js (App Router)** and **Cloudflare Workers Native Stack**:
-- **Database**: Cloudflare D1 (Relational SQLite) via **Drizzle ORM**
-- **Authentication**: **Better Auth** with closed registration & direct invitation provisioning
-- **Object Storage**: **Cloudflare R2** (`hinthar-assets`) with metadata tracking in D1 (`file_assets`)
-- **Authorization**: Application-Level RBAC with Anti-Lockout Invariant Guards
+> **MANDATORY LIVING DOCUMENTATION RULE (NON-NEGOTIABLE)**:
+> Whenever you add, modify, or remove any route, component section, database table/column, Server Action, RBAC permission, bilingual translation rule, or visual token, **you MUST update both [`AGENTS.md`](AGENTS.md) and [`spec.md`](spec.md) (including the Change Log in `spec.md`) in the exact same task before finishing.**
+
+## 1. Platform Overview
+**Hinthar International School** (Yangon & Mawlamyine) web platform built on **Next.js 16 (App Router)** and the **Cloudflare Workers Native Stack**:
+- **Database**: Cloudflare D1 (SQLite) via **Drizzle ORM** ([`lib/db/schema.ts`](lib/db/schema.ts))
+- **Authentication**: **Better Auth** with closed registration & single-use invitation provisioning ([`lib/auth/auth.ts`](lib/auth/auth.ts))
+- **Object Storage**: **Cloudflare R2** (`hinthar-assets`) with metadata tracked in `file_assets`
+- **Authorization**: Application-level RBAC with Sole-Admin Anti-Lockout Invariant ([`lib/auth/rbac.ts`](lib/auth/rbac.ts))
 - **Deployment**: **Cloudflare Workers** via `@opennextjs/cloudflare`
+- **Master Specification**: See [`spec.md`](spec.md) and [`design-system/hinthar-international-school/MASTER.md`](design-system/hinthar-international-school/MASTER.md)
 
-## Role-Based Access Control (RBAC)
-No open public registration is permitted. Accounts are directly provisioned:
+## 2. Strictly 5 Public Pages & Navigation Rules
+To minimize technical maintenance and deliver an impressive, clutter-free visitor experience, the public website consists of **strictly 5 pages** (no top-bar dropdown menus; `Classes` lives on the Home page at `/#classes` and is **not** a separate navbar link):
 
-1. **School Administrator (`admin`)**:
-   - Master account: **TYZ** (`thawyezaw@gmail.com`).
-   - Authority: Full superadmin access across all modules, single-use invitation provisioning for staff & student accounts, master campus network controls, and admissions approvals.
-   - Anti-Lockout: Invariant guard prevents deleting or deactivating the sole remaining active administrator.
-2. **Student Contributor (`student`)**:
-   - Authorized student leaders and club representatives (e.g. `linmyat.thu@student.hinthar.education`).
-   - Authority: Submit and edit their own Alumni Yearbook entries in an active regional batch (into a Pending Review queue for Admin approval), submit new Club / Society proposals (into a Pending Review queue for Admin approval), submit Activity proposals tied to their Clubs, and view/edit Class Timetables.
-   - Restrictions: Strictly no access to admissions records, user management, or direct unmoderated publishing.
+1. `/` — **Home Page**: Top Announcement Ticker, Split/Framed Hero + 4 Key Highlight Stats, About Hinthar & Principal Welcome, **`#classes` Pearson Edexcel Pathways & Syllabus Modal**, Campuses Overview Strip, Parent/Alumni Testimonials, and FAQs.
+2. `/campuses` — **Campuses**: Dynamic Admin-managed campuses (seeded with **3 in Yangon: Ywarma, Shwe Padauk, Shwe Pone Nyet** & **1 in Mawlamyine**), city filter tabs, Gallery Lightbox, facilities, grades served, contacts, and Google Maps links.
+3. `/yearbook` — **Student Yearbook**: Strictly for students/alumni (no staff directory), filterable by Region (`Yangon` / `Mawlamyine`) and Batch (`Class of 2026`, `2025`, etc.).
+4. `/clubs` — **Clubs & Activities**: Combined student life portal with top segment tabs (`All`, `Clubs & Societies`, `School Activities`), contextual category/status sub-filters, and unified card gallery.
+5. `/admission` — **Admissions & Status Tracker**: Segmented view with **Apply Online** (streamlined 3-Step Pearson application + Admin-configurable Required/Optional R2 document uploads + `HIS-YYYY-XXXXXX` receipt) and **Track Application Status** (`?tab=track`).
 
-## Core Modules & URLs
-- `/` — Main School Landing Page (Pearson Edexcel continuum, 4 campuses highlights, leadership, FAQs)
-- `/campuses` — Dedicated showcase for **4 Campuses** (**3 in Yangon: Ywarma, Shwe Padauk, Shwe Pone Nyet** & **1 in Mawlamyine**)
-- `/yearbook` — Alumni Yearbook grouped by Yangon/Mawlamyine and admin-managed regional batches
-- `/clubs` — Extracurricular societies (Robotics & AI, Debate/MUN, Science, Arts & Media, Sports)
-- `/activities` — School events calendar, innovation fairs, examination series, and graduation ceremonies
-- `/classes` — Timetables and syllabi for Lower Secondary (Year 7–9), Pearson IGCSE, and Pearson IAL
-- `/admission` — 4-Step enrollment wizard with admin-configurable subjects/terms, three required R2 document uploads, D1 sync, and Resend confirmation
-- `/portal` — Public Student Portal: applicants track their admission status with their tracking reference (`HIS-YYYY-XXXXXX`) + guardian email (no login; rate-limited lookup in `lib/actions/admissions.ts`)
-- `/admin` & `/admin/login` — Administrative Portal with Better Auth (Password Login at `/admin/login`; Single-Use Invitations in `/admin/users`), Campuses CRUD, Admissions Pipeline, Yearbook Review Queue, Clubs & Activities management.
+*Legacy paths (`/classes`, `/portal`, `/activities`, `/staff`, `/news`, `/chatbot`) permanently `308` redirect in [`next.config.ts`](next.config.ts).*
 
-## Cloudflare D1 & Drizzle Data Layer
-- **D1 Database Binding**: `DB` (Database: `hinthar-db`)
-- **R2 Storage Binding**: `R2` (Bucket: `hinthar-assets`)
-- **Drizzle Schema**: [`lib/db/schema.ts`](lib/db/schema.ts)
-  - `user`, `session`, `account`, `verification`, `invitation`
-  - `campuses`, `classes_courses`, `bulletin_notices`, `admissions`, `admission_upload_limits`, `clubs`, `activities`, `yearbook_batches`, `yearbook_alumni`, `file_assets`, `site_content`, `audit_logs`
-- **Clients & Server Actions**:
-  - [`lib/db/index.ts`](lib/db/index.ts) — Drizzle D1 client singleton.
-  - [`lib/auth/auth.ts`](lib/auth/auth.ts) — Better Auth instance.
-  - [`lib/auth/rbac.ts`](lib/auth/rbac.ts) — RBAC assertions and audit logging.
-  - [`lib/actions/*`](lib/actions/) — Typed Server Actions with Zod validation.
-- **Middleware**: [`middleware.ts`](middleware.ts) — Session check and route guard for `/admin/*` and `/api/admin/*`.
+## 3. Brand Design, Factual Accuracy & Bilingual (`EN` / `MY`) Rules
+- **Brand Palette (`Hinthar_logo.png`)**: Crisp White (`#FFFFFF`) primary canvas, Soft Slate (`#F8FAFC`) secondary surface, Hinthar Royal Cobalt Blue (`#193E8A` / `#0F2759`), Luminous Hinthar Gold (`#FFD600` CTAs paired strictly with dark `#162033` text for AAA contrast), and Charcoal Ink (`#1E232B`).
+- **Fonts & Icons**: Self-hosted `Outfit` + `Inter` + `Noto Sans Myanmar` via `next/font/google` (Myanmar script enforces `line-height: 1.8`). Vector icons use `@phosphor-icons/react` — **never** load external Google Material Symbols icon fonts or use emojis as UI icons.
+- **Strictly Pearson Edexcel**: Hinthar offers Pearson Edexcel pathways only (`Lower Secondary Year 7–9`, `Pearson Edexcel IGCSE`, `Pearson Edexcel IAL`). Do not introduce Cambridge, Vocational, or Foundation categories.
+- **Non-Translated Proper Nouns**: Keep **`Hinthar International School`**, **`Pearson Edexcel`**, **`IGCSE`**, **`IAL`**, **`STEM`**, and subject codes in English across **both** `EN` and `MY` locales. Missing `MY` fields fall back gracefully to `EN` via `locField()`, while `/admin` flags empty `MY` fields with a `Needs Burmese` badge.
+
+## 4. Role-Based Access Control (RBAC) & Page-Mirrored Admin Portal
+No open public registration exists. Accounts are provisioned via single-use invitations:
+
+1. **School Administrator (`admin`)** — Master account: `thawyezaw@gmail.com`
+   - **100% Website Editability**: Updates every public text, stat, photo, campus, Pearson pathway/subject, yearbook entry, club, activity, testimonial, FAQ, footer contact, and admission option/upload requirement.
+   - **Page-Mirrored Admin Sidebar**:
+     - `/admin` — Overview & Unified Pending Review Queue
+     - `/admin/home` — Home Page, Brand, Ticker, Hero, Principal, Pearson Classes/Subjects, Testimonials, FAQs & Footer
+     - `/admin/campuses` — Campuses Manager
+     - `/admin/yearbook` — Student Yearbook & Regional Batches Manager
+     - `/admin/clubs` — Clubs, Member Rosters & Activities Manager
+     - `/admin/admissions` — Admissions Pipeline, CSV Export & Form/Upload Config
+     - `/admin/users` — Users & Single-Use Invitations (guarded by `assertNotLastAdmin()`)
+2. **Student Contributor (`student`)**
+   - Authorized student leaders (`role === "student"`).
+   - **Focused Scope**: Submit/edit own Yearbook entry (`/admin/yearbook`), propose/edit Clubs, and submit Club Activity drafts (`/admin/clubs`) — all routed to `pending_review` for Admin approval.
+   - **Strict Restrictions**: Zero access to `/admin/home`, `/admin/campuses`, `/admin/admissions`, `/admin/users`, or direct unmoderated publishing.
+
+## 5. Data, Caching & Route Guard Layer
+- **Drizzle Schema**: [`lib/db/schema.ts`](lib/db/schema.ts) (`user`, `session`, `account`, `verification`, `invitation`, `audit_logs`, `site_content`, `campuses`, `academic_programs`, `academic_subjects`, `program_subject_links`, `testimonials`, `yearbook_batches`, `yearbook_alumni`, `clubs`, `club_members`, `activities`, `admissions`, `admission_upload_limits`, `file_assets`).
+- **Tagged Cache & Instant Revalidation**: [`lib/cache/publicCache.ts`](lib/cache/publicCache.ts) caches public D1 reads and invalidates tags immediately inside every Admin Server Action mutation.
+- **Route Protection**: [`middleware.ts`](middleware.ts) + server-side `requireAdmin()` / `requireStudentOrAdmin()` in [`lib/auth/rbac.ts`](lib/auth/rbac.ts).

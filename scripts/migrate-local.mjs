@@ -29,6 +29,6 @@ run("db:migrate:local", [
   persistTo,
 ]);
 
-run("ensure-campus-gallery-column", [
-  join(root, "scripts", "ensure-campus-gallery-column.mjs"),
+run("ensure-schema-columns", [
+  join(root, "scripts", "ensure-schema-columns.mjs"),
 ]);

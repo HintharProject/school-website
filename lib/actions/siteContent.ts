@@ -2,187 +2,391 @@
 
 import { getDb, siteContent } from "@/lib/db";
 import { requireAdmin, logAudit } from "@/lib/auth/rbac";
+import { cachedPublicRead, invalidatePublicCache } from "@/lib/cache/publicCache";
 import {
+  DEFAULT_ABOUT_PRINCIPAL,
+  DEFAULT_ADMISSIONS_CONFIG,
   DEFAULT_ANNOUNCEMENTS,
-  DEFAULT_CONTACT_INFO,
+  DEFAULT_BRAND_AND_FOOTER,
+  DEFAULT_CAMPUSES_PAGE,
+  DEFAULT_CLUBS_PAGE,
   DEFAULT_FAQS,
-  DEFAULT_HIGHLIGHTS,
-  DEFAULT_PROGRAMS,
-  DEFAULT_SUBJECT_CATALOG,
-  DEFAULT_ADMISSION_OPTIONS,
+  DEFAULT_HERO,
+  DEFAULT_HOME_SECTIONS,
+  DEFAULT_YEARBOOK_PAGE,
   SITE_CONTENT_KEYS,
+  type AboutPrincipalContent,
+  type AdmissionsConfigContent,
   type AnnouncementItem,
-  type ContactInfoItem,
+  type BrandAndFooterContent,
+  type ClubsPageContent,
   type FaqItem,
-  type KeyHighlight,
-  type AcademicProgram,
+  type FullSiteContent,
+  type HeroContent,
+  type HomeSectionsContent,
+  type InnerPageHeaderContent,
   type SiteContentKey,
-  type SubjectEntry,
-  type AdmissionOptions,
 } from "@/lib/content/defaults";
 import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
+export type {
+  AboutPrincipalContent,
+  AdmissionsConfigContent,
+  AnnouncementItem,
+  BrandAndFooterContent,
+  ClubsPageContent,
+  FaqItem,
+  FullSiteContent,
+  HeroContent,
+  HomeSectionsContent,
+  InnerPageHeaderContent,
+  SiteContentKey,
+};
 
-export interface SiteContentMap {
-  announcements?: AnnouncementItem[] | string[];
-  heroHighlights?: KeyHighlight[];
-  faqs?: FaqItem[];
-  programs?: AcademicProgram[];
-  contactInfo?: ContactInfoItem[];
-  subjectCatalog?: SubjectEntry[];
-  admissionOptions?: AdmissionOptions;
+function mergeSection<T extends object>(defaults: T, raw: unknown): T {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return defaults;
+  return { ...defaults, ...(raw as Partial<T>) };
 }
 
 function normalizeAnnouncements(raw: unknown): AnnouncementItem[] {
   if (!Array.isArray(raw)) return DEFAULT_ANNOUNCEMENTS;
-  return raw
-    .map((item) => {
-      if (typeof item === "string") return { text: item.trim() };
-      if (item && typeof item === "object" && "text" in item) {
-        const o = item as AnnouncementItem;
-        return { text: String(o.text ?? "").trim(), textMy: o.textMy?.trim() || undefined };
+  const items = raw
+    .map((item, idx): AnnouncementItem | null => {
+      if (typeof item === "string" && item.trim()) {
+        return { id: `ann-${idx + 1}`, text: item.trim() };
       }
-      return { text: String(item).trim() };
+      if (item && typeof item === "object" && "text" in item) {
+        const o = item as Partial<AnnouncementItem>;
+        const text = String(o.text ?? "").trim();
+        if (!text) return null;
+        return {
+          id: String(o.id || `ann-${idx + 1}`),
+          text,
+          textMy: o.textMy?.trim() || undefined,
+          href: o.href?.trim() || undefined,
+        };
+      }
+      return null;
     })
-    .filter((a) => a.text.length >= 3);
+    .filter((x): x is AnnouncementItem => x !== null);
+  return items.length > 0 ? items : DEFAULT_ANNOUNCEMENTS;
 }
 
-export type {
-  ContactInfoItem,
-  FaqItem,
-  KeyHighlight,
-  AcademicProgram,
-  SubjectEntry,
-  AdmissionOptions,
-};
+function normalizeFaqs(raw: unknown): FaqItem[] {
+  if (!Array.isArray(raw)) return DEFAULT_FAQS;
+  const items = raw
+    .map((f, idx): FaqItem | null => {
+      if (!f || typeof f !== "object") return null;
+      const o = f as Partial<FaqItem>;
+      const question = String(o.question ?? "").trim();
+      const answer = String(o.answer ?? "").trim();
+      if (!question || !answer) return null;
+      return {
+        id: String(o.id || `faq-${idx + 1}`),
+        question,
+        questionMy: o.questionMy?.trim() || undefined,
+        answer,
+        answerMy: o.answerMy?.trim() || undefined,
+        defaultOpen: Boolean(o.defaultOpen ?? idx === 0),
+      };
+    })
+    .filter((x): x is FaqItem => x !== null);
+  return items.length > 0 ? items : DEFAULT_FAQS;
+}
 
-/**
- * Reads every site-content override from D1 and parses the JSON payloads.
- * Safe to call publicly — invalid rows are skipped, never thrown.
- */
-export async function getSiteContentMap(): Promise<SiteContentMap> {
+async function fetchRawSiteContentFromDb(): Promise<Partial<Record<SiteContentKey, unknown>>> {
   try {
     const db = await getDb();
     const rows = await db.select().from(siteContent);
-    const map: SiteContentMap = {};
-
+    const out: Partial<Record<SiteContentKey, unknown>> = {};
     for (const row of rows) {
       if (!(SITE_CONTENT_KEYS as readonly string[]).includes(row.key)) continue;
       try {
-        const parsed = JSON.parse(row.value);
-        (map as Record<string, unknown>)[row.key] = parsed;
+        out[row.key as SiteContentKey] = JSON.parse(row.value);
       } catch {
-        console.warn(`site_content "${row.key}" holds invalid JSON — skipped.`);
+        // Ignore malformed legacy override
       }
     }
-
-    return map;
-  } catch (err) {
-    console.warn("getSiteContentMap note:", err);
+    return out;
+  } catch {
     return {};
   }
 }
 
-/** Merged view (defaults + overrides) used by the admin editor. */
-export async function getEffectiveSiteContent(): Promise<Required<SiteContentMap>> {
-  const overrides = await getSiteContentMap();
-  return {
-    announcements: normalizeAnnouncements(overrides.announcements ?? DEFAULT_ANNOUNCEMENTS),
-    heroHighlights: overrides.heroHighlights ?? DEFAULT_HIGHLIGHTS,
-    faqs: overrides.faqs ?? DEFAULT_FAQS,
-    programs: overrides.programs ?? DEFAULT_PROGRAMS,
-    contactInfo: overrides.contactInfo ?? DEFAULT_CONTACT_INFO,
-    subjectCatalog: overrides.subjectCatalog ?? DEFAULT_SUBJECT_CATALOG,
-    admissionOptions: overrides.admissionOptions ?? DEFAULT_ADMISSION_OPTIONS,
-  };
-}
+/**
+ * Cached public loader returning complete, merged site content for all 5 pages.
+ * Never throws; always falls back cleanly to compiled defaults.
+ */
+export async function getEffectiveSiteContent(): Promise<FullSiteContent> {
+  return cachedPublicRead("effective-site-content", ["site-content"], async () => {
+    const raw = await fetchRawSiteContentFromDb();
 
-function parsePayload(key: SiteContentKey, value: unknown): string | null {
-  try {
-    switch (key) {
-      case "announcements":
-        if (!Array.isArray(value)) return null;
-        const ann = normalizeAnnouncements(value);
-        if (ann.length === 0) return null;
-        return JSON.stringify(ann);
-      case "heroHighlights":
-        if (!Array.isArray(value)) return null;
-        for (const h of value) {
-          if (typeof h?.value !== "string" || typeof h?.label !== "string") return null;
-        }
-        return JSON.stringify(value);
-      case "faqs":
-        if (!Array.isArray(value)) return null;
-        for (const f of value) {
-          if (typeof f?.question !== "string" || typeof f?.answer !== "string" || !f.question.trim() || !f.answer.trim())
-            return null;
-        }
-        return JSON.stringify(
-          value.map((f: FaqItem, i: number) => ({
-            id: String(f.id || `faq-${i + 1}`),
-            question: f.question.trim(),
-            answer: f.answer.trim(),
-            questionMy: f.questionMy?.trim() || undefined,
-            answerMy: f.answerMy?.trim() || undefined,
-          }))
-        );
-      case "programs":
-        if (!Array.isArray(value)) return null;
-        for (const p of value) {
-          if (
-            typeof p?.title !== "string" ||
-            typeof p?.description !== "string" ||
-            !Array.isArray(p?.highlights)
-          )
-            return null;
-        }
-        return JSON.stringify(value);
-      case "contactInfo":
-        if (!Array.isArray(value)) return null;
-        for (const c of value) {
-          if (typeof c?.text !== "string" || typeof c?.href !== "string") return null;
-        }
-        return JSON.stringify(value);
-      case "subjectCatalog":
-        if (!Array.isArray(value)) return null;
-        for (const s of value) {
-          if (
-            typeof s?.id !== "string" ||
-            typeof s?.name !== "string" ||
-            typeof s?.track !== "string" ||
-            typeof s?.level !== "string"
-          ) return null;
-        }
-        return JSON.stringify(value);
-      case "admissionOptions": {
-        if (!value || typeof value !== "object") return null;
-        const v = value as Record<string, unknown>;
-        const lists: (keyof AdmissionOptions)[] = ["intendedStartTerms", "studyModes", "academicStreams", "relationships"];
-        for (const k of lists) {
-          if (!Array.isArray(v[k]) || (v[k] as unknown[]).some((s) => typeof s !== "string" || (s as string).trim().length < 1)) return null;
-        }
-        return JSON.stringify({
-          intendedStartTerms: (v.intendedStartTerms as string[]).map((s) => s.trim()),
-          studyModes: (v.studyModes as string[]).map((s) => s.trim()),
-          academicStreams: (v.academicStreams as string[]).map((s) => s.trim()),
-          relationships: (v.relationships as string[]).map((s) => s.trim()),
-        });
-      }
-      default:
-        return null;
+    const heroMerged = mergeSection(DEFAULT_HERO, raw.hero);
+    if (!Array.isArray(heroMerged.highlights) || heroMerged.highlights.length === 0) {
+      heroMerged.highlights = DEFAULT_HERO.highlights;
     }
-  } catch {
-    return null;
-  }
+
+    const aboutMerged = mergeSection(DEFAULT_ABOUT_PRINCIPAL, raw.aboutPrincipal);
+    if (!Array.isArray(aboutMerged.stats) || aboutMerged.stats.length === 0) {
+      aboutMerged.stats = DEFAULT_ABOUT_PRINCIPAL.stats;
+    }
+
+    const admissionsMerged = mergeSection(DEFAULT_ADMISSIONS_CONFIG, raw.admissionsConfig);
+    admissionsMerged.documentRules = mergeSection(
+      DEFAULT_ADMISSIONS_CONFIG.documentRules,
+      (raw.admissionsConfig as Partial<AdmissionsConfigContent> | undefined)?.documentRules
+    );
+
+    const brandMerged = mergeSection(DEFAULT_BRAND_AND_FOOTER, raw.brand);
+    if (!Array.isArray(brandMerged.socialLinks)) {
+      brandMerged.socialLinks = DEFAULT_BRAND_AND_FOOTER.socialLinks;
+    }
+
+    return {
+      brand: brandMerged,
+      announcements: normalizeAnnouncements(raw.announcements),
+      hero: heroMerged,
+      aboutPrincipal: aboutMerged,
+      homeSections: mergeSection(DEFAULT_HOME_SECTIONS, raw.homeSections),
+      campusesPage: mergeSection(DEFAULT_CAMPUSES_PAGE, raw.campusesPage),
+      yearbookPage: mergeSection(DEFAULT_YEARBOOK_PAGE, raw.yearbookPage),
+      clubsPage: mergeSection(DEFAULT_CLUBS_PAGE, raw.clubsPage),
+      admissionsConfig: admissionsMerged,
+      faqs: normalizeFaqs(raw.faqs),
+    };
+  });
 }
 
-/** Admin-only upsert of one site-content section. Pass value=null to reset to defaults. */
+export async function getAdmissionsConfig(): Promise<AdmissionsConfigContent> {
+  const all = await getEffectiveSiteContent();
+  return all.admissionsConfig;
+}
+
+const nonEmptyStr = z.string().trim().min(1);
+const optStr = z.string().trim().optional().default("");
+
+const sectionSchemas: Record<SiteContentKey, z.ZodTypeAny> = {
+  brand: z.object({
+    schoolName: nonEmptyStr,
+    subtitleEn: nonEmptyStr,
+    subtitleMy: optStr,
+    logoUrl: nonEmptyStr,
+    footerBlurbEn: nonEmptyStr,
+    footerBlurbMy: optStr,
+    primaryPhone: nonEmptyStr,
+    secondaryPhone: optStr,
+    admissionsEmail: z.string().trim().email(),
+    addressSummaryEn: nonEmptyStr,
+    addressSummaryMy: optStr,
+    copyrightEn: nonEmptyStr,
+    copyrightMy: optStr,
+    socialLinks: z
+      .array(
+        z.object({
+          platform: z.enum(["facebook", "youtube", "telegram", "viber", "linkedin", "website"]),
+          label: nonEmptyStr,
+          url: z.string().trim().url(),
+        })
+      )
+      .default([]),
+  }),
+  announcements: z
+    .array(
+      z.object({
+        id: optStr,
+        text: nonEmptyStr,
+        textMy: optStr,
+        href: optStr,
+      })
+    )
+    .min(1),
+  hero: z.object({
+    credentialBadgeEn: nonEmptyStr,
+    credentialBadgeMy: optStr,
+    intakePillEn: nonEmptyStr,
+    intakePillMy: optStr,
+    titleLine1En: nonEmptyStr,
+    titleLine1My: optStr,
+    titleHighlightEn: nonEmptyStr,
+    titleHighlightMy: optStr,
+    subtitleEn: nonEmptyStr,
+    subtitleMy: optStr,
+    primaryCtaEn: nonEmptyStr,
+    primaryCtaMy: optStr,
+    secondaryCtaEn: nonEmptyStr,
+    secondaryCtaMy: optStr,
+    trustNoteEn: optStr,
+    trustNoteMy: optStr,
+    heroImageUrl: nonEmptyStr,
+    heroImageCaptionEn: optStr,
+    heroImageCaptionMy: optStr,
+    highlights: z
+      .array(
+        z.object({
+          value: nonEmptyStr,
+          valueMy: optStr,
+          label: nonEmptyStr,
+          labelMy: optStr,
+          sub: optStr,
+          subMy: optStr,
+        })
+      )
+      .min(1)
+      .max(6),
+  }),
+  aboutPrincipal: z.object({
+    badgeEn: nonEmptyStr,
+    badgeMy: optStr,
+    titleEn: nonEmptyStr,
+    titleMy: optStr,
+    titleHighlightEn: optStr,
+    titleHighlightMy: optStr,
+    paragraph1En: nonEmptyStr,
+    paragraph1My: optStr,
+    paragraph2En: optStr,
+    paragraph2My: optStr,
+    exploreCampusesCtaEn: nonEmptyStr,
+    exploreCampusesCtaMy: optStr,
+    principalName: nonEmptyStr,
+    principalRoleEn: nonEmptyStr,
+    principalRoleMy: optStr,
+    principalImageUrl: nonEmptyStr,
+    principalQuoteEn: nonEmptyStr,
+    principalQuoteMy: optStr,
+    stats: z
+      .array(
+        z.object({
+          value: nonEmptyStr,
+          valueMy: optStr,
+          label: nonEmptyStr,
+          labelMy: optStr,
+        })
+      )
+      .min(1)
+      .max(4),
+  }),
+  homeSections: z.object({
+    classesBadgeEn: nonEmptyStr,
+    classesBadgeMy: optStr,
+    classesTitleEn: nonEmptyStr,
+    classesTitleMy: optStr,
+    classesSubtitleEn: nonEmptyStr,
+    classesSubtitleMy: optStr,
+    guidanceTitleEn: nonEmptyStr,
+    guidanceTitleMy: optStr,
+    guidanceSubtitleEn: nonEmptyStr,
+    guidanceSubtitleMy: optStr,
+    guidanceCtaEn: nonEmptyStr,
+    guidanceCtaMy: optStr,
+    campusesBadgeEn: nonEmptyStr,
+    campusesBadgeMy: optStr,
+    campusesTitleEn: nonEmptyStr,
+    campusesTitleMy: optStr,
+    campusesSubtitleEn: nonEmptyStr,
+    campusesSubtitleMy: optStr,
+    testimonialsBadgeEn: nonEmptyStr,
+    testimonialsBadgeMy: optStr,
+    testimonialsTitleEn: nonEmptyStr,
+    testimonialsTitleMy: optStr,
+    testimonialsSubtitleEn: nonEmptyStr,
+    testimonialsSubtitleMy: optStr,
+    faqBadgeEn: nonEmptyStr,
+    faqBadgeMy: optStr,
+    faqTitleEn: nonEmptyStr,
+    faqTitleMy: optStr,
+    faqSubtitleEn: nonEmptyStr,
+    faqSubtitleMy: optStr,
+  }),
+  campusesPage: z.object({
+    badgeEn: nonEmptyStr,
+    badgeMy: optStr,
+    titleEn: nonEmptyStr,
+    titleMy: optStr,
+    subtitleEn: nonEmptyStr,
+    subtitleMy: optStr,
+  }),
+  yearbookPage: z.object({
+    badgeEn: nonEmptyStr,
+    badgeMy: optStr,
+    titleEn: nonEmptyStr,
+    titleMy: optStr,
+    subtitleEn: nonEmptyStr,
+    subtitleMy: optStr,
+  }),
+  clubsPage: z.object({
+    badgeEn: nonEmptyStr,
+    badgeMy: optStr,
+    titleEn: nonEmptyStr,
+    titleMy: optStr,
+    subtitleEn: nonEmptyStr,
+    subtitleMy: optStr,
+    activitiesBadgeEn: nonEmptyStr,
+    activitiesBadgeMy: optStr,
+    activitiesTitleEn: nonEmptyStr,
+    activitiesTitleMy: optStr,
+    activitiesSubtitleEn: nonEmptyStr,
+    activitiesSubtitleMy: optStr,
+  }),
+  admissionsConfig: z.object({
+    badgeEn: nonEmptyStr,
+    badgeMy: optStr,
+    titleEn: nonEmptyStr,
+    titleMy: optStr,
+    subtitleEn: nonEmptyStr,
+    subtitleMy: optStr,
+    trackTitleEn: nonEmptyStr,
+    trackTitleMy: optStr,
+    trackSubtitleEn: nonEmptyStr,
+    trackSubtitleMy: optStr,
+    intendedStartTerms: z.array(nonEmptyStr).min(1),
+    studyModes: z.array(nonEmptyStr).min(1),
+    academicStreams: z.array(nonEmptyStr).min(1),
+    relationships: z.array(nonEmptyStr).min(1),
+    documentRules: z.object({
+      identityRequired: z.boolean(),
+      reportRequired: z.boolean(),
+      photoRequired: z.boolean(),
+    }),
+  }),
+  faqs: z
+    .array(
+      z.object({
+        id: optStr,
+        question: nonEmptyStr,
+        questionMy: optStr,
+        answer: nonEmptyStr,
+        answerMy: optStr,
+        defaultOpen: z.boolean().optional(),
+      })
+    )
+    .min(1),
+};
+
+const ALL_PUBLIC_PATHS = [
+  "/",
+  "/campuses",
+  "/yearbook",
+  "/clubs",
+  "/admission",
+  "/admin",
+  "/admin/home",
+  "/admin/admissions",
+];
+
+/**
+ * Admin-only upsert of any site_content section. Pass value = null to reset to compiled defaults.
+ */
 export async function upsertSiteContentAction(
   key: SiteContentKey,
   value: unknown | null
 ): Promise<{ success: boolean; message: string }> {
-  const user = await requireAdmin();
+  let user;
+  try {
+    user = await requireAdmin();
+  } catch {
+    return { success: false, message: "Administrator session required. Please sign in again." };
+  }
 
   if (!(SITE_CONTENT_KEYS as readonly string[]).includes(key)) {
     return { success: false, message: `Unknown content section "${key}".` };
@@ -193,20 +397,28 @@ export async function upsertSiteContentAction(
 
   if (value === null) {
     await db.delete(siteContent).where(eq(siteContent.key, key));
-    safeRevalidate(["/", "/admin/content"]);
+    invalidatePublicCache(["site-content"], ALL_PUBLIC_PATHS);
     await logAudit({
       actor: user,
       action: "ADMIN_RESET_SITE_CONTENT",
       resource: "site_content",
       resourceId: key,
     });
-    return { success: true, message: `"${key}" reset to defaults.` };
+    return { success: true, message: `Section "${key}" reset to default values.` };
   }
 
-  const encoded = parsePayload(key, value);
-  if (encoded === null) {
-    return { success: false, message: `Invalid data supplied for "${key}".` };
+  const schema = sectionSchemas[key];
+  const parsed = schema.safeParse(value);
+  if (!parsed.success) {
+    const firstIssue = parsed.error.issues[0];
+    const path = firstIssue?.path.join(".") || key;
+    return {
+      success: false,
+      message: `Validation error in ${path}: ${firstIssue?.message ?? "Please fill in all required English fields."}`,
+    };
   }
+
+  const encoded = JSON.stringify(parsed.data);
 
   await db
     .insert(siteContent)
@@ -216,7 +428,7 @@ export async function upsertSiteContentAction(
       set: { value: encoded, updatedBy: user.email, updatedAt: now },
     });
 
-  safeRevalidate(["/"]);
+  invalidatePublicCache(["site-content"], ALL_PUBLIC_PATHS);
   await logAudit({
     actor: user,
     action: "ADMIN_UPDATED_SITE_CONTENT",
@@ -224,165 +436,5 @@ export async function upsertSiteContentAction(
     resourceId: key,
   });
 
-  return { success: true, message: `"${key}" published successfully.` };
+  return { success: true, message: "Website content saved and published immediately." };
 }
-
-function safeRevalidate(paths: string[]) {
-  for (const p of paths) {
-    try {
-      revalidatePath(p);
-    } catch (err) {
-      // Never fail an already-committed mutation because of cache revalidation
-      // (e.g. Workers deployments without an incremental cache binding).
-      console.warn(`revalidatePath(${p}) skipped:`, err);
-    }
-  }
-}
-
-// ==============================================================================
-// SUBJECT CATALOG — standalone helpers (reads are public; writes are admin-only)
-// ==============================================================================
-
-/**
- * Returns the master subject catalog from D1, falling back to the compiled
- * DEFAULT_SUBJECT_CATALOG when no override has been saved yet.
- * Safe to call from any Server Component or action — never throws.
- */
-export async function getSubjectCatalog(): Promise<SubjectEntry[]> {
-  try {
-    const { getCatalogSubjectsAsLegacyEntries } = await import("@/lib/actions/academicCatalog");
-    const fromCatalog = await getCatalogSubjectsAsLegacyEntries();
-    if (fromCatalog.length > 0) {
-      return fromCatalog.map((s) => ({
-        id: s.id,
-        name: s.name,
-        nameMy: s.nameMy ?? undefined,
-        track: s.track as SubjectEntry["track"],
-        level: s.level as SubjectEntry["level"],
-        code: s.code,
-        isActive: s.isActive,
-      }));
-    }
-  } catch (err) {
-    console.warn("getSubjectCatalog D1 note:", err);
-  }
-
-  try {
-    const db = await getDb();
-    const rows = await db
-      .select()
-      .from(siteContent)
-      .where(eq(siteContent.key, "subjectCatalog"));
-    if (rows[0]?.value) {
-      const parsed = JSON.parse(rows[0].value);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed as SubjectEntry[];
-    }
-  } catch (err) {
-    console.warn("getSubjectCatalog note:", err);
-  }
-  return DEFAULT_SUBJECT_CATALOG;
-}
-
-/**
- * Admin-only upsert of the full subject catalog.
- * Pass an empty array to reset to defaults (it deletes the override row).
- */
-export async function upsertSubjectCatalogAction(
-  subjects: SubjectEntry[]
-): Promise<{ success: boolean; message: string }> {
-  const user = await requireAdmin();
-
-  if (!Array.isArray(subjects)) {
-    return { success: false, message: "subjects must be an array." };
-  }
-
-  const db = await getDb();
-  const now = new Date().toISOString();
-
-  if (subjects.length === 0) {
-    await db.delete(siteContent).where(eq(siteContent.key, "subjectCatalog"));
-    safeRevalidate(["/admission", "/admin/classes"]);
-    return { success: true, message: "Subject catalog reset to defaults." };
-  }
-
-  const encoded = JSON.stringify(subjects);
-  await db
-    .insert(siteContent)
-    .values({ key: "subjectCatalog", value: encoded, updatedBy: user.email, updatedAt: now })
-    .onConflictDoUpdate({
-      target: siteContent.key,
-      set: { value: encoded, updatedBy: user.email, updatedAt: now },
-    });
-
-  safeRevalidate(["/admission", "/admin/classes"]);
-  await logAudit({
-    actor: user,
-    action: "ADMIN_UPDATED_SUBJECT_CATALOG",
-    resource: "site_content",
-    resourceId: "subjectCatalog",
-  });
-
-  return { success: true, message: `Subject catalog updated — ${subjects.length} subjects saved.` };
-}
-
-// ==============================================================================
-// ADMISSION OPTIONS — 4 lists stored in single site_content key
-// ==============================================================================
-
-export async function getAdmissionOptions(): Promise<AdmissionOptions> {
-  try {
-    const db = await getDb();
-    const rows = await db.select().from(siteContent).where(eq(siteContent.key, "admissionOptions"));
-    if (rows[0]?.value) {
-      const parsed = JSON.parse(rows[0].value) as Partial<AdmissionOptions>;
-      return {
-        intendedStartTerms: parsed.intendedStartTerms?.length ? parsed.intendedStartTerms : DEFAULT_ADMISSION_OPTIONS.intendedStartTerms,
-        studyModes: parsed.studyModes?.length ? parsed.studyModes : DEFAULT_ADMISSION_OPTIONS.studyModes,
-        academicStreams: parsed.academicStreams?.length ? parsed.academicStreams : DEFAULT_ADMISSION_OPTIONS.academicStreams,
-        relationships: parsed.relationships?.length ? parsed.relationships : DEFAULT_ADMISSION_OPTIONS.relationships,
-      };
-    }
-  } catch (err) {
-    console.warn("getAdmissionOptions note:", err);
-  }
-  return DEFAULT_ADMISSION_OPTIONS;
-}
-
-export async function upsertAdmissionOptionsAction(
-  opts: AdmissionOptions
-): Promise<{ success: boolean; message: string }> {
-  const user = await requireAdmin();
-  if (!opts || typeof opts !== "object") return { success: false, message: "Invalid options." };
-  const lists: (keyof AdmissionOptions)[] = ["intendedStartTerms", "studyModes", "academicStreams", "relationships"];
-  for (const k of lists) {
-    if (!Array.isArray(opts[k]) || (opts[k] as string[]).some((s) => typeof s !== "string" || s.trim().length < 1)) {
-      return { success: false, message: `Invalid list: ${k}` };
-    }
-  }
-  const cleaned: AdmissionOptions = {
-    intendedStartTerms: opts.intendedStartTerms.map((s) => s.trim()),
-    studyModes: opts.studyModes.map((s) => s.trim()),
-    academicStreams: opts.academicStreams.map((s) => s.trim()),
-    relationships: opts.relationships.map((s) => s.trim()),
-  };
-  const db = await getDb();
-  const now = new Date().toISOString();
-  const encoded = JSON.stringify(cleaned);
-  await db
-    .insert(siteContent)
-    .values({ key: "admissionOptions", value: encoded, updatedBy: user.email, updatedAt: now })
-    .onConflictDoUpdate({ target: siteContent.key, set: { value: encoded, updatedBy: user.email, updatedAt: now } });
-  safeRevalidate(["/admission", "/admin/admissions"]);
-  await logAudit({ actor: user, action: "ADMIN_UPDATED_ADMISSION_OPTIONS", resource: "site_content", resourceId: "admissionOptions" });
-  return { success: true, message: "Admission options updated." };
-}
-
-export async function resetAdmissionOptionsAction(): Promise<{ success: boolean; message: string }> {
-  const user = await requireAdmin();
-  const db = await getDb();
-  await db.delete(siteContent).where(eq(siteContent.key, "admissionOptions"));
-  safeRevalidate(["/admission", "/admin/admissions"]);
-  await logAudit({ actor: user, action: "ADMIN_RESET_ADMISSION_OPTIONS", resource: "site_content", resourceId: "admissionOptions" });
-  return { success: true, message: "Admission options reset to defaults." };
-}
-

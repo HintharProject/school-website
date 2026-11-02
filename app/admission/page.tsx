@@ -1,21 +1,50 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
-import AdmissionForm from "./AdmissionForm";
-
-// The admission wizard submits a Server Action; keep the page dynamic so
-// visitors never execute stale action IDs after a redeploy.
-export const dynamic = "force-dynamic";
+import Navbar from "../components/Navbar";
+import FooterSection from "../components/sections/FooterSection";
+import AdmissionPortalView from "./AdmissionPortalView";
+import { getEffectiveSiteContent } from "@/lib/actions/siteContent";
+import { getPublicPrograms } from "@/lib/actions/academicCatalog";
 
 export const metadata: Metadata = {
-  title: "Admissions | Hinthar International School",
+  title: "Admissions & Application Status",
   description:
-    "Apply to Hinthar International School. Take the first step towards a brighter future by filling out our online application form.",
+    "Apply online to Hinthar International School Pearson Edexcel programmes or track your application status.",
 };
 
-export default function AdmissionPage() {
+export const dynamic = "force-dynamic";
+
+export default async function AdmissionPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const [params, content, programs] = await Promise.all([
+    searchParams,
+    getEffectiveSiteContent(),
+    getPublicPrograms(),
+  ]);
+
+  const tabParam = typeof params.tab === "string" ? params.tab : "";
+  const refParam = typeof params.ref === "string" ? params.ref : "";
+  const programParam = typeof params.program === "string" ? params.program : "";
+  const regionParam = typeof params.region === "string" ? params.region : "";
+
   return (
-    <Suspense fallback={<div className="min-h-screen pt-24 text-center text-sm text-slate-500">Loading admission form…</div>}>
-      <AdmissionForm />
-    </Suspense>
+    <div className="min-h-screen flex flex-col bg-white">
+      <Navbar brand={content.brand} />
+      <main className="flex-1">
+        <AdmissionPortalView
+          config={content.admissionsConfig}
+          programs={programs}
+          initialTab={tabParam === "track" || Boolean(refParam) ? "track" : "apply"}
+          initialRef={refParam}
+          initialProgramId={programParam}
+          initialRegion={
+            regionParam === "Mawlamyine" ? "Mawlamyine" : "Yangon"
+          }
+        />
+      </main>
+      <FooterSection brand={content.brand} />
+    </div>
   );
 }

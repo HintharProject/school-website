@@ -1,6 +1,6 @@
 "use server";
 
-import { getDb, admissions, yearbookAlumni, clubs } from "@/lib/db";
+import { getDb, admissions, yearbookAlumni, clubs, activities } from "@/lib/db";
 import { eq, desc, sql } from "drizzle-orm";
 import { getServerSession } from "@/lib/auth/rbac";
 
@@ -9,10 +9,9 @@ export interface AdminNotificationItem {
   title: string;
   desc: string;
   time: string;
-  icon: string;
   href: string;
   unread: boolean;
-  type: "admission" | "yearbook" | "club" | "system";
+  type: "admission" | "yearbook" | "club" | "activity" | "system";
 }
 
 export interface AdminNotificationResponse {
@@ -24,12 +23,11 @@ function formatRelativeTime(dateStr?: string | Date | null): string {
   if (!dateStr) return "recently";
   try {
     const d = typeof dateStr === "string" ? new Date(dateStr) : dateStr;
-    const now = Date.now();
-    const diffMs = now - d.getTime();
+    const diffMs = Date.now() - d.getTime();
     if (Number.isNaN(diffMs)) return "recently";
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
 
     if (diffMins < 1) return "just now";
     if (diffMins < 60) return `${diffMins}m ago`;
@@ -59,77 +57,69 @@ export async function getAdminNotificationsAction(): Promise<AdminNotificationRe
   const db = await getDb();
   const notifs: AdminNotificationItem[] = [];
 
-  // Exact counts (uncapped) for the badge
   let pendingAdmissionsTotal = 0;
+  let pendingYearbookTotal = 0;
+  let pendingClubsTotal = 0;
+  let pendingActivitiesTotal = 0;
 
-  // 1. Pending Admissions (Admins only)
   if (session.user.role === "admin") {
     try {
+      pendingAdmissionsTotal = await safeCount(
+        db.select({ n: sql<number>`count(*)` }).from(admissions).where(eq(admissions.status, "Pending"))
+      );
       const recentAdmissions = await db
         .select()
         .from(admissions)
         .where(eq(admissions.status, "Pending"))
         .orderBy(desc(admissions.createdAt))
-        .limit(5);
-
-      pendingAdmissionsTotal = await safeCount(
-        db.select({ n: sql<number>`count(*)` }).from(admissions).where(eq(admissions.status, "Pending"))
-      );
+        .limit(4);
 
       for (const adm of recentAdmissions) {
         notifs.push({
           id: `adm_${adm.id}`,
           title: "New Admission Application",
-          desc: `${adm.studentName} applied for ${adm.grade}`,
+          desc: `${adm.studentName} · ${adm.grade}`,
           time: formatRelativeTime(adm.createdAt || adm.submittedDate),
-          icon: "assignment_ind",
           href: "/admin/admissions",
           unread: true,
           type: "admission",
         });
       }
-    } catch (err) {
-      console.warn("Notifications admissions query note:", err);
+    } catch {
+      // ignore
     }
   }
 
-  // 2. Pending Yearbook Submissions
-  let pendingYearbookTotal = 0;
   try {
     pendingYearbookTotal = await safeCount(
       db.select({ n: sql<number>`count(*)` }).from(yearbookAlumni).where(eq(yearbookAlumni.status, "pending_review"))
     );
-
     const pendingYearbook = await db
       .select()
       .from(yearbookAlumni)
       .where(eq(yearbookAlumni.status, "pending_review"))
       .orderBy(desc(yearbookAlumni.createdAt))
-      .limit(5);
+      .limit(3);
 
     for (const yb of pendingYearbook) {
       notifs.push({
         id: `yb_${yb.id}`,
-        title: "Yearbook Entry Submitted",
-        desc: `${yb.name} submitted a Yearbook profile for review`,
+        title: "Yearbook Draft Pending",
+        desc: `${yb.name} submitted a student profile`,
         time: formatRelativeTime(yb.createdAt),
-        icon: "auto_stories",
         href: "/admin/yearbook",
         unread: true,
         type: "yearbook",
       });
     }
-  } catch (err) {
-    console.warn("Notifications yearbook query note:", err);
+  } catch {
+    // ignore
   }
 
-  // 3. Pending Club Proposals
-  let pendingClubsTotal = 0;
   try {
     pendingClubsTotal = await safeCount(
       db.select({ n: sql<number>`count(*)` }).from(clubs).where(eq(clubs.status, "pending_review"))
     );
-
     const pendingClubs = await db
       .select()
       .from(clubs)
@@ -140,35 +130,59 @@ export async function getAdminNotificationsAction(): Promise<AdminNotificationRe
     for (const cl of pendingClubs) {
       notifs.push({
         id: `cl_${cl.id}`,
-        title: "Club Proposal Submitted",
-        desc: `${cl.name} submitted for review`,
+        title: "Club Proposal Pending",
+        desc: `${cl.name} awaiting review`,
         time: formatRelativeTime(cl.createdAt),
-        icon: "groups",
         href: "/admin/clubs",
         unread: true,
         type: "club",
       });
     }
-  } catch (err) {
-    console.warn("Notifications club query note:", err);
+  } catch {
+    // ignore
   }
 
-  // Fallback item if everything is approved
+  try {
+    pendingActivitiesTotal = await safeCount(
+      db.select({ n: sql<number>`count(*)` }).from(activities).where(eq(activities.reviewStatus, "pending_review"))
+    );
+    const pendingActivities = await db
+      .select()
+      .from(activities)
+      .where(eq(activities.reviewStatus, "pending_review"))
+      .orderBy(desc(activities.createdAt))
+      .limit(3);
+
+    for (const act of pendingActivities) {
+      notifs.push({
+        id: `act_${act.id}`,
+        title: "Activity Proposal Pending",
+        desc: `${act.title} awaiting review`,
+        time: formatRelativeTime(act.createdAt),
+        href: "/admin/clubs",
+        unread: true,
+        type: "activity",
+      });
+    }
+  } catch {
+    // ignore
+  }
+
   if (notifs.length === 0) {
     notifs.push({
       id: "sys_all_good",
-      title: "All Approvals Caught Up",
-      desc: "There are no pending admission or yearbook reviews at this time.",
-      time: "all clear",
-      icon: "check_circle",
-      href: session.user.role === "admin" ? "/admin/admissions" : "/admin/yearbook",
+      title: "All Reviews Up to Date",
+      desc: "No pending admissions or student contributor drafts right now.",
+      time: "clear",
+      href: "/admin",
       unread: false,
       type: "system",
     });
   }
 
   return {
-    totalPendingCount: pendingAdmissionsTotal + pendingYearbookTotal + pendingClubsTotal,
+    totalPendingCount:
+      pendingAdmissionsTotal + pendingYearbookTotal + pendingClubsTotal + pendingActivitiesTotal,
     notifications: notifs,
   };
 }

@@ -210,7 +210,7 @@ export async function acceptInviteAction(token: string, password: string) {
   }
 
   let acceptedUserId = "";
-  let acceptedEmail = invite.email;
+  const acceptedEmail = invite.email;
   try {
     // Create user via Better Auth
     const created = await auth.api.signUpEmail({

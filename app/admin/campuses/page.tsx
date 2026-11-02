@@ -12,13 +12,27 @@ import {
 import { authClient } from "@/lib/auth/auth-client";
 import { isR2AssetUrl } from "@/lib/utils/r2Image";
 import {
-  getCampuses,
-  createCampusAction,
-  updateCampusAction,
+  getCampusesForAdmin,
+  upsertCampusAction,
   deleteCampusAction,
 } from "@/lib/actions/campuses";
 import ImageUploadPicker from "@/app/components/admin/ImageUploadPicker";
 import GalleryUploadPicker from "@/app/components/admin/GalleryUploadPicker";
+import BilingualField from "@/app/components/admin/BilingualField";
+import {
+  CheckCircle,
+  Plus,
+  MagnifyingGlass,
+  MapPin,
+  Phone,
+  EnvelopeSimple,
+  PencilSimple,
+  Trash,
+  X,
+  WarningCircle,
+  Lock,
+  ArrowSquareOut,
+} from "@phosphor-icons/react";
 
 export default function AdminCampusesPage() {
   const [campuses, setCampuses] = useState<CampusRecord[]>([]);
@@ -26,7 +40,6 @@ export default function AdminCampusesPage() {
   const currentUser: UserProfile = session?.user
     ? mapUserProfileRecord(session.user)
     : FALLBACK_GUEST_USER;
-  const [isLoaded, setIsLoaded] = useState(false);
   const [selectedCity, setSelectedCity] = useState<"All" | "Yangon" | "Mawlamyine">("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -36,7 +49,7 @@ export default function AdminCampusesPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [deletingCampus, setDeletingCampus] = useState<CampusRecord | null>(null);
 
-  // Form State — bilingual EN/MY (MY optional, fallback to EN on public site)
+  // Form State
   const [formState, setFormState] = useState<Partial<CampusRecord>>({
     id: "",
     name: "",
@@ -60,19 +73,17 @@ export default function AdminCampusesPage() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
+  const loadCampuses = async () => {
+    try {
+      const data = await getCampusesForAdmin();
+      setCampuses(data.map(mapCampusRecord));
+    } catch (err) {
+      console.warn("Failed to load campuses:", err);
+    }
+  };
+
   useEffect(() => {
-    let cancelled = false;
-    getCampuses()
-      .then((data) => {
-        if (!cancelled) setCampuses(data.map(mapCampusRecord));
-      })
-      .catch((err) => console.warn("Failed to load campuses:", err))
-      .finally(() => {
-        if (!cancelled) setIsLoaded(true);
-      });
-    return () => {
-      cancelled = true;
-    };
+    loadCampuses();
   }, []);
 
   // Filter & Search
@@ -90,9 +101,9 @@ export default function AdminCampusesPage() {
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingCampus) return;
-    const res = await updateCampusAction(editingCampus.id, editingCampus);
-    if (!res?.success) {
-      showToast(`Error: ${res?.message || "Failed to update campus."}`);
+    const res = await upsertCampusAction(editingCampus);
+    if (!res.success) {
+      showToast(`Error: ${res.message || "Failed to update campus."}`);
       return;
     }
     setCampuses((prev) =>
@@ -124,9 +135,9 @@ export default function AdminCampusesPage() {
       mapUrl: formState.mapUrl || undefined,
       isActive: formState.isActive ?? true,
     };
-    const res = await createCampusAction(newRecord);
-    if (!res?.success) {
-      showToast(`Error: ${res?.message || "Failed to add campus."}`);
+    const res = await upsertCampusAction(newRecord);
+    if (!res.success) {
+      showToast(`Error: ${res.message || "Failed to add campus."}`);
       return;
     }
     setCampuses((prev) => [newRecord, ...prev]);
@@ -138,8 +149,8 @@ export default function AdminCampusesPage() {
   const handleDeleteCampus = async () => {
     if (!deletingCampus) return;
     const res = await deleteCampusAction(deletingCampus.id);
-    if (!res?.success) {
-      showToast(`Error: ${res?.message || "Failed to delete campus."}`);
+    if (!res.success) {
+      showToast(`Error: ${res.message || "Failed to delete campus."}`);
       return;
     }
     setCampuses((prev) => prev.filter((c) => c.id !== deletingCampus.id));
@@ -151,7 +162,7 @@ export default function AdminCampusesPage() {
     return (
       <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-sm max-w-xl mx-auto my-12">
         <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto mb-4">
-          <span aria-hidden="true" className="material-symbols-outlined text-3xl">lock</span>
+          <Lock className="w-8 h-8" weight="bold" />
         </div>
         <h2 className="text-xl font-black text-slate-800">Campus Master Records</h2>
         <p className="text-xs text-slate-500 mt-2 leading-relaxed">
@@ -165,8 +176,8 @@ export default function AdminCampusesPage() {
     <div className="space-y-6">
       {/* Toast Notification */}
       {toastMessage && (
-        <div role="status" aria-live="polite" className="fixed bottom-6 right-6 z-50 bg-[#0E3B7D] text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-[#FFC700] animate-fade-in">
-          <span aria-hidden="true" className="material-symbols-outlined text-[#FFC700]">check_circle</span>
+        <div role="status" aria-live="polite" className="fixed bottom-6 right-6 z-50 bg-[#0F2759] text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-[#FFD600] animate-fade-in">
+          <CheckCircle className="w-5 h-5 text-[#FFD600]" weight="fill" />
           <span className="text-sm font-bold">{toastMessage}</span>
         </div>
       )}
@@ -175,8 +186,8 @@ export default function AdminCampusesPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-black text-[#0E3B7D]">Campuses Management</h1>
-            <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-[#0E3B7D] font-extrabold text-xs">
+            <h1 className="text-2xl font-black text-[#0F2759]">Campuses Management</h1>
+            <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-[#193E8A] font-extrabold text-xs">
               {campuses.length} Campuses Total
             </span>
           </div>
@@ -188,9 +199,9 @@ export default function AdminCampusesPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] font-extrabold text-xs uppercase tracking-wider shadow-sm transition-all active:scale-95 cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#FFD600] hover:bg-[#ECC300] text-[#162033] font-extrabold text-xs uppercase tracking-wider shadow-sm transition-all active:scale-95 cursor-pointer"
           >
-            <span aria-hidden="true" className="material-symbols-outlined text-base">add_location_alt</span>
+            <Plus className="w-4 h-4" weight="bold" />
             <span>Add New Campus</span>
           </button>
         </div>
@@ -199,137 +210,135 @@ export default function AdminCampusesPage() {
       {/* Filter Bar */}
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-white p-4 rounded-2xl border border-slate-200">
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">City:</span>
-          <div className="inline-flex rounded-xl bg-slate-100 p-1">
-            {(["All", "Yangon", "Mawlamyine"] as const).map((city) => (
-              <button
-                key={city}
-                onClick={() => setSelectedCity(city)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  selectedCity === city
-                    ? "bg-[#0E3B7D] text-white shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
+          {(["All", "Yangon", "Mawlamyine"] as const).map((city) => (
+            <button
+              key={city}
+              onClick={() => setSelectedCity(city)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${selectedCity === city
+                  ? "bg-[#193E8A] text-white shadow-sm"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
-              >
-                {city}
-              </button>
-            ))}
-          </div>
+            >
+              {city}
+            </button>
+          ))}
         </div>
 
         <div className="relative w-full sm:w-72">
-          <span aria-hidden="true" className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
-            search
-          </span>
+          <MagnifyingGlass className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" weight="bold" />
           <input
             type="text"
+            placeholder="Search campuses..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search campus name, address, track..."
-            className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+            className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-[#193E8A]"
           />
         </div>
       </div>
 
-      {/* Campuses Cards Grid */}
+      {/* Campuses Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {filteredCampuses.map((campus) => (
           <div
             key={campus.id}
-            className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between"
+            className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
           >
             <div>
-              {/* Card Image Banner */}
-              <div className="relative h-48 w-full bg-slate-900">
+              <div className="relative h-48 w-full bg-slate-100">
                 <Image
                   src={campus.imageUrl || "/images/g2.jpg"}
                   alt={campus.name}
                   fill
                   unoptimized={isR2AssetUrl(campus.imageUrl)}
-                  className="object-cover opacity-90"
+                  className="object-cover"
                 />
-                <div className="absolute top-4 left-4 flex gap-2">
-                  <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-[#09234B]/80 text-[#FFC700] backdrop-blur-sm border border-[#FFC700]/30">
-                    {campus.city} Campus
+                <div className="absolute top-3 left-3 flex gap-2">
+                  <span className="px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-md text-white text-[11px] font-bold">
+                    {campus.city}
                   </span>
                   <span
-                    className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider backdrop-blur-sm ${
-                      campus.isActive
-                        ? "bg-emerald-600/80 text-white"
-                        : "bg-red-600/80 text-white"
-                    }`}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold backdrop-blur-md ${campus.isActive
+                        ? "bg-emerald-500/90 text-white"
+                        : "bg-rose-500/90 text-white"
+                      }`}
                   >
-                    {campus.isActive ? "Active Branch" : "Inactive"}
+                    {campus.isActive ? "Active" : "Hidden"}
                   </span>
                 </div>
               </div>
 
-              {/* Card Content */}
-              <div className="p-6 space-y-4">
+              <div className="p-5 space-y-3">
                 <div>
-                  <h3 className="text-xl font-black text-[#09234B]">{campus.name}</h3>
-                  <p className="text-xs font-semibold text-[#0E3B7D] mt-0.5">{campus.tagline}</p>
+                  <h3 className="text-lg font-black text-slate-900">{campus.name}</h3>
+                  {campus.nameMy && (
+                    <p className="text-xs text-slate-500 font-medium">{campus.nameMy}</p>
+                  )}
+                  <p className="text-xs text-[#193E8A] font-bold mt-1">{campus.tagline}</p>
                 </div>
 
-                <div className="space-y-2 text-xs text-slate-600">
+                <div className="text-xs text-slate-600 space-y-1.5 pt-2 border-t border-slate-100">
                   <div className="flex items-start gap-2">
-                    <span aria-hidden="true" className="material-symbols-outlined text-base text-slate-400 shrink-0 mt-0.5">
-                      location_on
-                    </span>
+                    <MapPin className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" weight="bold" />
                     <span>{campus.address}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span aria-hidden="true" className="material-symbols-outlined text-base text-slate-400 shrink-0">
-                      call
-                    </span>
+                    <Phone className="w-4 h-4 text-slate-400 shrink-0" weight="bold" />
                     <span>{campus.phone}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span aria-hidden="true" className="material-symbols-outlined text-base text-slate-400 shrink-0">
-                      mail
-                    </span>
+                    <EnvelopeSimple className="w-4 h-4 text-slate-400 shrink-0" weight="bold" />
                     <span>{campus.email}</span>
                   </div>
                 </div>
 
-                {/* Grades */}
-                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-xs">
-                  <span className="font-bold text-[#09234B] block mb-0.5">Curriculum &amp; Grades:</span>
-                  <span className="text-slate-600">{campus.gradesServed}</span>
+                <div className="pt-2">
+                  <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider block mb-1">
+                    Grades / Pathways Served
+                  </span>
+                  <span className="inline-block px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-semibold">
+                    {campus.gradesServed}
+                  </span>
                 </div>
+
+                {campus.galleryUrls && campus.galleryUrls.length > 0 && (
+                  <div className="pt-2">
+                    <span className="text-[11px] font-bold text-slate-400">
+                      Gallery: {campus.galleryUrls.length} photos
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Actions Bar */}
-            <div className="p-4 px-6 bg-slate-50/70 border-t border-slate-100 flex items-center justify-between">
+            <div className="p-5 pt-0 flex items-center justify-between border-t border-slate-100 mt-4">
+              {campus.mapUrl ? (
+                <a
+                  href={campus.mapUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1"
+                >
+                  <ArrowSquareOut className="w-3.5 h-3.5" weight="bold" />
+                  <span>View Map</span>
+                </a>
+              ) : (
+                <span className="text-xs text-slate-400">No map link</span>
+              )}
+
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-slate-400 font-mono font-bold">ID: {campus.id}</span>
-                {campus.mapUrl && (
-                  <a
-                    href={campus.mapUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-[11px] font-bold text-[#0E3B7D] hover:underline bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200"
-                  >
-                    <span aria-hidden="true" className="material-symbols-outlined text-xs">map</span>
-                    <span>Map</span>
-                  </a>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <button aria-label="Edit"
+                <button
                   onClick={() => setEditingCampus(campus)}
-                  className="px-3 py-1.5 rounded-lg bg-[#E8F0FE] hover:bg-[#0E3B7D] text-[#0E3B7D] hover:text-white font-bold text-xs transition-all flex items-center gap-1 cursor-pointer"
+                  className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+                  title="Edit Campus"
                 >
-                  <span aria-hidden="true" className="material-symbols-outlined text-sm">edit</span>
-                  <span>Edit</span>
+                  <PencilSimple className="w-4 h-4" weight="bold" />
                 </button>
-                <button aria-label="Delete"
+                <button
                   onClick={() => setDeletingCampus(campus)}
-                  className="px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-600 text-red-600 hover:text-white font-bold text-xs transition-all flex items-center gap-1 cursor-pointer"
+                  className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors"
+                  title="Delete Campus"
                 >
-                  <span aria-hidden="true" className="material-symbols-outlined text-sm">delete</span>
-                  <span>Delete</span>
+                  <Trash className="w-4 h-4" weight="bold" />
                 </button>
               </div>
             </div>
@@ -337,190 +346,156 @@ export default function AdminCampusesPage() {
         ))}
       </div>
 
-      {/* EDIT CAMPUS MODAL */}
+      {/* Edit Modal */}
       {editingCampus && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl p-6 sm:p-8 space-y-6">
-            <div className="flex justify-between items-center pb-4 border-b border-slate-100">
-              <h2 className="text-xl font-black text-[#09234B]">Edit Campus: {editingCampus.name}</h2>
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 space-y-6 max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <h2 className="text-xl font-black text-[#0F2759]">Edit Campus</h2>
               <button
                 onClick={() => setEditingCampus(null)}
-                className="text-slate-400 hover:text-slate-700"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
               >
-                <span aria-hidden="true" className="material-symbols-outlined">close</span>
+                <X className="w-5 h-5" weight="bold" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveEdit} className="space-y-4 text-xs">
+            <form onSubmit={handleSaveEdit} className="space-y-4">
+              <BilingualField
+                label="Campus Name"
+                enValue={editingCampus.name}
+                myValue={editingCampus.nameMy || ""}
+                onEnChange={(v) => setEditingCampus({ ...editingCampus, name: v })}
+                onMyChange={(v) => setEditingCampus({ ...editingCampus, nameMy: v })}
+                requiredEn
+              />
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Campus Name (EN)</label>
-                  <input
-                    type="text"
-                    required
-                    value={editingCampus.name}
-                    onChange={(e) => setEditingCampus({ ...editingCampus, name: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
-                  />
-                </div>
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">City Region</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">City Region</label>
                   <select
                     value={editingCampus.city}
-                    onChange={(e) => setEditingCampus({ ...editingCampus, city: e.target.value as "Yangon" | "Mawlamyine" })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                    onChange={(e) =>
+                      setEditingCampus({
+                        ...editingCampus,
+                        city: e.target.value as "Yangon" | "Mawlamyine",
+                      })
+                    }
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200"
                   >
                     <option value="Yangon">Yangon</option>
                     <option value="Mawlamyine">Mawlamyine</option>
                   </select>
                 </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Status</label>
+                  <select
+                    value={editingCampus.isActive ? "true" : "false"}
+                    onChange={(e) =>
+                      setEditingCampus({
+                        ...editingCampus,
+                        isActive: e.target.value === "true",
+                      })
+                    }
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200"
+                  >
+                    <option value="true">Active (Visible)</option>
+                    <option value="false">Hidden</option>
+                  </select>
+                </div>
               </div>
 
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Campus Name (Burmese) — optional, fallback to EN</label>
-                <input
-                  type="text"
-                  placeholder="ဥပမာ — ရွာမကျောင်း"
-                  value={editingCampus.nameMy || ""}
-                  onChange={(e) => setEditingCampus({ ...editingCampus, nameMy: e.target.value })}
-                  className="w-full p-2.5 bg-amber-50/50 border border-amber-200 rounded-xl"
-                />
-              </div>
+              <BilingualField
+                label="Tagline / Description"
+                enValue={editingCampus.tagline}
+                myValue={editingCampus.taglineMy || ""}
+                onEnChange={(v) => setEditingCampus({ ...editingCampus, tagline: v })}
+                onMyChange={(v) => setEditingCampus({ ...editingCampus, taglineMy: v })}
+                requiredEn
+              />
 
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Tagline / Subtitle (EN)</label>
-                <input
-                  type="text"
-                  required
-                  value={editingCampus.tagline}
-                  onChange={(e) => setEditingCampus({ ...editingCampus, tagline: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Tagline (Burmese) — optional</label>
-                <input
-                  type="text"
-                  placeholder="မြန်မာ ဘာသာဖြင့်"
-                  value={editingCampus.taglineMy || ""}
-                  onChange={(e) => setEditingCampus({ ...editingCampus, taglineMy: e.target.value })}
-                  className="w-full p-2.5 bg-amber-50/50 border border-amber-200 rounded-xl"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Full Physical Address (EN)</label>
-                <textarea
-                  rows={2}
-                  required
-                  value={editingCampus.address}
-                  onChange={(e) => setEditingCampus({ ...editingCampus, address: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Full Address (Burmese) — optional</label>
-                <textarea
-                  rows={2}
-                  placeholder="မြန်မာ လိပ်စာ"
-                  value={editingCampus.addressMy || ""}
-                  onChange={(e) => setEditingCampus({ ...editingCampus, addressMy: e.target.value })}
-                  className="w-full p-2.5 bg-amber-50/50 border border-amber-200 rounded-xl"
-                />
-              </div>
+              <BilingualField
+                label="Campus Address"
+                enValue={editingCampus.address}
+                myValue={editingCampus.addressMy || ""}
+                onEnChange={(v) => setEditingCampus({ ...editingCampus, address: v })}
+                onMyChange={(v) => setEditingCampus({ ...editingCampus, addressMy: v })}
+                multiline
+                rows={2}
+                requiredEn
+              />
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Contact Phone</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Phone Number</label>
                   <input
                     type="text"
-                    required
                     value={editingCampus.phone}
                     onChange={(e) => setEditingCampus({ ...editingCampus, phone: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200"
                   />
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Contact Email</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Email Address</label>
                   <input
                     type="email"
-                    required
                     value={editingCampus.email}
                     onChange={(e) => setEditingCampus({ ...editingCampus, email: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Grades Served</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Grades Served</label>
                 <input
                   type="text"
-                  required
                   value={editingCampus.gradesServed}
                   onChange={(e) => setEditingCampus({ ...editingCampus, gradesServed: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200"
                 />
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Google Maps Link (Optional)</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Google Maps Embed or Link</label>
                 <input
-                  type="url"
-                  placeholder="https://maps.app.goo.gl/... or https://maps.google.com/..."
+                  type="text"
                   value={editingCampus.mapUrl || ""}
                   onChange={(e) => setEditingCampus({ ...editingCampus, mapUrl: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                  placeholder="https://maps.google.com/..."
+                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200"
                 />
-                <p className="text-[10px] text-slate-400 mt-0.5">
-                  When set, a &quot;View on Map&quot; button will be displayed on the public campuses page.
-                </p>
               </div>
 
-              {/* Image Picker */}
               <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Featured Campus Photo</label>
                 <ImageUploadPicker
-                  label="Campus Showcase Photo"
                   value={editingCampus.imageUrl}
                   onChange={(url) => setEditingCampus({ ...editingCampus, imageUrl: url })}
-                  folder="campuses"
-                  defaultPresetsCategory="campus"
                 />
-                <div className="mt-4">
-                  <GalleryUploadPicker
-                    value={editingCampus.galleryUrls || []}
-                    onChange={(galleryUrls) => setEditingCampus({ ...editingCampus, galleryUrls })}
-                    folder="campuses"
-                  />
-                </div>
               </div>
 
-              <div className="flex items-center gap-2 pt-2">
-                <input
-                  type="checkbox"
-                  id="editIsActive"
-                  checked={editingCampus.isActive}
-                  onChange={(e) => setEditingCampus({ ...editingCampus, isActive: e.target.checked })}
-                  className="rounded text-[#0E3B7D]"
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Campus Photo Gallery</label>
+                <GalleryUploadPicker
+                  folder="campuses"
+                  value={editingCampus.galleryUrls || []}
+                  onChange={(urls) => setEditingCampus({ ...editingCampus, galleryUrls: urls })}
                 />
-                <label htmlFor="editIsActive" className="font-bold text-slate-700">
-                  Campus is Active &amp; Accepting Students
-                </label>
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setEditingCampus(null)}
-                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#0E3B7D] text-white font-bold hover:bg-[#164E9A]"
+                  className="px-5 py-2 rounded-xl text-xs font-extrabold text-[#162033] bg-[#FFD600] hover:bg-[#ECC300]"
                 >
                   Save Changes
                 </button>
@@ -530,150 +505,139 @@ export default function AdminCampusesPage() {
         </div>
       )}
 
-      {/* ADD CAMPUS MODAL */}
+      {/* Add Modal */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl p-6 sm:p-8 space-y-6">
-            <div className="flex justify-between items-center pb-4 border-b border-slate-100">
-              <h2 className="text-xl font-black text-[#09234B]">Add New School Campus</h2>
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 space-y-6 max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <h2 className="text-xl font-black text-[#0F2759]">Add New Campus</h2>
               <button
                 onClick={() => setIsAddModalOpen(false)}
-                className="text-slate-400 hover:text-slate-700"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
               >
-                <span aria-hidden="true" className="material-symbols-outlined">close</span>
+                <X className="w-5 h-5" weight="bold" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateCampus} className="space-y-4 text-xs">
+            <form onSubmit={handleCreateCampus} className="space-y-4">
+              <BilingualField
+                label="Campus Name"
+                enValue={formState.name || ""}
+                myValue={formState.nameMy || ""}
+                onEnChange={(v) => setFormState({ ...formState, name: v })}
+                onMyChange={(v) => setFormState({ ...formState, nameMy: v })}
+                requiredEn
+              />
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Campus Name</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. North Yangon Campus"
-                    value={formState.name}
-                    onChange={(e) => setFormState({ ...formState, name: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
-                  />
-                </div>
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">City Region</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">City Region</label>
                   <select
                     value={formState.city}
-                    onChange={(e) => setFormState({ ...formState, city: e.target.value as "Yangon" | "Mawlamyine" })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                    onChange={(e) =>
+                      setFormState({
+                        ...formState,
+                        city: e.target.value as "Yangon" | "Mawlamyine",
+                      })
+                    }
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200"
                   >
                     <option value="Yangon">Yangon</option>
                     <option value="Mawlamyine">Mawlamyine</option>
                   </select>
                 </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Status</label>
+                  <select
+                    value={formState.isActive ? "true" : "false"}
+                    onChange={(e) =>
+                      setFormState({
+                        ...formState,
+                        isActive: e.target.value === "true",
+                      })
+                    }
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200"
+                  >
+                    <option value="true">Active (Visible)</option>
+                    <option value="false">Hidden</option>
+                  </select>
+                </div>
               </div>
 
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Tagline / Facility Focus</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Senior Secondary & Pearson Examination Hall"
-                  value={formState.tagline}
-                  onChange={(e) => setFormState({ ...formState, tagline: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
-                />
-              </div>
+              <BilingualField
+                label="Tagline / Description"
+                enValue={formState.tagline || ""}
+                myValue={formState.taglineMy || ""}
+                onEnChange={(v) => setFormState({ ...formState, tagline: v })}
+                onMyChange={(v) => setFormState({ ...formState, taglineMy: v })}
+                requiredEn
+              />
 
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Full Physical Address</label>
-                <textarea
-                  rows={2}
-                  required
-                  placeholder="Street, Township, City"
-                  value={formState.address}
-                  onChange={(e) => setFormState({ ...formState, address: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
-                />
-              </div>
+              <BilingualField
+                label="Campus Address"
+                enValue={formState.address || ""}
+                myValue={formState.addressMy || ""}
+                onEnChange={(v) => setFormState({ ...formState, address: v })}
+                onMyChange={(v) => setFormState({ ...formState, addressMy: v })}
+                multiline
+                rows={2}
+                requiredEn
+              />
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Contact Phone</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Phone Number</label>
                   <input
                     type="text"
-                    required
-                    placeholder="+95 9..."
-                    value={formState.phone}
+                    value={formState.phone || ""}
                     onChange={(e) => setFormState({ ...formState, phone: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                    placeholder="+95 9 894 332200"
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200"
                   />
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Contact Email</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Email Address</label>
                   <input
                     type="email"
-                    required
-                    placeholder="campus@hinthar.education"
-                    value={formState.email}
+                    value={formState.email || ""}
                     onChange={(e) => setFormState({ ...formState, email: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                    placeholder="admissions@hinthar.education"
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Grades Served</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Grades Served</label>
                 <input
                   type="text"
-                  required
-                  placeholder="Year 7–9 · Pearson IGCSE · Pearson IAL"
-                  value={formState.gradesServed}
+                  value={formState.gradesServed || ""}
                   onChange={(e) => setFormState({ ...formState, gradesServed: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                  placeholder="Year 7–9 · Pearson IGCSE · Pearson IAL"
+                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200"
                 />
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Google Maps Link (Optional)</label>
-                <input
-                  type="url"
-                  placeholder="https://maps.app.goo.gl/... or https://maps.google.com/..."
-                  value={formState.mapUrl || ""}
-                  onChange={(e) => setFormState({ ...formState, mapUrl: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
-                />
-                <p className="text-[10px] text-slate-400 mt-0.5">
-                  When set, a &quot;View on Map&quot; button will be displayed on the public campuses page.
-                </p>
-              </div>
-
-              {/* Image Picker */}
-              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Featured Campus Photo</label>
                 <ImageUploadPicker
-                  label="Campus Showcase Photo"
                   value={formState.imageUrl || "/images/g2.jpg"}
                   onChange={(url) => setFormState({ ...formState, imageUrl: url })}
-                  folder="campuses"
-                  defaultPresetsCategory="campus"
                 />
-                <div className="mt-4">
-                  <GalleryUploadPicker
-                    value={formState.galleryUrls || []}
-                    onChange={(galleryUrls) => setFormState({ ...formState, galleryUrls })}
-                    folder="campuses"
-                  />
-                </div>
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#0E3B7D] text-white font-bold hover:bg-[#164E9A]"
+                  className="px-5 py-2 rounded-xl text-xs font-extrabold text-[#162033] bg-[#FFD600] hover:bg-[#ECC300]"
                 >
                   Create Campus
                 </button>
@@ -683,31 +647,29 @@ export default function AdminCampusesPage() {
         </div>
       )}
 
-      {/* DELETE CONFIRMATION MODAL */}
+      {/* Delete Confirmation Modal */}
       {deletingCampus && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-xl bg-red-100 text-red-600 flex items-center justify-center">
-              <span aria-hidden="true" className="material-symbols-outlined text-2xl">warning</span>
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+              <WarningCircle className="w-6 h-6" weight="bold" />
             </div>
-            <h3 className="text-lg font-black text-[#09234B]">Delete Campus?</h3>
-            <p className="text-xs text-slate-600">
-              Are you sure you want to delete <strong>{deletingCampus.name}</strong>? This action cannot be undone.
+            <h3 className="text-lg font-black text-slate-800">Delete Campus?</h3>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Are you sure you want to delete <span className="font-bold text-slate-800">{deletingCampus.name}</span>? This action cannot be undone.
             </p>
-            <div className="flex justify-end gap-3 pt-2">
+            <div className="flex gap-3 pt-2">
               <button
-                type="button"
                 onClick={() => setDeletingCampus(null)}
-                className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs"
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200"
               >
                 Cancel
               </button>
               <button
-                type="button"
                 onClick={handleDeleteCampus}
-                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-sm"
+                className="flex-1 py-2.5 rounded-xl text-xs font-extrabold text-white bg-rose-600 hover:bg-rose-700"
               >
-                Confirm Delete
+                Delete
               </button>
             </div>
           </div>

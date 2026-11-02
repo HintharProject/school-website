@@ -129,10 +129,24 @@ export const invitations = sqliteTable(
 );
 
 // ==============================================================================
-// 2. SCHOOL APPLICATION DOMAIN ENTITIES
+// 2. SCHOOL DOMAIN ENTITIES (5-PAGE ARCHITECTURE)
 // ==============================================================================
 
-// Campuses Table — bilingual EN/MY for public fields (MY optional, fallback to EN)
+// Editable Site CMS Content (Brand, Ticker, Hero, About/Principal, Page Headers, Admissions Config, FAQs)
+export const siteContent = sqliteTable(
+  "site_content",
+  {
+    key: text("key").primaryKey(),
+    value: text("value").notNull(), // JSON-encoded payload
+    updatedBy: text("updated_by"),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [index("idx_site_content_updated").on(table.updatedAt)]
+);
+
+export const siteContents = siteContent;
+
+// Campuses Table — bilingual EN/MY for public fields
 export const campuses = sqliteTable(
   "campuses",
   {
@@ -147,9 +161,13 @@ export const campuses = sqliteTable(
     phone: text("phone").notNull(),
     email: text("email").notNull(),
     gradesServed: text("grades_served").notNull(),
+    gradesServedMy: text("grades_served_my"),
+    facilitiesEn: text("facilities_en").notNull().default("[]"), // JSON string array
+    facilitiesMy: text("facilities_my").notNull().default("[]"), // JSON string array
     imageUrl: text("image_url").notNull(),
     galleryUrls: text("gallery_urls").notNull().default("[]"),
     mapUrl: text("map_url"),
+    sortOrder: integer("sort_order").notNull().default(0),
     isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
     createdAt: text("created_at")
       .notNull()
@@ -161,55 +179,34 @@ export const campuses = sqliteTable(
   (table) => [
     index("idx_campuses_city").on(table.city),
     index("idx_campuses_active").on(table.isActive),
+    index("idx_campuses_sort").on(table.sortOrder),
   ]
 );
 
-// Classes & Courses Table
-export const classesCourses = sqliteTable(
-  "classes_courses",
-  {
-    id: text("id").primaryKey(), // "course-ial-math", etc.
-    name: text("name").notNull(),
-    code: text("code").notNull(),
-    grade: text("grade").notNull(), // "Lower Secondary (Year 7–9)" | "Pearson IGCSE" | "Pearson IAL"
-    category: text("category").notNull(), // "STEM" | "Business" | "Computing" | "Languages"
-    time: text("time").notNull(),
-    instructor: text("instructor").notNull(),
-    room: text("room"),
-    credits: text("credits").default("Core"),
-    description: text("description"),
-    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
-    createdAt: text("created_at")
-      .notNull()
-      .default(sql`(datetime('now'))`),
-    updatedAt: text("updated_at")
-      .notNull()
-      .default(sql`(datetime('now'))`),
-  },
-  (table) => [
-    index("idx_classes_grade").on(table.grade),
-    index("idx_classes_category").on(table.category),
-    index("idx_classes_active").on(table.isActive),
-  ]
-);
-
-// Academic Programs (public /classes + admission Step 1)
+// Unified Pearson Edexcel Academic Programs (powers Home #classes AND Admissions!)
 export const academicPrograms = sqliteTable(
   "academic_programs",
   {
-    id: text("id").primaryKey(),
+    id: text("id").primaryKey(), // "lower-secondary", "pearson-igcse", "pearson-ial"
     nameEn: text("name_en").notNull(),
     nameMy: text("name_my"),
+    badgeEn: text("badge_en"), // e.g. "Year 10 – Year 11"
+    badgeMy: text("badge_my"),
+    ageRangeEn: text("age_range_en"), // e.g. "Ages 14 – 16"
+    ageRangeMy: text("age_range_my"),
     summaryEn: text("summary_en"),
     summaryMy: text("summary_my"),
     descriptionEn: text("description_en"),
     descriptionMy: text("description_my"),
-    curriculum: text("curriculum").notNull().default("Pearson"),
+    highlightsEn: text("highlights_en").notNull().default("[]"), // JSON string array
+    highlightsMy: text("highlights_my").notNull().default("[]"), // JSON string array
+    curriculum: text("curriculum").notNull().default("Pearson Edexcel"),
     category: text("category").notNull().default("pearson"),
     duration: text("duration"),
-    campus: text("campus").notNull().default("both"),
+    campus: text("campus").notNull().default("both"), // "both" | "yangon" | "mawlamyine"
     studyMode: text("study_mode"),
-    programLevel: text("program_level"),
+    programLevel: text("program_level"), // "lower_secondary" | "igcse" | "ial"
+    imageUrl: text("image_url"),
     sortOrder: integer("sort_order").notNull().default(0),
     isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
     createdAt: text("created_at")
@@ -221,20 +218,21 @@ export const academicPrograms = sqliteTable(
   },
   (table) => [
     index("idx_academic_programs_active").on(table.isActive),
-    index("idx_academic_programs_category").on(table.category),
     index("idx_academic_programs_campus").on(table.campus),
+    index("idx_academic_programs_sort").on(table.sortOrder),
   ]
 );
 
-// Academic Subjects (admission Step 2 electives; linked to programs)
+// Pearson Academic Subjects (linked to programs & used in Admissions)
 export const academicSubjects = sqliteTable(
   "academic_subjects",
   {
     id: text("id").primaryKey(),
     nameEn: text("name_en").notNull(),
     nameMy: text("name_my"),
-    code: text("code"),
-    track: text("track").notNull().default("STEM"),
+    code: text("code"), // e.g. "4PM1", "4PH1", "WMA11"
+    level: text("level").notNull().default("Both"), // "Lower Secondary" | "IGCSE" | "IAL" | "Both"
+    track: text("track").notNull().default("STEM"), // "STEM" | "Business" | "Computing" | "Languages" | "General"
     isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
     createdAt: text("created_at")
       .notNull()
@@ -262,16 +260,73 @@ export const programSubjectLinks = sqliteTable(
   (table) => [uniqueIndex("idx_program_subject_unique").on(table.programId, table.subjectId)]
 );
 
-// Bulletin Notices Table
-export const bulletinNotices = sqliteTable(
-  "bulletin_notices",
+// Testimonials from parents & alumni (Home page)
+export const testimonials = sqliteTable(
+  "testimonials",
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
-    title: text("title").notNull(),
-    date: text("date").notNull(),
-    type: text("type").notNull(), // "Official Notice" | "Academic" | "General"
-    content: text("content").notNull(),
-    isPinned: integer("is_pinned", { mode: "boolean" }).notNull().default(false),
+    authorName: text("author_name").notNull(),
+    authorRole: text("author_role"),
+    authorRoleMy: text("author_role_my"),
+    quote: text("quote").notNull(),
+    quoteMy: text("quote_my"),
+    image: text("image"),
+    rating: integer("rating"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    status: text("status").notNull().default("published"), // "published" | "archived"
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
+  },
+  (table) => [
+    index("idx_testimonials_status").on(table.status),
+    index("idx_testimonials_sort").on(table.sortOrder),
+  ]
+);
+
+// Region-specific, Admin-managed Yearbook Batches
+export const yearbookBatches = sqliteTable(
+  "yearbook_batches",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    region: text("region").notNull(), // "Yangon" | "Mawlamyine"
+    sortOrder: integer("sort_order").notNull().default(0),
+    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index("idx_yearbook_batches_region").on(table.region),
+    index("idx_yearbook_batches_active").on(table.isActive),
+    uniqueIndex("idx_yearbook_batches_region_name").on(table.region, table.name),
+  ]
+);
+
+// Student Yearbook Table (Strictly Students & Alumni)
+export const yearbookAlumni = sqliteTable(
+  "yearbook_alumni",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    name: text("name").notNull(),
+    category: text("category").notNull(),
+    batchId: text("batch_id").references(() => yearbookBatches.id, { onDelete: "restrict" }),
+    role: text("role").notNull(),
+    roleMy: text("role_my"),
+    destination: text("destination"),
+    subjects: text("subjects"),
+    quote: text("quote").notNull(),
+    quoteMy: text("quote_my"),
+    image: text("image").notNull().default("/images/g5.jpg"),
+    badge: text("badge"),
+    badgeMy: text("badge_my"),
+    campus: text("campus").default("both-campuses"),
+    status: text("status").notNull().default("published"), // "published" | "pending_review" | "archived"
+    submittedBy: text("submitted_by").references(() => users.id, { onDelete: "set null" }),
+    reviewerNotes: text("reviewer_notes"),
     createdAt: text("created_at")
       .notNull()
       .default(sql`(datetime('now'))`),
@@ -280,8 +335,111 @@ export const bulletinNotices = sqliteTable(
       .default(sql`(datetime('now'))`),
   },
   (table) => [
-    index("idx_bulletins_type").on(table.type),
-    index("idx_bulletins_pinned").on(table.isPinned),
+    index("idx_yearbook_batch").on(table.batchId),
+    index("idx_yearbook_status").on(table.status),
+    index("idx_yearbook_submitted_by").on(table.submittedBy),
+  ]
+);
+
+// Student Clubs Table
+export const clubs = sqliteTable(
+  "clubs",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    name: text("name").notNull(),
+    category: text("category").notNull(), // "STEM & Tech" | "Academic & Debate" | "STEM & Science" | "Creative Arts" | "Sports & Fitness"
+    icon: text("icon").notNull().default("users"),
+    members: text("members").notNull().default("25+ Scholars"),
+    meetingTime: text("meeting_time").notNull(),
+    meetingTimeMy: text("meeting_time_my"),
+    leadership: text("leadership").notNull(),
+    leadershipMy: text("leadership_my"),
+    description: text("description").notNull(),
+    descriptionMy: text("description_my"),
+    image: text("image").notNull().default("/images/g2.jpg"),
+    galleryUrls: text("gallery_urls").notNull().default("[]"),
+    campus: text("campus").default("both-campuses"),
+    status: text("status").notNull().default("published"), // "published" | "pending_review" | "archived"
+    submittedBy: text("submitted_by").references(() => users.id, { onDelete: "set null" }),
+    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index("idx_clubs_category").on(table.category),
+    index("idx_clubs_status").on(table.status),
+    index("idx_clubs_active").on(table.isActive),
+  ]
+);
+
+// Club Members Roster (Admin-managed)
+export const clubMembers = sqliteTable(
+  "club_members",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    clubId: integer("club_id")
+      .notNull()
+      .references(() => clubs.id, { onDelete: "cascade" }),
+    studentName: text("student_name").notNull(),
+    grade: text("grade"),
+    contactEmail: text("contact_email"),
+    contactPhone: text("contact_phone"),
+    notes: text("notes"),
+    status: text("status").notNull().default("active"), // "active" | "left"
+    addedBy: text("added_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
+  },
+  (table) => [
+    index("idx_club_members_club").on(table.clubId),
+    index("idx_club_members_status").on(table.status),
+  ]
+);
+
+// School Activities & Events Table (Optionally Linked to Clubs)
+export const activities = sqliteTable(
+  "activities",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    clubId: integer("club_id").references(() => clubs.id, { onDelete: "set null" }),
+    title: text("title").notNull(),
+    titleMy: text("title_my"),
+    category: text("category").notNull(), // "academic" | "sports" | "cultural" | "science"
+    date: text("date").notNull(),
+    month: text("month").notNull(),
+    day: text("day").notNull(),
+    time: text("time").notNull(),
+    location: text("location").notNull(),
+    locationMy: text("location_my"),
+    description: text("description").notNull(),
+    descriptionMy: text("description_my"),
+    image: text("image").notNull().default("/images/engineering.avif"),
+    status: text("status").notNull().default("Upcoming"), // "Upcoming" | "Active Registration" | "Past Highlight"
+    campus: text("campus").default("both-campuses"),
+    featured: integer("featured", { mode: "boolean" }).notNull().default(false),
+    reviewStatus: text("review_status").notNull().default("published"), // "published" | "pending_review" | "archived"
+    submittedBy: text("submitted_by").references(() => users.id, { onDelete: "set null" }),
+    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index("idx_activities_club").on(table.clubId),
+    index("idx_activities_status").on(table.status),
+    index("idx_activities_review").on(table.reviewStatus),
+    index("idx_activities_active").on(table.isActive),
   ]
 );
 
@@ -289,10 +447,10 @@ export const bulletinNotices = sqliteTable(
 export const admissions = sqliteTable(
   "admissions",
   {
-    id: text("id").primaryKey(), // "HIS-2026-XXXX"
+    id: text("id").primaryKey(), // "HIS-2026-XXXXXX"
     studentName: text("student_name").notNull(),
     dateOfBirth: text("date_of_birth"),
-    gender: text("gender"), // "Male" | "Female" | "Other"
+    gender: text("gender"),
     nationality: text("nationality").default("Myanmar"),
     grade: text("grade").notNull(),
     programLevel: text("program_level"),
@@ -301,8 +459,8 @@ export const admissions = sqliteTable(
     suggestedEntryYear: text("suggested_entry_year"),
     preferredRegion: text("preferred_region"),
     academicStream: text("academic_stream"),
-    selectedSubjects: text("selected_subjects").default("[]"), // JSON string array
-    documentUrls: text("document_urls").default("[]"), // JSON string array
+    selectedSubjects: text("selected_subjects").default("[]"),
+    documentUrls: text("document_urls").default("[]"),
     intendedStartTerm: text("intended_start_term"),
     studyMode: text("study_mode").default("Full-Time On-Campus"),
     previousSchool: text("previous_school"),
@@ -332,126 +490,11 @@ export const admissions = sqliteTable(
   ]
 );
 
-// Clubs Table — bilingual EN/MY for description (name stays EN per no-translate rule)
-export const clubs = sqliteTable(
-  "clubs",
-  {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    name: text("name").notNull(),
-    category: text("category").notNull(), // "STEM & Tech" | "Academic & Debate" | "STEM & Science" | "Creative Arts" | "Sports & Fitness"
-    icon: text("icon").notNull().default("groups"),
-    members: text("members").notNull().default("25+ Scholars"),
-    meetingTime: text("meeting_time").notNull(),
-    leadership: text("leadership").notNull(),
-    description: text("description").notNull(),
-    descriptionMy: text("description_my"),
-    image: text("image").notNull().default("/images/g2.jpg"),
-    galleryUrls: text("gallery_urls").notNull().default("[]"),
-    campus: text("campus").default("both-campuses"),
-    status: text("status").notNull().default("published"), // "published" | "pending_review" | "archived"
-    submittedBy: text("submitted_by").references(() => users.id, { onDelete: "set null" }),
-    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
-    createdAt: text("created_at")
-      .notNull()
-      .default(sql`(datetime('now'))`),
-    updatedAt: text("updated_at")
-      .notNull()
-      .default(sql`(datetime('now'))`),
-  },
-  (table) => [
-    index("idx_clubs_category").on(table.category),
-    index("idx_clubs_status").on(table.status),
-    index("idx_clubs_active").on(table.isActive),
-  ]
-);
-
-// Activities Table (Linked to Clubs)
-export const activities = sqliteTable(
-  "activities",
-  {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    clubId: integer("club_id").references(() => clubs.id, { onDelete: "set null" }),
-    title: text("title").notNull(),
-    category: text("category").notNull(), // "academic" | "sports" | "cultural" | "science"
-    date: text("date").notNull(),
-    month: text("month").notNull(),
-    day: text("day").notNull(),
-    time: text("time").notNull(),
-    location: text("location").notNull(),
-    description: text("description").notNull(),
-    image: text("image").notNull().default("/images/engineering.avif"),
-    status: text("status").notNull().default("Upcoming"), // "Upcoming" | "Active Registration" | "Past Highlight"
-    campus: text("campus").default("both-campuses"),
-    featured: integer("featured", { mode: "boolean" }).notNull().default(false),
-    reviewStatus: text("review_status").notNull().default("published"), // "published" | "pending_review" | "archived"
-    submittedBy: text("submitted_by").references(() => users.id, { onDelete: "set null" }),
-    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
-    createdAt: text("created_at")
-      .notNull()
-      .default(sql`(datetime('now'))`),
-    updatedAt: text("updated_at")
-      .notNull()
-      .default(sql`(datetime('now'))`),
-  },
-  (table) => [
-    index("idx_activities_club").on(table.clubId),
-    index("idx_activities_status").on(table.status),
-    index("idx_activities_review").on(table.reviewStatus),
-    index("idx_activities_active").on(table.isActive),
-  ]
-);
-
-// Region-specific, administrator-managed Yearbook batches
-export const yearbookBatches = sqliteTable(
-  "yearbook_batches",
-  {
-    id: text("id").primaryKey(),
-    name: text("name").notNull(),
-    region: text("region").notNull(), // "Yangon" | "Mawlamyine"
-    sortOrder: integer("sort_order").notNull().default(0),
-    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
-    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
-    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
-  },
-  (table) => [
-    index("idx_yearbook_batches_region").on(table.region),
-    index("idx_yearbook_batches_active").on(table.isActive),
-    uniqueIndex("idx_yearbook_batches_region_name").on(table.region, table.name),
-  ]
-);
-
-// Yearbook & Alumni Table
-export const yearbookAlumni = sqliteTable(
-  "yearbook_alumni",
-  {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    name: text("name").notNull(),
-    category: text("category").notNull(), // Legacy batch label retained for migration compatibility
-    batchId: text("batch_id").references(() => yearbookBatches.id, { onDelete: "restrict" }),
-    role: text("role").notNull(),
-    destination: text("destination"),
-    subjects: text("subjects"),
-    quote: text("quote").notNull(),
-    image: text("image").notNull().default("/images/g5.jpg"),
-    badge: text("badge"),
-    campus: text("campus").default("both-campuses"),
-    status: text("status").notNull().default("published"), // "published" | "pending_review" | "archived"
-    submittedBy: text("submitted_by").references(() => users.id, { onDelete: "set null" }),
-    reviewerNotes: text("reviewer_notes"),
-    createdAt: text("created_at")
-      .notNull()
-      .default(sql`(datetime('now'))`),
-    updatedAt: text("updated_at")
-      .notNull()
-      .default(sql`(datetime('now'))`),
-  },
-  (table) => [
-    index("idx_yearbook_category").on(table.category),
-    index("idx_yearbook_batch").on(table.batchId),
-    index("idx_yearbook_status").on(table.status),
-    index("idx_yearbook_submitted_by").on(table.submittedBy),
-  ]
-);
+export const admissionUploadLimits = sqliteTable("admission_upload_limits", {
+  key: text("key").primaryKey(),
+  count: integer("count").notNull().default(1),
+  resetAt: integer("reset_at").notNull(),
+});
 
 // File Assets Metadata Table (Backed by R2)
 export const fileAssets = sqliteTable(
@@ -475,12 +518,6 @@ export const fileAssets = sqliteTable(
   ]
 );
 
-export const admissionUploadLimits = sqliteTable("admission_upload_limits", {
-  key: text("key").primaryKey(),
-  count: integer("count").notNull().default(1),
-  resetAt: integer("reset_at").notNull(),
-});
-
 // Audit Logs Table
 export const auditLogs = sqliteTable(
   "audit_logs",
@@ -489,11 +526,11 @@ export const auditLogs = sqliteTable(
     actorId: text("actor_id"),
     actorEmail: text("actor_email"),
     actorRole: text("actor_role"),
-    action: text("action").notNull(), // e.g. "ADMIN_CREATED_CLUB", "ADMIN_INVITED_USER", etc.
-    resource: text("resource").notNull(), // "campuses", "classes", "clubs", "users", etc.
+    action: text("action").notNull(),
+    resource: text("resource").notNull(),
     resourceId: text("resource_id"),
     success: integer("success", { mode: "boolean" }).notNull().default(true),
-    details: text("details"), // JSON serialized string
+    details: text("details"),
     ipAddress: text("ip_address"),
     timestamp: text("timestamp")
       .notNull()
@@ -505,78 +542,6 @@ export const auditLogs = sqliteTable(
     index("idx_audit_resource").on(table.resource),
     index("idx_audit_timestamp").on(table.timestamp),
   ]
-);
-
-// Club Members Table (admin-managed roster; no user account required)
-export const clubMembers = sqliteTable(
-  "club_members",
-  {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    clubId: integer("club_id")
-      .notNull()
-      .references(() => clubs.id, { onDelete: "cascade" }),
-    studentName: text("student_name").notNull(),
-    grade: text("grade"),
-    contactEmail: text("contact_email"),
-    contactPhone: text("contact_phone"),
-    notes: text("notes"),
-    status: text("status").notNull().default("active"), // "active" | "left"
-    addedBy: text("added_by").references(() => users.id, { onDelete: "set null" }),
-    createdAt: text("created_at")
-      .notNull()
-      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
-    updatedAt: text("updated_at")
-      .notNull()
-      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
-  },
-  (table) => [
-    index("idx_club_members_club").on(table.clubId),
-    index("idx_club_members_status").on(table.status),
-  ]
-);
-
-// Noticeboard: messages and tasks published by admins (e.g. from the
-// Principal's office) to administrators and student contributors.
-export const notices = sqliteTable(
-  "notices",
-  {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    title: text("title").notNull(),
-    body: text("body").notNull(),
-    priority: text("priority").notNull().default("normal"), // "normal" | "urgent"
-    targetType: text("target_type").notNull().default("all"), // "all" | "admins" | "contributors"
-    isTask: integer("is_task", { mode: "boolean" }).notNull().default(false),
-    dueDate: text("due_date"),
-    createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
-    createdAt: text("created_at")
-      .notNull()
-      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
-    updatedAt: text("updated_at")
-      .notNull()
-      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
-  },
-  (table) => [
-    index("idx_notices_target").on(table.targetType),
-    index("idx_notices_created").on(table.createdAt),
-  ]
-);
-
-// Per-user acknowledgement/completion of a notice task.
-export const noticeReads = sqliteTable(
-  "notice_reads",
-  {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    noticeId: integer("notice_id")
-      .notNull()
-      .references(() => notices.id, { onDelete: "cascade" }),
-    userId: text("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    completedAt: text("completed_at")
-      .notNull()
-      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
-  },
-  (table) => [uniqueIndex("idx_notice_read_unique").on(table.noticeId, table.userId)]
 );
 
 // ==============================================================================
@@ -628,6 +593,7 @@ export const clubsRelations = relations(clubs, ({ one, many }) => ({
     references: [users.id],
   }),
   activities: many(activities),
+  membersList: many(clubMembers),
 }));
 
 export const activitiesRelations = relations(activities, ({ one }) => ({
@@ -667,148 +633,12 @@ export const clubMembersRelations = relations(clubMembers, ({ one }) => ({
   }),
 }));
 
-export const noticesRelations = relations(notices, ({ one, many }) => ({
-  author: one(users, {
-    fields: [notices.createdBy],
-    references: [users.id],
-  }),
-  reads: many(noticeReads),
-}));
-
-export const noticeReadsRelations = relations(noticeReads, ({ one }) => ({
-  notice: one(notices, {
-    fields: [noticeReads.noticeId],
-    references: [notices.id],
-  }),
-  user: one(users, {
-    fields: [noticeReads.userId],
-    references: [users.id],
-  }),
-}));
-
 // Singular aliases for Better Auth compatibility
 export const user = users;
 export const session = sessions;
 export const account = accounts;
 export const verification = verifications;
 export const invitation = invitations;
-
-// Editable site content (hero stats, announcements, FAQs, programs, contact info)
-export const siteContent = sqliteTable("site_content", {
-  key: text("key").primaryKey(),
-  value: text("value").notNull(), // JSON-encoded payload
-  updatedBy: text("updated_by"),
-  updatedAt: text("updated_at").notNull(),
-}, (table) => [
-  index("idx_site_content_updated").on(table.updatedAt),
-]);
-
-export const siteContents = siteContent;
-
-// News / Blog / Announcements (admin-managed public posts) — bilingual EN/MY (MY optional)
-export const newsPosts = sqliteTable(
-  "news_posts",
-  {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    title: text("title").notNull(),
-    titleMy: text("title_my"),
-    slug: text("slug").notNull().unique(),
-    excerpt: text("excerpt"),
-    excerptMy: text("excerpt_my"),
-    body: text("body").notNull(),
-    bodyMy: text("body_my"),
-    category: text("category").notNull().default("Announcement"),
-    image: text("image"),
-    status: text("status").notNull().default("published"), // "published" | "draft" | "archived"
-    publishedAt: text("published_at"),
-    createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
-    createdAt: text("created_at")
-      .notNull()
-      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
-    updatedAt: text("updated_at")
-      .notNull()
-      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
-  },
-  (table) => [
-    index("idx_news_status").on(table.status),
-    index("idx_news_published").on(table.publishedAt),
-  ]
-);
-
-// Staff & Teacher Directory (public profiles, admin-managed) — bilingual EN/MY (name stays EN, other fields MY optional)
-export const staffProfiles = sqliteTable(
-  "staff_profiles",
-  {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    name: text("name").notNull(),
-    role: text("role").notNull(),
-    roleMy: text("role_my"),
-    department: text("department").notNull().default("General"),
-    departmentMy: text("department_my"),
-    qualifications: text("qualifications"),
-    qualificationsMy: text("qualifications_my"),
-    bio: text("bio"),
-    bioMy: text("bio_my"),
-    email: text("email"),
-    phone: text("phone"),
-    image: text("image"),
-    campusId: text("campus_id").notNull().default("both-campuses"),
-    sortOrder: integer("sort_order").notNull().default(0),
-    status: text("status").notNull().default("published"), // "published" | "archived"
-    createdAt: text("created_at")
-      .notNull()
-      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
-    updatedAt: text("updated_at")
-      .notNull()
-      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
-  },
-  (table) => [
-    index("idx_staff_status").on(table.status),
-    index("idx_staff_sort").on(table.sortOrder),
-  ]
-);
-
-// Testimonials from parents / alumni (homepage carousel, admin-managed) — bilingual EN/MY (authorName stays EN)
-export const testimonials = sqliteTable(
-  "testimonials",
-  {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    authorName: text("author_name").notNull(),
-    authorRole: text("author_role"),
-    authorRoleMy: text("author_role_my"),
-    quote: text("quote").notNull(),
-    quoteMy: text("quote_my"),
-    image: text("image"),
-    rating: integer("rating"),
-    sortOrder: integer("sort_order").notNull().default(0),
-    status: text("status").notNull().default("published"), // "published" | "archived"
-    createdAt: text("created_at")
-      .notNull()
-      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
-    updatedAt: text("updated_at")
-      .notNull()
-      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
-  },
-  (table) => [
-    index("idx_testimonials_status").on(table.status),
-    index("idx_testimonials_sort").on(table.sortOrder),
-  ]
-);
-
-// Newsletter subscribers (public footer signup)
-export const newsletterSubscribers = sqliteTable(
-  "newsletter_subscribers",
-  {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    email: text("email").notNull().unique(),
-    status: text("status").notNull().default("active"), // "active" | "unsubscribed"
-    source: text("source").notNull().default("footer"),
-    createdAt: text("created_at")
-      .notNull()
-      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
-  },
-  (table) => [uniqueIndex("idx_newsletter_email").on(table.email)]
-);
 
 // ==============================================================================
 // 4. TYPES
@@ -823,9 +653,6 @@ export type Invitation = typeof invitations.$inferSelect;
 export type Campus = typeof campuses.$inferSelect;
 export type NewCampus = typeof campuses.$inferInsert;
 
-export type ClassCourse = typeof classesCourses.$inferSelect;
-export type NewClassCourse = typeof classesCourses.$inferInsert;
-
 export type AcademicProgram = typeof academicPrograms.$inferSelect;
 export type NewAcademicProgram = typeof academicPrograms.$inferInsert;
 
@@ -834,43 +661,25 @@ export type NewAcademicSubject = typeof academicSubjects.$inferInsert;
 
 export type ProgramSubjectLink = typeof programSubjectLinks.$inferSelect;
 
-export type BulletinNotice = typeof bulletinNotices.$inferSelect;
-export type NewBulletinNotice = typeof bulletinNotices.$inferInsert;
-
-export type Admission = typeof admissions.$inferSelect;
-export type NewAdmission = typeof admissions.$inferInsert;
-
-export type Club = typeof clubs.$inferSelect;
-export type NewClub = typeof clubs.$inferInsert;
-
-export type Activity = typeof activities.$inferSelect;
-export type NewActivity = typeof activities.$inferInsert;
+export type Testimonial = typeof testimonials.$inferSelect;
+export type NewTestimonial = typeof testimonials.$inferInsert;
 
 export type YearbookScholar = typeof yearbookAlumni.$inferSelect;
 export type NewYearbookScholar = typeof yearbookAlumni.$inferInsert;
 export type YearbookBatch = typeof yearbookBatches.$inferSelect;
 export type NewYearbookBatch = typeof yearbookBatches.$inferInsert;
 
+export type Club = typeof clubs.$inferSelect;
+export type NewClub = typeof clubs.$inferInsert;
+
 export type ClubMember = typeof clubMembers.$inferSelect;
 export type NewClubMember = typeof clubMembers.$inferInsert;
 
-export type Notice = typeof notices.$inferSelect;
-export type NewNotice = typeof notices.$inferInsert;
+export type Activity = typeof activities.$inferSelect;
+export type NewActivity = typeof activities.$inferInsert;
 
-export type NoticeRead = typeof noticeReads.$inferSelect;
-export type NewNoticeRead = typeof noticeReads.$inferInsert;
+export type Admission = typeof admissions.$inferSelect;
+export type NewAdmission = typeof admissions.$inferInsert;
 
 export type FileAsset = typeof fileAssets.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;
-
-export type NewsPost = typeof newsPosts.$inferSelect;
-export type NewNewsPost = typeof newsPosts.$inferInsert;
-
-export type StaffProfile = typeof staffProfiles.$inferSelect;
-export type NewStaffProfile = typeof staffProfiles.$inferInsert;
-
-export type Testimonial = typeof testimonials.$inferSelect;
-export type NewTestimonial = typeof testimonials.$inferInsert;
-
-export type NewsletterSubscriber = typeof newsletterSubscribers.$inferSelect;
-export type NewNewsletterSubscriber = typeof newsletterSubscribers.$inferInsert;

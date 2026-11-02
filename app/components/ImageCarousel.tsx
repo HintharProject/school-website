@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import { CaretLeft, CaretRight } from "@phosphor-icons/react";
 import { isR2AssetUrl } from "@/lib/utils/r2Image";
 
 interface ImageCarouselProps {
@@ -10,20 +11,29 @@ interface ImageCarouselProps {
   className?: string;
 }
 
-export default function ImageCarousel({ images, alt, className = "" }: ImageCarouselProps) {
-  const uniqueImages = useMemo(() => [...new Set(images.filter(Boolean))], [images]);
+export default function ImageCarousel({
+  images,
+  alt,
+  className = "",
+}: ImageCarouselProps) {
+  const uniqueImages = useMemo(
+    () => [...new Set(images.filter(Boolean))],
+    [images]
+  );
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
     if (uniqueImages.length < 2) return;
     const timer = window.setInterval(
       () => setActiveIndex((index) => (index + 1) % uniqueImages.length),
-      5000
+      5500
     );
     return () => window.clearInterval(timer);
   }, [uniqueImages.length]);
 
-  const effectiveIndex = uniqueImages.length ? activeIndex % uniqueImages.length : 0;
+  const effectiveIndex = uniqueImages.length
+    ? activeIndex % uniqueImages.length
+    : 0;
   const activeImage = uniqueImages[effectiveIndex] || "/images/g2.jpg";
 
   return (
@@ -42,11 +52,14 @@ export default function ImageCarousel({ images, alt, className = "" }: ImageCaro
             aria-label="Previous photo"
             onClick={(event) => {
               event.stopPropagation();
-              setActiveIndex((index) => (index - 1 + uniqueImages.length) % uniqueImages.length);
+              setActiveIndex(
+                (index) =>
+                  (index - 1 + uniqueImages.length) % uniqueImages.length
+              );
             }}
-            className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/45 p-1 text-white backdrop-blur-sm"
+            className="absolute left-2.5 top-1/2 z-10 -translate-y-1/2 inline-flex items-center justify-center h-8 w-8 rounded-full bg-[#0F2759]/65 text-white hover:bg-[#0F2759]/85 backdrop-blur-xs transition-colors cursor-pointer"
           >
-            <span className="material-symbols-outlined text-lg">chevron_left</span>
+            <CaretLeft className="w-4 h-4" weight="bold" />
           </button>
           <button
             type="button"
@@ -55,11 +68,11 @@ export default function ImageCarousel({ images, alt, className = "" }: ImageCaro
               event.stopPropagation();
               setActiveIndex((index) => (index + 1) % uniqueImages.length);
             }}
-            className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/45 p-1 text-white backdrop-blur-sm"
+            className="absolute right-2.5 top-1/2 z-10 -translate-y-1/2 inline-flex items-center justify-center h-8 w-8 rounded-full bg-[#0F2759]/65 text-white hover:bg-[#0F2759]/85 backdrop-blur-xs transition-colors cursor-pointer"
           >
-            <span className="material-symbols-outlined text-lg">chevron_right</span>
+            <CaretRight className="w-4 h-4" weight="bold" />
           </button>
-          <div className="absolute bottom-2 left-1/2 z-10 flex -translate-x-1/2 gap-1">
+          <div className="absolute bottom-2.5 left-1/2 z-10 flex -translate-x-1/2 gap-1.5">
             {uniqueImages.map((image, index) => (
               <button
                 key={`${image}-${index}`}
@@ -69,7 +82,9 @@ export default function ImageCarousel({ images, alt, className = "" }: ImageCaro
                   event.stopPropagation();
                   setActiveIndex(index);
                 }}
-                className={`h-1.5 rounded-full transition-all ${index === effectiveIndex ? "w-5 bg-white" : "w-1.5 bg-white/60"}`}
+                className={`h-1.5 rounded-full transition-all cursor-pointer ${
+                  index === effectiveIndex ? "w-5 bg-[#FFD600]" : "w-1.5 bg-white/75"
+                }`}
               />
             ))}
           </div>

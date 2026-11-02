@@ -1,384 +1,308 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
-import Navbar from "../components/Navbar";
-import FooterSection from "../components/sections/FooterSection";
-import CampusGalleryModal from "../components/CampusGalleryModal";
-import { CampusRecord, mapCampusRecord } from "../admin/adminStore";
-import { getPublicCampuses } from "@/lib/actions/campuses";
+import {
+  Buildings,
+  MapPin,
+  Phone,
+  EnvelopeSimple,
+  GraduationCap,
+  Images,
+  ArrowSquareOut,
+  ArrowRight,
+  CheckCircle,
+} from "@phosphor-icons/react";
+import type { PublicCampusItem } from "@/lib/actions/campuses";
+import type { InnerPageHeaderContent } from "@/lib/content/defaults";
 import { useLocale, useT } from "@/lib/i18n/useT";
-import { isR2AssetUrl } from "@/lib/utils/r2Image";
-import { resolveCampusImages } from "@/lib/campuses/images";
-
-const getMapUrl = (campus: CampusRecord) =>
-  campus.mapUrl ||
-  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-    `${campus.name}, ${campus.address}`
-  )}`;
-
-function loc(campus: CampusRecord, locale: string, field: "name" | "tagline" | "address") {
-  if (locale === "my") {
-    const my = campus[`${field}My` as keyof CampusRecord] as string | undefined;
-    if (my && my.trim()) return my;
-  }
-  return campus[field] as string;
-}
+import { locField, locList } from "@/lib/i18n/loc";
+import ImageCarousel from "../components/ImageCarousel";
+import CampusGalleryModal from "../components/CampusGalleryModal";
 
 export default function CampusesView({
-  initialData,
+  header,
+  campuses,
 }: {
-  initialData?: Parameters<typeof mapCampusRecord>[0][];
+  header: InnerPageHeaderContent;
+  campuses: PublicCampusItem[];
 }) {
   const locale = useLocale();
   const t = useT();
-  const [campuses, setCampuses] = useState<CampusRecord[]>(() =>
-    (initialData ?? []).map(mapCampusRecord)
+  const [cityFilter, setCityFilter] = useState<"all" | "Yangon" | "Mawlamyine">("all");
+  const [galleryTarget, setGalleryTarget] = useState<{
+    name: string;
+    city: string;
+    images: string[];
+  } | null>(null);
+
+  const yangonCount = useMemo(
+    () => campuses.filter((c) => c.city === "Yangon").length,
+    [campuses]
   );
-  const [selectedCity, setSelectedCity] = useState<"All" | "Yangon" | "Mawlamyine">("All");
-  const [activeCampusModal, setActiveCampusModal] = useState<CampusRecord | null>(null);
-  const [galleryState, setGalleryState] = useState<CampusRecord | null>(null);
-  const [isLoading, setIsLoading] = useState(!initialData);
+  const mawlamyineCount = useMemo(
+    () => campuses.filter((c) => c.city === "Mawlamyine").length,
+    [campuses]
+  );
 
-  useEffect(() => {
-    if (initialData) return;
-
-    async function loadCampuses() {
-      try {
-        setIsLoading(true);
-        const data = await getPublicCampuses();
-        if (data && data.length > 0) {
-          setCampuses(data.map(mapCampusRecord));
-        }
-      } catch (err) {
-        console.warn("Campuses query note:", err);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    loadCampuses();
-  }, [initialData]);
-
-  const filteredCampuses = campuses.filter((campus) => {
-    if (selectedCity === "All") return true;
-    return campus.city === selectedCity;
-  });
-
-  const yangonCount = campuses.filter((c) => c.city === "Yangon").length;
-  const mawlamyineCount = campuses.filter((c) => c.city === "Mawlamyine").length;
+  const visibleCampuses = useMemo(() => {
+    if (cityFilter === "all") return campuses;
+    return campuses.filter((c) => c.city === cityFilter);
+  }, [campuses, cityFilter]);
 
   return (
     <>
-      <Navbar />
-      <main className="min-h-screen bg-[#F8FAFC] pt-24 md:pt-28 pb-20">
-        {/* Hero Section */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#E8F0FE] text-[#0E3B7D] text-xs font-black uppercase tracking-wider mb-4 border border-[#0E3B7D]/20">
-            <span aria-hidden="true" className="material-symbols-outlined text-sm">location_city</span>
-            <span>Nationwide Campus Network</span>
-          </div>
-          <h1 className="text-3xl sm:text-5xl font-black text-[#09234B] tracking-tight">
-            {t("campuses.title")}
-          </h1>
-          <p className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto mt-3">
-            {t("campuses.subtitle")}
-          </p>
-        </section>
+      {/* Streamlined Compact Page Hero */}
+      <section className="bg-gradient-to-b from-[#EEF3FC]/75 to-white pt-6 pb-6 sm:pt-8 sm:pb-8 border-b border-slate-200/70">
+        <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
+          <div className="max-w-3xl space-y-2.5">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white border border-[#193E8A]/15 px-3 py-1 text-[11px] font-extrabold text-[#193E8A] uppercase tracking-wider shadow-2xs">
+              <Buildings className="w-3.5 h-3.5" weight="duotone" />
+              <span>{locField(locale, header.badgeEn, header.badgeMy)}</span>
+            </span>
 
-        {/* Filter Tabs & Campus Grid */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* City Selector */}
-          <div className="flex justify-center mb-10">
-            <div className="inline-flex p-1.5 rounded-2xl bg-white shadow-md border border-slate-200">
-              <button
-                onClick={() => setSelectedCity("All")}
-                className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                  selectedCity === "All"
-                    ? "bg-[#0E3B7D] text-white shadow-sm"
-                    : "text-slate-600 hover:text-[#0E3B7D] hover:bg-slate-50"
-                }`}
-              >
-                {t("campuses.all")} ({campuses.length})
-              </button>
-              <button
-                onClick={() => setSelectedCity("Yangon")}
-                className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                  selectedCity === "Yangon"
-                    ? "bg-[#0E3B7D] text-white shadow-sm"
-                    : "text-slate-600 hover:text-[#0E3B7D] hover:bg-slate-50"
-                }`}
-              >
-                {t("campuses.yangon")} ({yangonCount})
-              </button>
-              <button
-                onClick={() => setSelectedCity("Mawlamyine")}
-                className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                  selectedCity === "Mawlamyine"
-                    ? "bg-[#0E3B7D] text-white shadow-sm"
-                    : "text-slate-600 hover:text-[#0E3B7D] hover:bg-slate-50"
-                }`}
-              >
-                {t("campuses.mawlamyine")} ({mawlamyineCount})
-              </button>
-            </div>
+            <h1
+              className={`font-extrabold text-[#1E232B] ${
+                locale === "my"
+                  ? "text-2xl sm:text-3xl md:text-[34px] leading-[1.32]"
+                  : "text-2xl sm:text-3xl md:text-4xl tracking-tight leading-tight"
+              }`}
+            >
+              {locField(locale, header.titleEn, header.titleMy)}
+            </h1>
+
+            <p className="text-xs sm:text-sm text-slate-600 leading-normal max-w-2xl">
+              {locField(locale, header.subtitleEn, header.subtitleMy)}
+            </p>
           </div>
 
-          {/* Grid of Campuses */}
-          {filteredCampuses.length === 0 && !isLoading && (
-            <div className="text-center py-20 bg-white rounded-3xl border border-slate-200 p-8 shadow-xs max-w-xl mx-auto">
-              <span aria-hidden="true" className="material-symbols-outlined text-5xl text-slate-300 mb-2">location_city</span>
-              <h3 className="text-base font-bold text-[#09234B]">No campuses listed</h3>
-              <p className="text-xs text-slate-500 mt-1">
-                Active campus centers configured in the school database will appear here.
-              </p>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <AnimatePresence mode="popLayout">
-              {filteredCampuses.map((campus) => {
-                const campusImages = resolveCampusImages(campus);
-                const showcaseImage = campusImages[0];
-                const hasGallery = campusImages.length > 1;
-                const campusName = loc(campus, locale, "name");
-
-                return (
-                <motion.div
-                  key={campus.id}
-                  layout
-                  initial={{ opacity: 0, scale: 0.96 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.96 }}
-                  transition={{ duration: 0.3 }}
-                  className="bg-white rounded-3xl overflow-hidden border border-slate-200/80 shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col group"
+          {/* City Filter Tabs */}
+          <div
+            role="tablist"
+            aria-label="Filter campuses by city"
+            className="pt-1 inline-flex flex-wrap items-center gap-1.5 rounded-2xl bg-slate-100 p-1 border border-slate-200"
+          >
+            {(
+              [
+                ["all", `${t("campuses.allCities")} (${campuses.length})`],
+                ["Yangon", `${t("campuses.yangon")} (${yangonCount})`],
+                ["Mawlamyine", `${t("campuses.mawlamyine")} (${mawlamyineCount})`],
+              ] as const
+            ).map(([key, label]) => {
+              const active = cityFilter === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setCityFilter(key)}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-extrabold transition-all cursor-pointer ${
+                    active
+                      ? "bg-[#193E8A] text-white shadow-xs"
+                      : "text-slate-600 hover:text-[#193E8A]"
+                  }`}
                 >
-                  {/* Showcase photo — single hero image, gallery opens in modal */}
-                  <div className="relative h-72 md:h-80 w-full overflow-hidden bg-slate-100 group/image">
-                    <button
-                      type="button"
-                      onClick={() => setGalleryState(campus)}
-                      className="absolute inset-0 z-0 cursor-pointer"
-                      aria-label={
-                        hasGallery
-                          ? `View ${campusName} photo gallery (${campusImages.length} photos)`
-                          : `View ${campusName} photo`
-                      }
-                    >
-                      <Image
-                        src={showcaseImage}
-                        alt={campusName}
-                        fill
-                        unoptimized={isR2AssetUrl(showcaseImage)}
-                        className="object-cover transition-transform duration-700 group-hover/image:scale-[1.03]"
-                        sizes="(max-width: 768px) 100vw, 50vw"
-                      />
-                    </button>
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </section>
 
-                    {/* Light bottom gradient — keeps photo visible while anchoring text */}
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-[#09234B]/95 via-[#09234B]/35 to-transparent" />
+      {/* Campuses Cards Grid */}
+      <section className="py-6 sm:py-8 bg-white">
+        <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-7">
+          {visibleCampuses.map((campus) => {
+            const name = locField(locale, campus.name, campus.nameMy);
+            const tagline = locField(locale, campus.tagline, campus.taglineMy);
+            const address = locField(locale, campus.address, campus.addressMy);
+            const grades = locField(
+              locale,
+              campus.gradesServed,
+              campus.gradesServedMy
+            );
+            const facilities = locList(
+              locale,
+              campus.facilitiesEn,
+              campus.facilitiesMy
+            );
+            const allPhotos = Array.from(
+              new Set([campus.imageUrl, ...(campus.galleryUrls || [])].filter(Boolean))
+            );
+            const cityLabel =
+              campus.city === "Mawlamyine"
+                ? t("campuses.mawlamyine")
+                : t("campuses.yangon");
 
-                    {/* City Badge */}
-                    <div className="pointer-events-none absolute top-4 left-4 z-10">
-                      <span className="px-3.5 py-1 rounded-full bg-[#FFC700] text-[#09234B] text-xs font-black uppercase tracking-wider shadow-md">
-                        {campus.city}
-                      </span>
-                    </div>
+            return (
+              <article
+                key={campus.id}
+                className="rounded-3xl bg-white border border-slate-200/90 shadow-xs hover:shadow-hinthar transition-all overflow-hidden flex flex-col"
+              >
+                {/* Visual Carousel Header */}
+                <div className="relative h-52 sm:h-56 bg-slate-100">
+                  <ImageCarousel
+                    images={allPhotos}
+                    alt={name}
+                    className="h-full w-full"
+                  />
 
-                    {/* Gallery CTA — button modal works on touch + desktop (better than hover-only) */}
-                    {hasGallery && (
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setGalleryState(campus);
-                        }}
-                        className="absolute top-4 right-4 z-10 flex items-center gap-1.5 rounded-full bg-white/95 px-3.5 py-2 text-[11px] font-black uppercase tracking-wider text-[#0E3B7D] shadow-lg backdrop-blur-sm transition-all hover:bg-white hover:scale-105"
-                      >
-                        <span aria-hidden="true" className="material-symbols-outlined text-base">
-                          photo_library
-                        </span>
-                        <span>Gallery · {campusImages.length}</span>
-                      </button>
-                    )}
-
-                    {/* Mini preview stack — hints at more photos */}
-                    {hasGallery && (
-                      <div className="pointer-events-none absolute bottom-20 right-5 z-10 hidden sm:flex items-center">
-                        {campusImages.slice(1, 4).map((image, index) => (
-                          <div
-                            key={`${image}-preview-${index}`}
-                            className="relative h-10 w-14 overflow-hidden rounded-lg border-2 border-white shadow-md"
-                            style={{ marginLeft: index > 0 ? "-0.75rem" : 0, zIndex: 3 - index }}
-                          >
-                            <Image
-                              src={image}
-                              alt=""
-                              fill
-                              unoptimized={isR2AssetUrl(image)}
-                              className="object-cover"
-                              sizes="56px"
-                            />
-                          </div>
-                        ))}
-                        {campusImages.length > 4 && (
-                          <span className="ml-2 rounded-full bg-black/55 px-2 py-1 text-[10px] font-black text-white backdrop-blur-sm">
-                            +{campusImages.length - 4}
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Name & Tagline Overlay */}
-                    <div className="pointer-events-none absolute bottom-4 left-5 right-5 z-10 text-white">
-                      <h2 className="text-2xl font-black tracking-tight drop-shadow-md">
-                        {campusName}
-                      </h2>
-                      <p className="text-xs sm:text-sm text-[#FFC700] font-semibold line-clamp-1">
-                        {loc(campus, locale, "tagline")}
-                      </p>
-                    </div>
+                  <div className="absolute top-3 left-3 z-10 flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[#FFD600] px-2.5 py-1 text-[11px] font-extrabold text-[#162033] shadow-xs">
+                      <MapPin className="w-3 h-3" weight="fill" />
+                      {cityLabel}
+                    </span>
                   </div>
 
-                  {/* Campus Body Details */}
-                  <div className="p-6 flex-1 flex flex-col justify-between">
-                    <div className="space-y-4">
-                      {/* Grades Served — grades stay EN per no-translate rule */}
-                      <div className="flex items-center gap-2 text-xs font-bold text-[#0E3B7D] bg-blue-50/80 px-3.5 py-2 rounded-xl border border-blue-100">
-                        <span aria-hidden="true" className="material-symbols-outlined text-sm">school</span>
-                        <span>{campus.gradesServed}</span>
-                      </div>
+                  {allPhotos.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setGalleryTarget({
+                          name,
+                          city: cityLabel,
+                          images: allPhotos,
+                        })
+                      }
+                      className="absolute top-3 right-3 z-10 inline-flex items-center gap-1 rounded-full bg-[#0F2759]/80 hover:bg-[#0F2759] px-3 py-1 text-[11px] font-bold text-white backdrop-blur-xs transition-colors cursor-pointer"
+                    >
+                      <Images className="w-3.5 h-3.5 text-[#FFD600]" weight="duotone" />
+                      <span>
+                        {t("campuses.viewGallery")} ({allPhotos.length})
+                      </span>
+                    </button>
+                  )}
+                </div>
 
-                      {/* Address — bilingual */}
-                      <div className="flex items-start gap-2.5 text-xs sm:text-sm text-slate-700">
-                        <span aria-hidden="true" className="material-symbols-outlined text-base text-[#0E3B7D] shrink-0 mt-0.5">
-                          pin_drop
-                        </span>
-                        <span className="font-medium">{loc(campus, locale, "address")}</span>
-                      </div>
+                {/* Campus Content */}
+                <div className="p-5 sm:p-6 flex-1 flex flex-col justify-between space-y-5">
+                  <div className="space-y-4">
+                    <div>
+                      <h2 className="text-lg sm:text-xl font-extrabold text-[#1E232B]">
+                        {name}
+                      </h2>
+                      <p className="text-xs sm:text-sm font-semibold text-[#193E8A] mt-0.5">
+                        {tagline}
+                      </p>
+                    </div>
 
-                      {/* Contact Info */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-600">
-                        <div className="flex items-center gap-2">
-                          <span aria-hidden="true" className="material-symbols-outlined text-sm text-[#0E3B7D]">call</span>
-                          <span className="font-semibold truncate">{campus.phone}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span aria-hidden="true" className="material-symbols-outlined text-sm text-[#0E3B7D]">mail</span>
-                          <span className="font-semibold truncate">{campus.email}</span>
-                        </div>
+                    {/* Pathways Served */}
+                    <div className="rounded-2xl bg-[#EEF3FC]/75 border border-[#193E8A]/10 p-3.5 flex items-start gap-2.5">
+                      <GraduationCap
+                        className="w-4 h-4 text-[#193E8A] shrink-0 mt-0.5"
+                        weight="duotone"
+                      />
+                      <div>
+                        <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#193E8A]">
+                          {t("campuses.gradesServed")}
+                        </p>
+                        <p className="text-xs sm:text-sm font-bold text-[#1E232B] mt-0.5">
+                          {grades}
+                        </p>
                       </div>
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="pt-6 mt-6 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setActiveCampusModal(campus)}
-                          className="px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer"
-                        >
-                          <span aria-hidden="true" className="material-symbols-outlined text-base text-[#0E3B7D]">info</span>
-                          <span>{t("campuses.details")}</span>
-                        </button>
+                    {/* Contact Info */}
+                    <div className="space-y-2 text-xs text-slate-600">
+                      <div className="flex items-start gap-2.5">
+                        <MapPin
+                          className="w-3.5 h-3.5 text-[#193E8A] shrink-0 mt-0.5"
+                          weight="fill"
+                        />
+                        <span>{address}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2.5">
+                        <Phone
+                          className="w-3.5 h-3.5 text-[#193E8A] shrink-0"
+                          weight="fill"
+                        />
                         <a
-                          href={getMapUrl(campus)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-3.5 py-2.5 rounded-xl bg-[#E8F0FE] hover:bg-[#0E3B7D] text-[#0E3B7D] hover:text-white text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer"
+                          href={`tel:${campus.phone.split("/")[0].replace(/\s+/g, "")}`}
+                          className="font-semibold text-[#1E232B] hover:text-[#193E8A] transition-colors"
                         >
-                          <span aria-hidden="true" className="material-symbols-outlined text-base">map</span>
-                          <span>{t("campuses.viewMap")}</span>
+                          {campus.phone}
                         </a>
                       </div>
 
-                      <Link
-                        href="/admission"
-                        className="px-4 py-2.5 rounded-xl bg-[#0E3B7D] hover:bg-[#164E9A] text-white text-xs font-black uppercase tracking-wider shadow-md hover:shadow-lg transition-all flex items-center gap-1.5"
-                      >
-                        <span>{t("campuses.apply")}</span>
-                        <span aria-hidden="true" className="material-symbols-outlined text-base">arrow_forward</span>
-                      </Link>
+                      <div className="flex items-center gap-2.5">
+                        <EnvelopeSimple
+                          className="w-3.5 h-3.5 text-[#193E8A] shrink-0"
+                          weight="fill"
+                        />
+                        <a
+                          href={`mailto:${campus.email}`}
+                          className="hover:text-[#193E8A] transition-colors break-all"
+                        >
+                          {campus.email}
+                        </a>
+                      </div>
                     </div>
+
+                    {/* Facilities */}
+                    {facilities.length > 0 && (
+                      <div className="space-y-1.5">
+                        <p className="text-[11px] font-bold text-slate-500">
+                          {t("campuses.facilities")}
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {facilities.map((facility, idx) => (
+                            <span
+                              key={idx}
+                              className="inline-flex items-center gap-1 rounded-xl bg-[#F8FAFC] border border-slate-200 px-2.5 py-1 text-[11px] font-semibold text-[#1E232B]"
+                            >
+                              <CheckCircle
+                                className="w-3 h-3 text-[#193E8A] shrink-0"
+                                weight="fill"
+                              />
+                              {facility}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </motion.div>
-              );
-              })}
-            </AnimatePresence>
-          </div>
+
+                  {/* Card Footer CTAs */}
+                  <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2.5">
+                    {campus.mapUrl ? (
+                      <a
+                        href={campus.mapUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 min-h-10 px-3.5 py-2 rounded-xl border border-slate-200 hover:border-[#193E8A] text-xs font-bold text-[#193E8A] transition-colors"
+                      >
+                        <ArrowSquareOut className="w-3.5 h-3.5" weight="bold" />
+                        <span>{t("campuses.openMap")}</span>
+                      </a>
+                    ) : (
+                      <span />
+                    )}
+
+                    <Link
+                      href={`/admission?region=${encodeURIComponent(campus.city)}`}
+                      className="inline-flex items-center gap-1.5 min-h-10 px-4 py-2 rounded-full bg-[#FFD600] hover:bg-[#ECC300] text-[#162033] text-xs font-extrabold shadow-2xs transition-all"
+                    >
+                      <span>{t("campuses.applyCampus")}</span>
+                      <ArrowRight className="w-3.5 h-3.5" weight="bold" />
+                    </Link>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
         </div>
+      </section>
 
-        {/* Gallery lightbox */}
-        {galleryState && (
-          <CampusGalleryModal
-            isOpen
-            images={resolveCampusImages(galleryState)}
-            campusName={loc(galleryState, locale, "name")}
-            city={galleryState.city}
-            onClose={() => setGalleryState(null)}
-          />
-        )}
-
-        {/* Modal: Full Campus Facilities */}
-        {activeCampusModal && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 space-y-6 shadow-2xl">
-              <div className="flex justify-between items-start">
-                <div>
-                  <span className="text-xs font-black uppercase text-[#FFC700] tracking-wider bg-[#09234B] px-3 py-1 rounded-full">
-                    {activeCampusModal.city} Branch
-                  </span>
-                  <h3 className="text-2xl font-black text-[#09234B] mt-2">
-                    {activeCampusModal.name}
-                  </h3>
-                  <p className="text-xs text-slate-500">{activeCampusModal.tagline}</p>
-                </div>
-                <button
-                  onClick={() => setActiveCampusModal(null)}
-                  className="text-slate-400 hover:text-slate-700"
-                >
-                  <span aria-hidden="true" className="material-symbols-outlined">close</span>
-                </button>
-              </div>
-
-              <div className="space-y-3 text-xs text-slate-700">
-                <div className="flex items-start justify-between gap-2">
-                  <p><strong>Address:</strong> {activeCampusModal.address}</p>
-                  <a
-                    href={getMapUrl(activeCampusModal)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#E8F0FE] hover:bg-[#0E3B7D] text-[#0E3B7D] hover:text-white font-bold text-[11px] transition-colors shrink-0"
-                  >
-                    <span aria-hidden="true" className="material-symbols-outlined text-xs">map</span>
-                    <span>Open Map</span>
-                  </a>
-                </div>
-                <p><strong>Phone:</strong> {activeCampusModal.phone}</p>
-                <p><strong>Email:</strong> {activeCampusModal.email}</p>
-                <p><strong>Programs:</strong> {activeCampusModal.gradesServed}</p>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-                <button
-                  onClick={() => setActiveCampusModal(null)}
-                  className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl font-bold text-xs cursor-pointer"
-                >
-                  Close
-                </button>
-                <Link
-                  href="/admission"
-                  className="px-5 py-2 bg-[#0E3B7D] text-white rounded-xl font-bold text-xs flex items-center gap-1"
-                >
-                  <span>{t("nav.applyNow")}</span>
-                  <span aria-hidden="true" className="material-symbols-outlined text-xs">arrow_forward</span>
-                </Link>
-              </div>
-            </div>
-          </div>
-        )}
-      </main>
-      <FooterSection />
+      <CampusGalleryModal
+        isOpen={Boolean(galleryTarget)}
+        onClose={() => setGalleryTarget(null)}
+        campusName={galleryTarget?.name ?? ""}
+        city={galleryTarget?.city}
+        images={galleryTarget?.images ?? []}
+      />
     </>
   );
 }

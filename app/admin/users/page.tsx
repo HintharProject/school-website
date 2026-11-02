@@ -11,6 +11,19 @@ import {
 } from "../adminStore";
 import { authClient } from "@/lib/auth/auth-client";
 import {
+  Lock,
+  CheckCircle,
+  UserPlus,
+  MagnifyingGlass,
+  PencilSimple,
+  Trash,
+  Copy,
+  EnvelopeOpen,
+  X,
+  WarningCircle,
+} from "@phosphor-icons/react";
+
+import {
   getUsers,
   getPendingInvitations,
   inviteUserAction,
@@ -89,7 +102,7 @@ export default function AdminUsersPage() {
     return (
       <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-sm max-w-xl mx-auto my-12">
         <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto mb-4">
-          <span aria-hidden="true" className="material-symbols-outlined text-3xl">lock</span>
+          <Lock className="w-8 h-8" weight="bold" />
         </div>
         <h2 className="text-xl font-black text-slate-800">User Account Management</h2>
         <p className="text-xs text-slate-500 mt-2 leading-relaxed">
@@ -231,8 +244,8 @@ export default function AdminUsersPage() {
     <div className="space-y-6">
       {/* Toast Notification */}
       {toastMessage && (
-        <div role="status" aria-live="polite" className="fixed bottom-6 right-6 z-50 bg-[#0E3B7D] text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-[#FFC700] animate-fade-in">
-          <span aria-hidden="true" className="material-symbols-outlined text-[#FFC700]">check_circle</span>
+        <div role="status" aria-live="polite" className="fixed bottom-6 right-6 z-50 bg-[#193E8A] text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-[#FFD600] animate-fade-in">
+          <CheckCircle className="w-5 h-5 text-[#FFD600]" weight="fill" />
           <span className="text-sm font-bold">{toastMessage}</span>
         </div>
       )}
@@ -241,8 +254,8 @@ export default function AdminUsersPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-black text-[#0E3B7D]">User Accounts &amp; Access</h1>
-            <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-[#0E3B7D] font-extrabold text-xs">
+            <h1 className="text-2xl font-black text-[#193E8A]">User Accounts &amp; Access</h1>
+            <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-[#193E8A] font-extrabold text-xs">
               {users.length} Active Accounts
             </span>
           </div>
@@ -253,9 +266,9 @@ export default function AdminUsersPage() {
 
         <button
           onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#FFC700] hover:bg-[#E6B300] text-[#09234B] font-extrabold text-xs uppercase tracking-wider shadow-sm transition-all active:scale-95 cursor-pointer"
+          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#FFD600] hover:bg-[#E6B300] text-[#0F2759] font-extrabold text-xs uppercase tracking-wider shadow-sm transition-all active:scale-95 cursor-pointer"
         >
-          <span aria-hidden="true" className="material-symbols-outlined text-base">person_add</span>
+          <UserPlus className="w-4 h-4" weight="bold" />
           <span>Invite New User</span>
         </button>
       </div>
@@ -263,15 +276,13 @@ export default function AdminUsersPage() {
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-2xl border border-slate-200">
         <div className="relative w-full sm:w-80">
-          <span aria-hidden="true" className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base">
-            search
-          </span>
+          <MagnifyingGlass className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" weight="bold" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by name, email, role, title..."
-            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-[#0E3B7D]"
+            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-[#193E8A]"
           />
         </div>
 
@@ -330,7 +341,7 @@ export default function AdminUsersPage() {
                         <span
                           className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
                             u.role === "admin"
-                              ? "bg-[#0E3B7D] text-white"
+                              ? "bg-[#193E8A] text-white"
                               : "bg-emerald-600 text-white"
                           }`}
                         >
@@ -363,11 +374,11 @@ export default function AdminUsersPage() {
                         <div className="inline-flex items-center gap-1">
                           <button
                             onClick={() => openEdit(u)}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-[#0E3B7D] hover:bg-blue-50 transition-colors cursor-pointer"
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-[#193E8A] hover:bg-blue-50 transition-colors cursor-pointer"
                             title="Edit account (name/role) — email cannot be changed"
                             aria-label={`Edit account for ${u.fullName}`}
                           >
-                            <span aria-hidden="true" className="material-symbols-outlined text-base">edit</span>
+                            <PencilSimple className="w-4 h-4" weight="bold" />
                           </button>
                           <button
                             onClick={() => setDeletingUser(u)}
@@ -375,7 +386,7 @@ export default function AdminUsersPage() {
                             title="Delete Account"
                             aria-label={`Delete account for ${u.fullName}`}
                           >
-                            <span aria-hidden="true" className="material-symbols-outlined text-base">delete</span>
+                            <Trash className="w-4 h-4" weight="bold" />
                           </button>
                         </div>
                       </td>
@@ -392,7 +403,7 @@ export default function AdminUsersPage() {
       {pendingInvites.length > 0 && (
         <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-4 shadow-xs">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-black text-[#09234B] uppercase tracking-wider">
+            <h3 className="text-sm font-black text-[#0F2759] uppercase tracking-wider">
               Pending Single-Use Invitations ({pendingInvites.length})
             </h3>
           </div>
@@ -412,9 +423,9 @@ export default function AdminUsersPage() {
                     navigator.clipboard.writeText(url);
                     showToast("Invite link copied to clipboard!");
                   }}
-                  className="px-3 py-1 bg-slate-100 hover:bg-[#0E3B7D] hover:text-white rounded-lg font-bold text-[11px] transition-all flex items-center gap-1 cursor-pointer"
+                  className="px-3 py-1 bg-slate-100 hover:bg-[#193E8A] hover:text-white rounded-lg font-bold text-[11px] transition-all flex items-center gap-1 cursor-pointer"
                 >
-                  <span aria-hidden="true" className="material-symbols-outlined text-xs">content_copy</span>
+                  <Copy className="w-3.5 h-3.5" weight="bold" />
                   <span>Copy Link</span>
                 </button>
               </div>
@@ -427,7 +438,7 @@ export default function AdminUsersPage() {
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-4 shadow-2xl">
-            <h2 className="text-xl font-black text-[#09234B]">Invite School Account</h2>
+            <h2 className="text-xl font-black text-[#0F2759]">Invite School Account</h2>
             <form onSubmit={handleCreateInvite} className="space-y-3 text-xs">
               <div>
                 <label className="font-bold text-slate-700 block mb-1">Full Name</label>
@@ -524,7 +535,7 @@ export default function AdminUsersPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2 rounded-xl bg-[#0E3B7D] text-white font-bold disabled:opacity-50"
+                  className="px-5 py-2 rounded-xl bg-[#193E8A] text-white font-bold disabled:opacity-50"
                 >
                   {isSubmitting ? "Generating..." : "Dispatch Invitation"}
                 </button>
@@ -539,9 +550,9 @@ export default function AdminUsersPage() {
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-4 shadow-2xl">
             <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
-              <span aria-hidden="true" className="material-symbols-outlined text-2xl">mark_email_read</span>
+              <EnvelopeOpen className="w-6 h-6" weight="bold" />
             </div>
-            <h2 className="text-xl font-black text-[#09234B]">Invitation Created!</h2>
+            <h2 className="text-xl font-black text-[#0F2759]">Invitation Created!</h2>
             <p className="text-xs text-slate-600">
               An invitation has been generated for <strong>{inviteModalData.name}</strong> ({inviteModalData.email}) with role <strong>{inviteModalData.role}</strong>.
             </p>
@@ -573,7 +584,7 @@ export default function AdminUsersPage() {
                     setCopiedLink(true);
                     setTimeout(() => setCopiedLink(false), 2000);
                   }}
-                  className="px-3 py-2 bg-[#0E3B7D] hover:bg-[#164E9A] text-white rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer"
+                  className="px-3 py-2 bg-[#193E8A] hover:bg-[#164E9A] text-white rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer"
                 >
                   {copiedLink ? "Copied!" : "Copy"}
                 </button>
@@ -596,7 +607,7 @@ export default function AdminUsersPage() {
       {editingUser && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-4 shadow-2xl">
-            <h3 className="text-lg font-black text-[#09234B]">Edit Account</h3>
+            <h3 className="text-lg font-black text-[#0F2759]">Edit Account</h3>
             <p className="text-[11px] text-slate-500">Email cannot be changed — it is the invitation identity. To change email, delete and re-invite.</p>
             <form onSubmit={handleSaveEdit} className="space-y-3 text-xs">
               <div>
@@ -636,7 +647,7 @@ export default function AdminUsersPage() {
               )}
               <div className="flex justify-end gap-2 pt-2">
                 <button type="button" onClick={() => setEditingUser(null)} className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs">Cancel</button>
-                <button type="submit" className="px-5 py-2 rounded-xl bg-[#0E3B7D] text-white font-bold text-xs">Save Changes</button>
+                <button type="submit" className="px-5 py-2 rounded-xl bg-[#193E8A] text-white font-bold text-xs">Save Changes</button>
               </div>
             </form>
           </div>
@@ -647,7 +658,7 @@ export default function AdminUsersPage() {
       {deletingUser && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div role="dialog" aria-modal="true" className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
-            <h3 className="text-base font-black text-[#09234B]">Delete Account?</h3>
+            <h3 className="text-base font-black text-[#0F2759]">Delete Account?</h3>
             <p className="text-xs text-slate-600">
               Are you sure you want to delete the account for <strong>{deletingUser.fullName}</strong> ({deletingUser.email})?
             </p>

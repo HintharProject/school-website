@@ -1,13 +1,15 @@
 "use client";
 
-// ── APPLICATION STATUS ────────────────────────────────────────────────────────
-/* eslint-disable @typescript-eslint/no-explicit-any -- These adapters normalize records returned by D1, Better Auth, and legacy seed data. */
+/* eslint-disable @typescript-eslint/no-explicit-any -- Normalizers bridge D1/Drizzle and Better Auth records cleanly */
 
 import { parseGalleryUrls } from "@/lib/campuses/images";
 
-export type ApplicationStatus = "Pending" | "Assessment Scheduled" | "Approved" | "Declined";
+export type ApplicationStatus =
+  | "Pending"
+  | "Assessment Scheduled"
+  | "Approved"
+  | "Declined";
 
-// ── ADMISSION APPLICATION (camelCase UI type) ─────────────────────────────────
 export interface AdmissionApplication {
   id: string;
   studentName: string;
@@ -16,12 +18,17 @@ export interface AdmissionApplication {
   nationality?: string;
   grade: string;
   programLevel?: string;
+  targetProgramId?: string;
   finishedGrade?: string;
   suggestedEntryYear?: string;
   preferredRegion?: "Yangon" | "Mawlamyine";
   academicStream?: string;
   selectedSubjects?: string[];
-  documentUrls?: { type: "identity" | "report" | "photo"; url: string; filename: string }[];
+  documentUrls?: {
+    type: "identity" | "report" | "photo";
+    url: string;
+    filename: string;
+  }[];
   intendedStartTerm?: string;
   studyMode?: string;
   previousSchool?: string;
@@ -66,15 +73,18 @@ export function mapAdmissionRecord(d: any): AdmissionApplication {
     dateOfBirth: d.dateOfBirth ?? d.date_of_birth ?? undefined,
     gender: (d.gender ?? undefined) as "Male" | "Female" | "Other" | undefined,
     nationality: d.nationality ?? undefined,
-    grade: d.grade || "IGCSE",
+    grade: d.grade || "Pearson Edexcel IGCSE",
     programLevel: d.programLevel ?? d.program_level ?? undefined,
+    targetProgramId: d.targetProgramId ?? d.target_program_id ?? undefined,
     finishedGrade: d.finishedGrade ?? d.finished_grade ?? undefined,
-    suggestedEntryYear: d.suggestedEntryYear ?? d.suggested_entry_year ?? undefined,
+    suggestedEntryYear:
+      d.suggestedEntryYear ?? d.suggested_entry_year ?? undefined,
     preferredRegion: d.preferredRegion ?? d.preferred_region ?? undefined,
     academicStream: d.academicStream ?? d.academic_stream ?? undefined,
     selectedSubjects: subjects,
     documentUrls: Array.isArray(documents) ? documents : [],
-    intendedStartTerm: d.intendedStartTerm ?? d.intended_start_term ?? undefined,
+    intendedStartTerm:
+      d.intendedStartTerm ?? d.intended_start_term ?? undefined,
     studyMode: d.studyMode ?? d.study_mode ?? undefined,
     previousSchool: d.previousSchool ?? d.previous_school ?? undefined,
     parentName: d.parentName ?? d.parent_name ?? undefined,
@@ -85,14 +95,17 @@ export function mapAdmissionRecord(d: any): AdmissionApplication {
     emergencyContact: d.emergencyContact ?? d.emergency_contact ?? undefined,
     medicalNotes: d.medicalNotes ?? d.medical_notes ?? undefined,
     howHeard: d.howHeard ?? d.how_heard ?? undefined,
-    submittedDate: d.submittedDate || d.submitted_date || d.createdAt?.split("T")[0] || new Date().toISOString().split("T")[0],
+    submittedDate:
+      d.submittedDate ||
+      d.submitted_date ||
+      d.createdAt?.split("T")[0] ||
+      new Date().toISOString().split("T")[0],
     status: (d.status as ApplicationStatus) || "Pending",
     assessmentDate: d.assessmentDate ?? d.assessment_date ?? undefined,
     notes: d.notes ?? undefined,
   };
 }
 
-// ── YEARBOOK SCHOLAR (camelCase UI type) ──────────────────────────────────────
 export interface YearbookScholar {
   id: number;
   name: string;
@@ -100,15 +113,17 @@ export interface YearbookScholar {
   batchName: string;
   batchRegion: "Yangon" | "Mawlamyine";
   role: string;
+  roleMy?: string;
   destination: string;
   subjects: string;
   quote: string;
+  quoteMy?: string;
   image: string;
   badge?: string;
+  badgeMy?: string;
   campus?: string;
   status?: "published" | "pending_review" | "archived";
   submittedBy?: string;
-  submittedByName?: string;
   reviewerNotes?: string;
 }
 
@@ -118,13 +133,18 @@ export function mapYearbookRecord(d: any): YearbookScholar {
     name: d.name,
     batchId: d.batchId ?? d.batch_id ?? "",
     batchName: d.batchName ?? d.batch_name ?? d.category ?? "Yearbook",
-    batchRegion: (d.batchRegion ?? d.batch_region ?? "Yangon") as "Yangon" | "Mawlamyine",
+    batchRegion: (d.batchRegion ?? d.batch_region ?? "Yangon") as
+      | "Yangon"
+      | "Mawlamyine",
     role: d.role || "",
+    roleMy: d.roleMy ?? d.role_my ?? undefined,
     destination: d.destination || "",
     subjects: d.subjects || "",
     quote: d.quote || "",
+    quoteMy: d.quoteMy ?? d.quote_my ?? undefined,
     image: d.image || "/images/g5.jpg",
     badge: d.badge ?? undefined,
+    badgeMy: d.badgeMy ?? d.badge_my ?? undefined,
     campus: d.campus ?? "both-campuses",
     status: d.status || "published",
     submittedBy: d.submittedBy ?? d.submitted_by,
@@ -132,74 +152,28 @@ export function mapYearbookRecord(d: any): YearbookScholar {
   };
 }
 
-// ── COURSE ITEM (camelCase UI type) ───────────────────────────────────────────
-export interface CourseItem {
-  id: string;
-  name: string;
-  code: string;
-  grade: "Lower Secondary (Year 7–9)" | "Pearson IGCSE" | "Pearson IAL";
-  category: "STEM" | "Business" | "Computing" | "Languages";
-  time: string;
-  instructor: string;
-  room?: string;
-  credits?: string;
-  description?: string;
-  isActive?: boolean;
-}
-
-export function mapCourseRecord(d: any): CourseItem {
-  return {
-    id: d.id,
-    name: d.name,
-    code: d.code || "",
-    grade: d.grade,
-    category: d.category,
-    time: d.time || "",
-    instructor: d.instructor || "",
-    room: d.room ?? undefined,
-    credits: d.credits ?? "Core",
-    description: d.description ?? undefined,
-    isActive: typeof d.isActive === "boolean" ? d.isActive : typeof d.is_active === "boolean" ? d.is_active : true,
-  };
-}
-
-// ── BULLETIN NOTICE (camelCase UI type) ───────────────────────────────────────
-export interface BulletinNotice {
-  id: number;
-  title: string;
-  date: string;
-  type: "Official Notice" | "Academic" | "General";
-  content: string;
-  isPinned?: boolean;
-}
-
-export function mapBulletinRecord(d: any): BulletinNotice {
-  return {
-    id: Number(d.id),
-    title: d.title,
-    date: d.date,
-    type: d.type,
-    content: d.content,
-    isPinned: typeof d.isPinned === "boolean" ? d.isPinned : typeof d.is_pinned === "boolean" ? d.is_pinned : false,
-  };
-}
-
-// ── CLUB ITEM (camelCase UI type) ─────────────────────────────────────────────
 export interface ClubItem {
   id: number;
   name: string;
-  category: "STEM & Tech" | "Academic & Debate" | "STEM & Science" | "Creative Arts" | "Sports & Fitness";
+  category:
+    | "STEM & Tech"
+    | "Academic & Debate"
+    | "STEM & Science"
+    | "Creative Arts"
+    | "Sports & Fitness";
   icon: string;
   members: string;
   meetingTime: string;
+  meetingTimeMy?: string;
   leadership: string;
+  leadershipMy?: string;
   description: string;
+  descriptionMy?: string;
   image: string;
   galleryUrls?: string[];
   campus?: string;
   status?: "published" | "pending_review" | "archived";
   submittedBy?: string;
-  submittedByName?: string;
   isActive?: boolean;
 }
 
@@ -209,34 +183,50 @@ export function mapClubRecord(d: any): ClubItem {
     id: Number(d.id),
     name: d.name,
     category: d.category,
-    icon: d.icon || "groups",
+    icon: d.icon || "users",
     members: d.members || "25+ Scholars",
     meetingTime: d.meetingTime || d.meeting_time || "",
+    meetingTimeMy: d.meetingTimeMy ?? d.meeting_time_my ?? undefined,
     leadership: d.leadership || "",
+    leadershipMy: d.leadershipMy ?? d.leadership_my ?? undefined,
     description: d.description || "",
+    descriptionMy: d.descriptionMy ?? d.description_my ?? undefined,
     image: d.image || "/images/engineering.avif",
-    galleryUrls: Array.isArray(gallery) ? gallery : (() => {
-      try { return JSON.parse(gallery); } catch { return []; }
-    })(),
+    galleryUrls: Array.isArray(gallery)
+      ? gallery
+      : (() => {
+          try {
+            return JSON.parse(gallery);
+          } catch {
+            return [];
+          }
+        })(),
     campus: d.campus || "both-campuses",
     status: d.status || "published",
     submittedBy: d.submittedBy ?? d.submitted_by,
-    isActive: typeof d.isActive === "boolean" ? d.isActive : typeof d.is_active === "boolean" ? d.is_active : true,
+    isActive:
+      typeof d.isActive === "boolean"
+        ? d.isActive
+        : typeof d.is_active === "boolean"
+          ? d.is_active
+          : true,
   };
 }
 
-// ── ACTIVITY ITEM (camelCase UI type) ─────────────────────────────────────────
 export interface ActivityItem {
   id: number;
   clubId?: number;
   title: string;
+  titleMy?: string;
   category: "academic" | "sports" | "cultural" | "science";
   date: string;
   month: string;
   day: string;
   time: string;
   location: string;
+  locationMy?: string;
   description: string;
+  descriptionMy?: string;
   image: string;
   status: "Upcoming" | "Active Registration" | "Past Highlight";
   campus?: string;
@@ -249,15 +239,22 @@ export interface ActivityItem {
 export function mapActivityRecord(d: any): ActivityItem {
   return {
     id: Number(d.id),
-    clubId: d.clubId ? Number(d.clubId) : d.club_id ? Number(d.club_id) : undefined,
+    clubId: d.clubId
+      ? Number(d.clubId)
+      : d.club_id
+        ? Number(d.club_id)
+        : undefined,
     title: d.title,
+    titleMy: d.titleMy ?? d.title_my ?? undefined,
     category: d.category || "academic",
     date: d.date || "",
     month: d.month || "",
     day: d.day || "",
     time: d.time || "",
     location: d.location || "",
+    locationMy: d.locationMy ?? d.location_my ?? undefined,
     description: d.description || "",
+    descriptionMy: d.descriptionMy ?? d.description_my ?? undefined,
     image: d.image || "/images/engineering.avif",
     status: d.status || "Upcoming",
     campus: d.campus || "both-campuses",
@@ -268,7 +265,6 @@ export function mapActivityRecord(d: any): ActivityItem {
   };
 }
 
-// ── CAMPUS RECORD ─────────────────────────────────────────────────────────────
 export interface CampusRecord {
   id: string;
   name: string;
@@ -281,12 +277,27 @@ export interface CampusRecord {
   phone: string;
   email: string;
   gradesServed: string;
+  gradesServedMy?: string;
+  facilitiesEn?: string[];
+  facilitiesMy?: string[];
   imageUrl: string;
   galleryUrls?: string[];
   mapUrl?: string;
+  sortOrder?: number;
   isActive: boolean;
-  createdAt?: string;
-  updatedAt?: string;
+}
+
+function parseJsonStringList(raw: unknown): string[] {
+  if (Array.isArray(raw)) return raw.map(String).filter(Boolean);
+  if (typeof raw === "string" && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
 }
 
 export function mapCampusRecord(d: any): CampusRecord {
@@ -294,7 +305,7 @@ export function mapCampusRecord(d: any): CampusRecord {
     id: d.id,
     name: d.name,
     nameMy: d.nameMy || d.name_my || undefined,
-    city: d.city,
+    city: d.city === "Mawlamyine" ? "Mawlamyine" : "Yangon",
     tagline: d.tagline || "",
     taglineMy: d.taglineMy || d.tagline_my || undefined,
     address: d.address || "",
@@ -302,16 +313,22 @@ export function mapCampusRecord(d: any): CampusRecord {
     phone: d.phone || "",
     email: d.email || "",
     gradesServed: d.gradesServed || d.grades_served || "",
+    gradesServedMy: d.gradesServedMy || d.grades_served_my || undefined,
+    facilitiesEn: parseJsonStringList(d.facilitiesEn ?? d.facilities_en),
+    facilitiesMy: parseJsonStringList(d.facilitiesMy ?? d.facilities_my),
     imageUrl: d.imageUrl || d.image_url || "/images/g2.jpg",
     galleryUrls: parseGalleryUrls(d.galleryUrls ?? d.gallery_urls),
     mapUrl: d.mapUrl || d.map_url || undefined,
-    isActive: typeof d.isActive === "boolean" ? d.isActive : typeof d.is_active === "boolean" ? d.is_active : true,
-    createdAt: d.createdAt || d.created_at,
-    updatedAt: d.updatedAt || d.updated_at,
+    sortOrder: Number(d.sortOrder ?? d.sort_order ?? 0),
+    isActive:
+      typeof d.isActive === "boolean"
+        ? d.isActive
+        : typeof d.is_active === "boolean"
+          ? d.is_active
+          : true,
   };
 }
 
-// ── CAMPUS OPTION ─────────────────────────────────────────────────────────────
 export interface CampusOption {
   id: string;
   label: string;
@@ -320,12 +337,42 @@ export interface CampusOption {
 }
 
 export const HIERARCHICAL_CAMPUS_OPTIONS: CampusOption[] = [
-  { id: "ywarma-campus", label: "Yangon — Ywarma Campus (Flagship Academic Center)", city: "Yangon", scope: "branch" },
-  { id: "shwe-padauk-campus", label: "Yangon — Shwe Padauk Campus (Senior STEM & Robotics Lab)", city: "Yangon", scope: "branch" },
-  { id: "shwe-pone-nyet-campus", label: "Yangon — Shwe Pone Nyet Campus (Junior & Creative Arts)", city: "Yangon", scope: "branch" },
-  { id: "yangon-all", label: "Yangon — All Yangon Branches (City-wide)", city: "Yangon", scope: "city_wide" },
-  { id: "mawlamyine-campus", label: "Mawlamyine — Mawlamyine Regional Campus", city: "Mawlamyine", scope: "branch" },
-  { id: "both-campuses", label: "Both — Yangon & Mawlamyine (Dual Campus Network)", city: "Both", scope: "all_campuses" },
+  {
+    id: "ywarma-campus",
+    label: "Yangon — Ywarma Campus (Flagship Centre)",
+    city: "Yangon",
+    scope: "branch",
+  },
+  {
+    id: "shwe-padauk-campus",
+    label: "Yangon — Shwe Padauk Campus (STEM & Robotics)",
+    city: "Yangon",
+    scope: "branch",
+  },
+  {
+    id: "shwe-pone-nyet-campus",
+    label: "Yangon — Shwe Pone Nyet Campus (Lower Secondary)",
+    city: "Yangon",
+    scope: "branch",
+  },
+  {
+    id: "yangon-all",
+    label: "Yangon — All Yangon Campuses",
+    city: "Yangon",
+    scope: "city_wide",
+  },
+  {
+    id: "mawlamyine-campus",
+    label: "Mawlamyine — Mawlamyine Campus",
+    city: "Mawlamyine",
+    scope: "branch",
+  },
+  {
+    id: "both-campuses",
+    label: "Both — Yangon & Mawlamyine Network",
+    city: "Both",
+    scope: "all_campuses",
+  },
 ];
 
 export function formatCampusBadge(campusIdOrCity?: string): {
@@ -334,50 +381,54 @@ export function formatCampusBadge(campusIdOrCity?: string): {
   badgeClass: string;
 } {
   const key = (campusIdOrCity || "yangon-all").toLowerCase().trim();
-  if (key.includes("both") || key === "all-campuses" || key === "both-campuses" || key === "dual") {
+  if (
+    key.includes("both") ||
+    key === "all-campuses" ||
+    key === "both-campuses" ||
+    key === "dual"
+  ) {
     return {
       city: "Both",
-      label: "Yangon & Mawlamyine (Both)",
-      badgeClass: "bg-purple-100 text-purple-800 border border-purple-200",
+      label: "Yangon & Mawlamyine",
+      badgeClass: "bg-indigo-50 text-indigo-800 border border-indigo-200",
     };
   }
   if (key.includes("mawlamyine")) {
     return {
       city: "Mawlamyine",
-      label: "Mawlamyine Campus",
-      badgeClass: "bg-amber-100 text-amber-900 border border-amber-300",
+      label: "Mawlamyine",
+      badgeClass: "bg-[#FFFBE6] text-[#162033] border border-[#FFD600]",
     };
   }
   if (key === "ywarma-campus" || key === "ywarma") {
     return {
       city: "Yangon",
       label: "Yangon (Ywarma)",
-      badgeClass: "bg-blue-100 text-[#0E3B7D] border border-blue-200",
+      badgeClass: "bg-[#EEF3FC] text-[#193E8A] border border-[#193E8A]/20",
     };
   }
   if (key === "shwe-padauk-campus" || key === "shwe padauk") {
     return {
       city: "Yangon",
       label: "Yangon (Shwe Padauk)",
-      badgeClass: "bg-blue-100 text-[#0E3B7D] border border-blue-200",
+      badgeClass: "bg-[#EEF3FC] text-[#193E8A] border border-[#193E8A]/20",
     };
   }
   if (key === "shwe-pone-nyet-campus" || key === "shwe pone nyet") {
     return {
       city: "Yangon",
       label: "Yangon (Shwe Pone Nyet)",
-      badgeClass: "bg-blue-100 text-[#0E3B7D] border border-blue-200",
+      badgeClass: "bg-[#EEF3FC] text-[#193E8A] border border-[#193E8A]/20",
     };
   }
   return {
     city: "Yangon",
     label: "Yangon Campuses",
-    badgeClass: "bg-blue-100 text-[#0E3B7D] border border-blue-200",
+    badgeClass: "bg-[#EEF3FC] text-[#193E8A] border border-[#193E8A]/20",
   };
 }
 
-// ── USER PROFILE ──────────────────────────────────────────────────────────────
-export type UserRole = "admin" | "student" | "principal" | "staff_admin";
+export type UserRole = "admin" | "student";
 
 export interface UserProfile {
   id: string;
@@ -394,8 +445,6 @@ export interface UserProfile {
   createdAt: string;
 }
 
-// Pre-session placeholder. Deliberately NOT an admin: privileged UI must only
-// appear once the real session confirms the user's role.
 export const FALLBACK_GUEST_USER: UserProfile = {
   id: "guest",
   email: "",
@@ -411,42 +460,40 @@ export const FALLBACK_GUEST_USER: UserProfile = {
 };
 
 export function mapUserProfileRecord(d: any): UserProfile {
-  const isAdm = d.role === "admin" || d.role === "principal" || d.role === "staff_admin";
+  const isAdm =
+    d.role === "admin" || d.role === "principal" || d.role === "staff_admin";
   const normalizedRole: "admin" | "student" = isAdm ? "admin" : "student";
 
-  const roleLabels: Record<string, string> = {
-    admin: "School Administrator",
-    principal: "School Principal & Founder",
-    staff_admin: "Staff Administrator",
-    student: "Student Contributor",
-  };
-  const badgeColors: Record<string, string> = {
-    admin: "bg-[#FFC700] text-[#09234B]",
-    principal: "bg-[#FFC700] text-[#09234B]",
-    staff_admin: "bg-[#0E3B7D] text-white",
-    student: "bg-emerald-600 text-white",
-  };
-
-  const fullName = d.name || d.fullName || d.full_name || d.email || "School Staff";
-  const initials = fullName
-    .split(" ")
-    .map((n: string) => n[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase() || "HIS";
+  const fullName =
+    d.name || d.fullName || d.full_name || d.email || "School Member";
+  const initials =
+    fullName
+      .split(" ")
+      .map((n: string) => n[0])
+      .slice(0, 2)
+      .join("")
+      .toUpperCase() || "HIS";
 
   return {
     id: d.id,
     email: d.email,
     fullName,
     role: normalizedRole,
-    roleLabel: roleLabels[d.role] || (isAdm ? "Administrator" : "Student Contributor"),
-    title: d.title || (isAdm ? "Administrator" : "Student Contributor"),
+    roleLabel: isAdm ? "School Administrator" : "Student Contributor",
+    title: d.title || (isAdm ? "School Administrator" : "Student Contributor"),
     campusId: d.campusId || d.campus_id || "ywarma-campus",
     grade: d.grade ?? undefined,
     initials,
-    badgeColor: badgeColors[d.role] || (isAdm ? "bg-[#FFC700] text-[#09234B]" : "bg-emerald-600 text-white"),
-    status: d.status === "inactive" || d.status === "suspended" ? d.status : "active",
-    createdAt: typeof d.createdAt === "string" ? d.createdAt.split("T")[0] : d.createdAt ? new Date(d.createdAt).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
+    badgeColor: isAdm
+      ? "bg-[#FFD600] text-[#162033]"
+      : "bg-emerald-600 text-white",
+    status:
+      d.status === "inactive" || d.status === "suspended" ? d.status : "active",
+    createdAt:
+      typeof d.createdAt === "string"
+        ? d.createdAt.split("T")[0]
+        : d.createdAt
+          ? new Date(d.createdAt).toISOString().split("T")[0]
+          : new Date().toISOString().split("T")[0],
   };
 }

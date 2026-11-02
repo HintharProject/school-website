@@ -2,6 +2,17 @@
 
 import { useState, useRef } from "react";
 import Image from "next/image";
+import {
+  ImageSquare,
+  Trash,
+  CloudArrowUp,
+  Images,
+  LinkSimple,
+  FolderOpen,
+  CheckCircle,
+  WarningCircle,
+  ArrowsClockwise,
+} from "@phosphor-icons/react";
 
 export interface PresetImage {
   label: string;
@@ -9,47 +20,44 @@ export interface PresetImage {
   category?: "campus" | "scholar" | "club" | "avatar";
 }
 
-// Curated internal school presets for rapid selection
 export const SCHOOL_PRESET_IMAGES: PresetImage[] = [
-  // Campus & Facility Presets
   { label: "Ywarma Flagship Campus", url: "/images/g2.jpg", category: "campus" },
-  { label: "STEM & Robotics Innovation Center", url: "/images/engineering.avif", category: "campus" },
+  { label: "STEM & Robotics Innovation Centre", url: "/images/engineering.avif", category: "campus" },
   { label: "Creative Arts & Lower Secondary Wing", url: "/images/g8.jpg", category: "campus" },
   { label: "Mawlamyine Regional Campus", url: "/images/g7.jpg", category: "campus" },
-
-  // Scholar & Student Portrait Presets
-  { label: "Scholar Portrait — Male 1", url: "/images/g4.jpg", category: "scholar" },
-  { label: "Scholar Portrait — Male 2", url: "/images/g5.jpg", category: "scholar" },
-  { label: "Scholar Portrait — Female 1", url: "/images/g6.jpg", category: "scholar" },
-  { label: "Scholar Portrait — Male 3", url: "/images/g7.jpg", category: "scholar" },
-  { label: "Scholar Portrait — Female 2", url: "/images/g8.jpg", category: "scholar" },
-  { label: "Scholar Portrait — Female 3", url: "/images/g9.jpg", category: "scholar" },
-  { label: "Graduation Convocation", url: "/images/graduation.png", category: "scholar" },
-
-  // Clubs & Society Presets
+  { label: "Scholar Portrait 1", url: "/images/g4.jpg", category: "scholar" },
+  { label: "Scholar Portrait 2", url: "/images/g5.jpg", category: "scholar" },
+  { label: "Scholar Portrait 3", url: "/images/g6.jpg", category: "scholar" },
+  { label: "Scholar Portrait 4", url: "/images/g7.jpg", category: "scholar" },
+  { label: "Scholar Portrait 5", url: "/images/g8.jpg", category: "scholar" },
+  { label: "Scholar Portrait 6", url: "/images/g9.jpg", category: "scholar" },
+  { label: "Graduation Convocation", url: "/images/graduation.webp", category: "scholar" },
   { label: "Robotics & Engineering Lab", url: "/images/engineering.avif", category: "club" },
   { label: "Debate & Global Business", url: "/images/business.jpg", category: "club" },
-  { label: "Newton Science & Chemistry Suite", url: "/images/g2.jpg", category: "club" },
-  { label: "Digital Arts & Media Studio", url: "/images/g8.jpg", category: "club" },
-  { label: "Badminton & Athletic Arena", url: "/images/g7.jpg", category: "club" },
-  { label: "Music & Theatre Hall", url: "/images/g6.jpg", category: "club" },
-
-  // Avatars
-  { label: "Dr. Kaung Myat Htut (Principal)", url: "/images/Dr_KMH.png", category: "avatar" },
+  { label: "Computing Lab", url: "/images/it.jpg", category: "club" },
+  { label: "Dr. Kaung Myat Htut (Principal)", url: "/images/dr-kmh.webp", category: "avatar" },
+  { label: "Hinthar Official Logo", url: "/images/hinthar-logo.webp", category: "avatar" },
 ];
 
 interface ImageUploadPickerProps {
   label?: string;
   value: string;
   onChange: (url: string) => void;
-  folder?: "campuses" | "yearbook" | "clubs" | "activities" | "avatars" | "general" | "news" | "staff" | "testimonials";
+  folder?:
+    | "campuses"
+    | "yearbook"
+    | "clubs"
+    | "activities"
+    | "avatars"
+    | "general"
+    | "testimonials";
   aspectRatio?: "banner" | "portrait" | "square";
   helperText?: string;
   defaultPresetsCategory?: "campus" | "scholar" | "club" | "avatar";
 }
 
 export default function ImageUploadPicker({
-  label = "Upload / Edit Image",
+  label = "Upload / Select Image",
   value,
   onChange,
   folder = "general",
@@ -57,15 +65,18 @@ export default function ImageUploadPicker({
   helperText,
   defaultPresetsCategory,
 }: ImageUploadPickerProps) {
-  const [activeTab, setActiveTab] = useState<"upload" | "presets" | "url">("upload");
+  const [activeTab, setActiveTab] = useState<"upload" | "presets" | "url">(
+    "upload"
+  );
   const [isUploading, setIsUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Filter presets if default category provided
   const relevantPresets = defaultPresetsCategory
-    ? SCHOOL_PRESET_IMAGES.filter((p) => p.category === defaultPresetsCategory || !p.category)
+    ? SCHOOL_PRESET_IMAGES.filter(
+        (p) => p.category === defaultPresetsCategory || !p.category
+      )
     : SCHOOL_PRESET_IMAGES;
 
   const handleFileUpload = async (file: File) => {
@@ -73,17 +84,16 @@ export default function ImageUploadPicker({
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      setErrorMessage("Please select a valid image file (PNG, JPG, WebP, etc.)");
+      setErrorMessage("Please select a valid image file (PNG, JPG, WebP, AVIF).");
       return;
     }
 
     if (file.size > 8 * 1024 * 1024) {
-      setErrorMessage("File size exceeds 8MB limit.");
+      setErrorMessage("File size exceeds 8 MB limit.");
       return;
     }
 
     setIsUploading(true);
-
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -94,128 +104,87 @@ export default function ImageUploadPicker({
         body: formData,
       });
 
-      const data = (await res.json()) as any;
+      const data = (await res.json()) as {
+        success?: boolean;
+        url?: string;
+        error?: string;
+      };
 
       if (data.success && data.url) {
         onChange(data.url);
       } else {
         setErrorMessage(data.error || "Upload failed. Please try again.");
       }
-    } catch (err: any) {
-      console.error("Upload error:", err);
-      setErrorMessage("Network error during upload. Falling back to local preview.");
-
-      // Emergency client-side reader fallback
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === "string") {
-          onChange(reader.result);
-        }
-      };
-      reader.readAsDataURL(file);
+    } catch {
+      setErrorMessage("Upload failed. Please check your connection and try again.");
     } finally {
       setIsUploading(false);
     }
   };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileUpload(e.dataTransfer.files[0]);
-    }
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-  };
-
-  const aspectClass =
-    aspectRatio === "portrait"
-      ? "h-48 w-36"
-      : aspectRatio === "square"
-      ? "h-36 w-36"
-      : "h-36 w-full";
-
   return (
     <div className="space-y-2 text-xs">
       <div className="flex items-center justify-between">
-        <label className="font-bold text-slate-700 flex items-center gap-1.5">
-          <span aria-hidden="true" className="material-symbols-outlined text-sm text-[#0E3B7D]">add_photo_alternate</span>
+        <span className="font-bold text-slate-700 flex items-center gap-1.5">
+          <ImageSquare className="w-4 h-4 text-[#193E8A]" weight="duotone" />
           <span>{label}</span>
-        </label>
+        </span>
         {value && (
-          <button aria-label="Delete"
+          <button
             type="button"
             onClick={() => onChange("")}
-            className="text-red-500 hover:text-red-700 text-[11px] font-bold flex items-center gap-1"
+            className="text-red-600 hover:text-red-700 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
           >
-            <span aria-hidden="true" className="material-symbols-outlined text-xs">delete</span>
-            <span>Remove Image</span>
+            <Trash className="w-3.5 h-3.5" weight="bold" />
+            <span>Remove</span>
           </button>
         )}
       </div>
 
-      {/* Tabs navigation */}
       <div className="flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200 gap-1">
-        <button
-          type="button"
-          onClick={() => setActiveTab("upload")}
-          className={`flex-1 py-1.5 px-2.5 rounded-lg font-bold text-[11px] flex items-center justify-center gap-1 transition-all ${
-            activeTab === "upload"
-              ? "bg-white text-[#0E3B7D] shadow-sm"
-              : "text-slate-500 hover:text-slate-800"
-          }`}
-        >
-          <span aria-hidden="true" className="material-symbols-outlined text-sm">cloud_upload</span>
-          <span>Upload File</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("presets")}
-          className={`flex-1 py-1.5 px-2.5 rounded-lg font-bold text-[11px] flex items-center justify-center gap-1 transition-all ${
-            activeTab === "presets"
-              ? "bg-white text-[#0E3B7D] shadow-sm"
-              : "text-slate-500 hover:text-slate-800"
-          }`}
-        >
-          <span aria-hidden="true" className="material-symbols-outlined text-sm">photo_library</span>
-          <span>School Library</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("url")}
-          className={`flex-1 py-1.5 px-2.5 rounded-lg font-bold text-[11px] flex items-center justify-center gap-1 transition-all ${
-            activeTab === "url"
-              ? "bg-white text-[#0E3B7D] shadow-sm"
-              : "text-slate-500 hover:text-slate-800"
-          }`}
-        >
-          <span aria-hidden="true" className="material-symbols-outlined text-sm">link</span>
-          <span>Direct URL</span>
-        </button>
+        {(
+          [
+            ["upload", "Upload File", CloudArrowUp],
+            ["presets", "School Library", Images],
+            ["url", "Direct URL", LinkSimple],
+          ] as const
+        ).map(([tabKey, tabLabel, Icon]) => (
+          <button
+            key={tabKey}
+            type="button"
+            onClick={() => setActiveTab(tabKey)}
+            className={`flex-1 py-1.5 px-2.5 rounded-lg font-bold text-[11px] flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              activeTab === tabKey
+                ? "bg-white text-[#193E8A] shadow-2xs"
+                : "text-slate-600 hover:text-[#1E232B]"
+            }`}
+          >
+            <Icon className="w-3.5 h-3.5" weight="bold" />
+            <span>{tabLabel}</span>
+          </button>
+        ))}
       </div>
 
-      {/* Tab 1: Upload File */}
       {activeTab === "upload" && (
         <div
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragActive(false);
+            if (e.dataTransfer.files?.[0]) handleFileUpload(e.dataTransfer.files[0]);
+          }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragActive(true);
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault();
+            setDragActive(false);
+          }}
           onClick={() => fileInputRef.current?.click()}
-          className={`border-2 border-dashed rounded-2xl p-6 min-h-[150px] flex flex-col items-center justify-center text-center cursor-pointer transition-all ${
+          className={`border-2 border-dashed rounded-2xl p-5 min-h-[140px] flex flex-col items-center justify-center text-center cursor-pointer transition-all ${
             dragActive
-              ? "border-[#0E3B7D] bg-blue-50/80 scale-[1.01]"
-              : "border-slate-300 hover:border-[#0E3B7D] bg-slate-50/70 hover:bg-slate-50"
+              ? "border-[#193E8A] bg-[#EEF3FC]"
+              : "border-slate-300 hover:border-[#193E8A] bg-slate-50/70"
           }`}
         >
           <input
@@ -224,52 +193,39 @@ export default function ImageUploadPicker({
             accept="image/*"
             className="hidden"
             onChange={(e) => {
-              if (e.target.files && e.target.files[0]) {
-                handleFileUpload(e.target.files[0]);
-              }
+              if (e.target.files?.[0]) handleFileUpload(e.target.files[0]);
             }}
           />
 
           {isUploading ? (
-            <div className="py-4 flex flex-col items-center justify-center gap-2">
-              <div className="w-8 h-8 border-3 border-[#0E3B7D] border-t-transparent rounded-full animate-spin" />
-              <p className="font-bold text-[#0E3B7D] text-xs">Uploading to Cloudflare R2 Storage...</p>
+            <div className="py-3 flex flex-col items-center gap-2">
+              <div className="w-7 h-7 border-3 border-[#193E8A] border-t-transparent rounded-full animate-spin" />
+              <p className="font-bold text-[#193E8A] text-xs">
+                Uploading to Cloudflare R2...
+              </p>
             </div>
           ) : (
-            <div className="py-2 flex flex-col items-center justify-center gap-2.5 w-full">
-              <div className="w-11 h-11 rounded-2xl bg-blue-100/80 text-[#0E3B7D] flex items-center justify-center shadow-xs">
-                <span aria-hidden="true" className="material-symbols-outlined text-2xl">file_upload</span>
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-10 h-10 rounded-xl bg-[#EEF3FC] text-[#193E8A] flex items-center justify-center">
+                <CloudArrowUp className="w-5 h-5" weight="duotone" />
               </div>
-              <div className="text-center pointer-events-none">
-                <p className="font-bold text-slate-800 text-xs mb-0.5">
-                  Select Banner Image or Drag &amp; Drop Here
-                </p>
-                <p className="text-[10px] text-slate-400">
-                  Supports PNG, JPG, JPEG, WebP, AVIF (Max 8MB)
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  fileInputRef.current?.click();
-                }}
-                className="mt-1 inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-[#0E3B7D] hover:bg-[#164E9A] text-white font-black text-xs shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer border border-[#FFC700]/30"
-              >
-                <span aria-hidden="true" className="material-symbols-outlined text-base">folder_open</span>
-                <span>Browse Image File</span>
-              </button>
+              <p className="font-bold text-[#1E232B] text-xs">
+                Drag & drop an image or browse your computer
+              </p>
+              <p className="text-[11px] text-slate-500">
+                PNG, JPG, WebP, AVIF up to 8 MB
+              </p>
+              <span className="mt-1 inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-[#193E8A] text-white font-bold text-xs">
+                <FolderOpen className="w-4 h-4" weight="bold" />
+                <span>Browse File</span>
+              </span>
             </div>
           )}
         </div>
       )}
 
-      {/* Tab 2: School Library Presets */}
       {activeTab === "presets" && (
         <div className="border border-slate-200 rounded-2xl p-3 bg-slate-50/50 max-h-48 overflow-y-auto">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-            Select from Curated Assets ({relevantPresets.length})
-          </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {relevantPresets.map((preset, idx) => {
               const isSelected = value === preset.url;
@@ -278,10 +234,10 @@ export default function ImageUploadPicker({
                   key={idx}
                   type="button"
                   onClick={() => onChange(preset.url)}
-                  className={`group relative rounded-xl overflow-hidden border text-left p-1 transition-all ${
+                  className={`group relative rounded-xl overflow-hidden border text-left p-1 transition-all cursor-pointer ${
                     isSelected
-                      ? "border-[#0E3B7D] ring-2 ring-[#0E3B7D] bg-blue-50"
-                      : "border-slate-200 hover:border-slate-300 bg-white"
+                      ? "border-[#193E8A] ring-2 ring-[#193E8A] bg-[#EEF3FC]"
+                      : "border-slate-200 bg-white hover:border-slate-300"
                   }`}
                 >
                   <div className="relative h-14 w-full rounded-lg overflow-hidden bg-slate-900 mb-1">
@@ -290,12 +246,12 @@ export default function ImageUploadPicker({
                       alt={preset.label}
                       fill
                       unoptimized
-                      className="object-cover group-hover:scale-105 transition-transform"
+                      className="object-cover"
                       sizes="150px"
                     />
                     {isSelected && (
-                      <div className="absolute inset-0 bg-[#0E3B7D]/60 flex items-center justify-center text-white">
-                        <span aria-hidden="true" className="material-symbols-outlined text-lg">check_circle</span>
+                      <div className="absolute inset-0 bg-[#193E8A]/60 flex items-center justify-center text-white">
+                        <CheckCircle className="w-5 h-5" weight="fill" />
                       </div>
                     )}
                   </div>
@@ -309,84 +265,63 @@ export default function ImageUploadPicker({
         </div>
       )}
 
-      {/* Tab 3: Direct URL */}
       {activeTab === "url" && (
-        <div className="space-y-1.5">
-          <input
-            type="url"
-            placeholder="https://images.unsplash.com/... or /images/..."
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="w-full p-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#0E3B7D] outline-none text-xs"
-          />
-          <p className="text-[10px] text-slate-400">
-            Enter any public image URL or local relative path starting with <code>/images/</code>.
-          </p>
-        </div>
+        <input
+          type="text"
+          placeholder="https://... or /images/..."
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full p-2.5 rounded-xl border border-slate-200 bg-white focus:border-[#193E8A] outline-none text-xs"
+        />
       )}
 
-      {/* Error Message */}
       {errorMessage && (
-        <div className="p-2 rounded-xl bg-red-50 text-red-700 text-[11px] font-semibold flex items-center gap-1.5 border border-red-200">
-          <span aria-hidden="true" className="material-symbols-outlined text-sm">error</span>
+        <div className="p-2.5 rounded-xl bg-red-50 text-red-700 text-[11px] font-semibold flex items-center gap-1.5 border border-red-200">
+          <WarningCircle className="w-4 h-4 shrink-0" weight="fill" />
           <span>{errorMessage}</span>
         </div>
       )}
 
-      {/* Live Preview Display */}
       {value && (
-        <div className="mt-2 p-3 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-2.5 overflow-hidden">
+        <div className="mt-2 p-3 bg-white rounded-2xl border border-slate-200 space-y-2">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-              <span className="text-[11px] font-bold text-slate-800">Live Image Preview</span>
-            </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="px-2.5 py-1 rounded-lg bg-blue-50 text-[#0E3B7D] hover:bg-blue-100 font-bold text-[10px] flex items-center gap-1 transition-colors border border-blue-200 cursor-pointer"
-              >
-                <span aria-hidden="true" className="material-symbols-outlined text-xs">refresh</span>
-                <span>Replace</span>
-              </button>
-              <button aria-label="Delete"
-                type="button"
-                onClick={() => onChange("")}
-                className="px-2 py-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 font-bold text-[10px] flex items-center gap-1 transition-colors border border-red-200 cursor-pointer"
-              >
-                <span aria-hidden="true" className="material-symbols-outlined text-xs">delete</span>
-                <span>Remove</span>
-              </button>
-            </div>
+            <span className="text-[11px] font-bold text-slate-700">
+              Current Image Preview
+            </span>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="px-2.5 py-1 rounded-lg bg-[#EEF3FC] text-[#193E8A] font-bold text-[11px] inline-flex items-center gap-1 cursor-pointer"
+            >
+              <ArrowsClockwise className="w-3.5 h-3.5" weight="bold" />
+              <span>Replace</span>
+            </button>
           </div>
 
           <div
-            className={`relative w-full rounded-xl overflow-hidden bg-slate-900 border border-slate-200 ${
+            className={`relative rounded-xl overflow-hidden bg-slate-100 border border-slate-200 ${
               aspectRatio === "portrait"
-                ? "h-48 max-w-[180px] mx-auto"
+                ? "h-44 max-w-[170px] mx-auto"
                 : aspectRatio === "square"
-                ? "h-40 max-w-[160px] mx-auto"
-                : "h-36 sm:h-44 w-full"
+                  ? "h-36 max-w-[150px] mx-auto"
+                  : "h-36 sm:h-40 w-full"
             }`}
           >
             <Image
               src={value}
-              alt="Selected Preview"
+              alt="Preview"
               fill
               unoptimized
               className="object-cover"
-              sizes="(max-width: 768px) 100vw, 400px"
+              sizes="400px"
             />
           </div>
-
-          <p className="text-[10px] text-slate-400 truncate font-mono bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
-            {value.startsWith("data:") ? "Uploaded Image (Direct Binary)" : value}
-          </p>
         </div>
       )}
 
-      {helperText && <p className="text-[10px] text-slate-400 mt-1">{helperText}</p>}
+      {helperText && (
+        <p className="text-[11px] text-slate-500">{helperText}</p>
+      )}
     </div>
   );
 }

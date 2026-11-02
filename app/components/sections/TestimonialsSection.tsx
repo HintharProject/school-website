@@ -1,73 +1,111 @@
 "use client";
 
 import Image from "next/image";
-import { useT } from "@/lib/i18n/useT";
+import { Quotes, Star } from "@phosphor-icons/react";
+import type { PublicTestimonial } from "@/lib/actions/testimonials";
+import type { HomeSectionsContent } from "@/lib/content/defaults";
 import { useLocale } from "@/lib/i18n/useT";
 import { locField } from "@/lib/i18n/loc";
-import type { PublicTestimonial } from "@/lib/actions/testimonials";
 import { isR2AssetUrl } from "@/lib/utils/r2Image";
 
-export default function TestimonialsSection({ items }: { items: PublicTestimonial[] }) {
-  const t = useT();
+export default function TestimonialsSection({
+  testimonials,
+  sections,
+}: {
+  testimonials: PublicTestimonial[];
+  sections: HomeSectionsContent;
+}) {
   const locale = useLocale();
 
-  if (!items.length) return null;
+  if (!testimonials || testimonials.length === 0) return null;
 
   return (
-    <section id="testimonials" className="py-16 md:py-24 bg-gradient-to-b from-slate-50 to-white scroll-mt-20">
-      <div className="max-w-[1280px] mx-auto px-6 md:px-8">
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 bg-[#E8F0FE] px-4 py-1.5 rounded-full mb-4 border border-[#0E3B7D]/20">
-            <span aria-hidden="true" className="material-symbols-outlined text-[#0E3B7D] text-sm font-bold">forum</span>
-            <span className="text-xs font-extrabold text-[#0E3B7D] uppercase tracking-wider">{t("home.testimonialsBadge")}</span>
-          </div>
-          <h2 className="text-3xl md:text-4xl font-black text-[#09234B] mb-3 tracking-tight">
-            {t("home.testimonialsTitle")}
+    <section className="py-16 sm:py-24 bg-white border-b border-slate-100">
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center max-w-2xl mx-auto mb-12 space-y-3">
+          <span className="inline-flex items-center gap-2 rounded-full bg-[#EEF3FC] px-3.5 py-1.5 text-xs font-extrabold text-[#193E8A] uppercase tracking-wider">
+            <Quotes className="w-4 h-4" weight="fill" />
+            <span>
+              {locField(
+                locale,
+                sections.testimonialsBadgeEn,
+                sections.testimonialsBadgeMy
+              )}
+            </span>
+          </span>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#1E232B] tracking-tight">
+            {locField(
+              locale,
+              sections.testimonialsTitleEn,
+              sections.testimonialsTitleMy
+            )}
           </h2>
-          <p className="text-sm md:text-base text-slate-600 font-normal max-w-xl mx-auto">
-            {t("home.testimonialsSubtitle")}
+          <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
+            {locField(
+              locale,
+              sections.testimonialsSubtitleEn,
+              sections.testimonialsSubtitleMy
+            )}
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {items.slice(0, 6).map((item) => {
+          {testimonials.map((item) => {
             const quote = locField(locale, item.quote, item.quoteMy);
-            const authorRole = locField(locale, item.authorRole ?? "", item.authorRoleMy);
+            const role = locField(
+              locale,
+              item.authorRole || "",
+              item.authorRoleMy
+            );
+            const stars = Math.min(5, Math.max(1, item.rating ?? 5));
+
             return (
-            <figure
-              key={item.id}
-              className="relative bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col"
-            >
-              <span aria-hidden="true" className="material-symbols-outlined text-[#FFC700] text-3xl mb-2">format_quote</span>
-              <blockquote className="text-xs sm:text-sm text-slate-700 font-light leading-relaxed flex-1">
-                {quote}
-              </blockquote>
-              {typeof item.rating === "number" && item.rating >= 1 && item.rating <= 5 && (
-                <div className="flex gap-0.5 pt-3" aria-label={`${item.rating} out of 5 stars`}>
-                  {Array.from({ length: item.rating }).map((_, i) => (
-                    <span key={i} aria-hidden="true" className="material-symbols-outlined text-[#FFC700] text-sm">star</span>
-                  ))}
+              <article
+                key={item.id}
+                className="rounded-3xl bg-[#F8FAFC] border border-slate-200/90 p-6 sm:p-7 flex flex-col justify-between space-y-6"
+              >
+                <div className="space-y-4">
+                  <div
+                    className="flex items-center gap-1 text-[#ECC300]"
+                    aria-label={`${stars} out of 5 stars`}
+                  >
+                    {Array.from({ length: stars }).map((_, idx) => (
+                      <Star key={idx} className="w-4 h-4" weight="fill" />
+                    ))}
+                  </div>
+                  <blockquote className="text-sm sm:text-[15px] text-[#1E232B] leading-relaxed">
+                    “{quote}”
+                  </blockquote>
                 </div>
-              )}
-              <figcaption className="flex items-center gap-3 pt-4 mt-4 border-t border-slate-100">
-                <div className="relative w-10 h-10 rounded-full overflow-hidden bg-slate-100 ring-2 ring-[#FFC700]/50 shrink-0">
+
+                <div className="flex items-center gap-3.5 pt-4 border-t border-slate-200/80">
                   {item.image ? (
-                    <Image src={item.image} alt={item.authorName} fill unoptimized={isR2AssetUrl(item.image)} className="object-cover" sizes="40px" />
+                    <div className="relative w-11 h-11 rounded-full overflow-hidden bg-slate-200 shrink-0">
+                      <Image
+                        src={item.image}
+                        alt={item.authorName}
+                        fill
+                        unoptimized={isR2AssetUrl(item.image)}
+                        sizes="44px"
+                        className="object-cover"
+                      />
+                    </div>
                   ) : (
-                    <div className="w-full h-full bg-[#0E3B7D] flex items-center justify-center text-white text-xs font-black">
-                      {item.authorName.slice(0, 1).toUpperCase()}
+                    <div className="w-11 h-11 rounded-full bg-[#193E8A] text-white flex items-center justify-center font-extrabold text-sm shrink-0">
+                      {item.authorName.charAt(0).toUpperCase()}
                     </div>
                   )}
+                  <div className="min-w-0">
+                    <p className="text-sm font-extrabold text-[#1E232B] truncate">
+                      {item.authorName}
+                    </p>
+                    {role && (
+                      <p className="text-xs text-slate-600 truncate">{role}</p>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs font-black text-[#09234B]">{item.authorName}</p>
-                  {authorRole && (
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{authorRole}</p>
-                  )}
-                </div>
-              </figcaption>
-            </figure>
-          );
+              </article>
+            );
           })}
         </div>
       </div>
