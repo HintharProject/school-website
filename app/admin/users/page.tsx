@@ -260,7 +260,7 @@ export default function AdminUsersPage() {
             </span>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Provision single-use invitations for School Administrators and Student Contributors across all 4 campuses.
+            Provision single-use invitations for School Administrators and Student Contributors across all 5 campuses.
           </p>
         </div>
 

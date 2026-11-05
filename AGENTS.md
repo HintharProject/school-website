@@ -26,7 +26,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 To minimize technical maintenance and deliver an impressive, clutter-free visitor experience, the public website consists of **strictly 5 pages** (no top-bar dropdown menus; `Classes` lives on the Home page at `/#classes` and is **not** a separate navbar link):
 
 1. `/` — **Home Page**: Top Announcement Ticker, Split/Framed Hero + 4 Key Highlight Stats, About Hinthar & Principal Welcome, **`#classes` Pearson Edexcel Pathways & Syllabus Modal**, Campuses Overview Strip, Parent/Alumni Testimonials, and FAQs.
-2. `/campuses` — **Campuses**: Dynamic Admin-managed campuses (seeded with **3 in Yangon: Ywarma, Shwe Padauk, Shwe Pone Nyet** & **1 in Mawlamyine**), city filter tabs, Gallery Lightbox, facilities, grades served, contacts, and Google Maps links.
+2. `/campuses` — **Campuses**: Dynamic Admin-managed campuses (seeded with **4 in Yangon: Shwe Hinthar, Ywarma, Shwe Padauk, Shwe Pone Nyet** & **1 in Mawlamyine (IS Licensed)**), city filter tabs, Gallery Lightbox, facilities, grades served, contacts, and Google Maps links.
 3. `/yearbook` — **Student Yearbook**: Strictly for students/alumni (no staff directory), filterable by Region (`Yangon` / `Mawlamyine`) and Batch (`Class of 2026`, `2025`, etc.).
 4. `/clubs` — **Clubs & Activities**: Combined student life portal with top segment tabs (`All`, `Clubs & Societies`, `School Activities`), contextual category/status sub-filters, and unified card gallery.
 5. `/admission` — **Admissions & Status Tracker**: Segmented view with **Apply Online** (streamlined 3-Step Pearson application + Admin-configurable Required/Optional R2 document uploads + `HIS-YYYY-XXXXXX` receipt) and **Track Application Status** (`?tab=track`).

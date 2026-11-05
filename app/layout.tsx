@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     template: "%s | Hinthar International School",
   },
   description:
-    "Approved Pearson Edexcel International School across 4 campuses in Yangon and Mawlamyine — offering Lower Secondary (Year 7–9), International GCSE (IGCSE), and International A-Level (IAL).",
+    "Approved Pearson Edexcel International School across 5 campuses in Yangon and Mawlamyine — offering Lower Secondary (Year 7–9), International GCSE (IGCSE), and International A-Level (IAL).",
   keywords: [
     "Hinthar International School",
     "Pearson Edexcel Myanmar",
