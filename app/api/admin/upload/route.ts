@@ -34,7 +34,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const mimeType = file.type.toLowerCase();
+    let mimeType = (file.type || "").toLowerCase();
+    if (!mimeType || mimeType === "application/octet-stream") {
+      const ext = file.name.split(".").pop()?.toLowerCase();
+      if (ext === "jpg" || ext === "jpeg") mimeType = "image/jpeg";
+      else if (ext === "png") mimeType = "image/png";
+      else if (ext === "webp") mimeType = "image/webp";
+      else if (ext === "avif") mimeType = "image/avif";
+      else if (ext === "gif") mimeType = "image/gif";
+    }
+
     if (!ALLOWED_MIME_TYPES.includes(mimeType)) {
       return NextResponse.json(
         {
@@ -104,11 +113,10 @@ export async function POST(req: NextRequest) {
           httpMetadata: { contentType: file.type },
         });
         publicUrl = `/api/assets/${objectKey}`;
-      } else if (process.env.ALLOW_LOCAL_BASE64_UPLOADS === "true") {
-        // Explicit local-dev escape hatch only. Never enabled by default:
-        // multi-MB data URLs bloat D1 rows and every subsequent page load.
+      } else if (process.env.ALLOW_LOCAL_BASE64_UPLOADS === "true" || process.env.NODE_ENV !== "production") {
+        // Local-dev escape hatch when R2 binding is not connected.
         const base64 = Buffer.from(arrayBuffer).toString("base64");
-        publicUrl = `data:${file.type};base64,${base64}`;
+        publicUrl = `data:${mimeType};base64,${base64}`;
       } else {
         return NextResponse.json(
           { success: false, error: "Asset storage is not configured. Upload aborted." },

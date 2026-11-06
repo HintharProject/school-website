@@ -157,10 +157,12 @@ export interface ClubItem {
   name: string;
   category:
     | "STEM & Tech"
+    | "STEM & Technology"
     | "Academic & Debate"
     | "STEM & Science"
     | "Creative Arts"
-    | "Sports & Fitness";
+    | "Sports & Fitness"
+    | string;
   icon: string;
   members: string;
   meetingTime: string;
@@ -218,7 +220,7 @@ export interface ActivityItem {
   clubId?: number;
   title: string;
   titleMy?: string;
-  category: "academic" | "sports" | "cultural" | "science";
+  category: "academic" | "sports" | "cultural" | "science" | "computing" | "arts" | string;
   date: string;
   month: string;
   day: string;

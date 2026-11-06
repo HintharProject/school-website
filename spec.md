@@ -168,3 +168,16 @@
   - **Authentic Activities**: Added ICSC 2026 Awards, Hinthar Tech Hackathon 2026, Thadingyut Acariya Puja, Gallery Ohnmmar Art Trip, and EduLink Masterclass.
   - **Hotline & Admissions**: Synchronized contact numbers to `09 894 33 22 00` / `09 894 33 22 99` (Open 7 days a week, 9:00 AM – 4:00 PM), updated FAQs with zero hidden fees and free graduation guest policy.
   - **Database Sync**: Successfully seeded both local D1 state and remote production Cloudflare D1 database `hinthar-db`.
+- **2026-11-06 (Admin Image Upload & Mutation Hardening against React Error #441)**: Resolved Minified React error #441 and silent failures occurring during asset uploads and entity saves in the Admin Portal:
+  - **Root Cause Identified**:
+    1. Category mismatch: Seeded clubs contained `STEM & Technology` and activities contained `computing` and `arts`, while action Zod schemas strictly enforced narrow enums omitting these values.
+    2. Unhandled Action Exceptions: Server Actions in `clubs.ts`, `activities.ts`, `yearbook.ts`, and `testimonials.ts` threw unhandled Zod and authentication errors. In Next.js production builds, any uncaught error thrown from a Server Action is redacted and dispatched to the browser as generic `Error: Minified React error #441`.
+    3. Missing Body Size Limits: Server Action payloads containing large image data URLs exceeded default 1MB limits.
+    4. Audit Log Query Bloat: Raw data URLs or multi-megabyte string payloads in `logAudit()` details risked exceeding SQLite/Cloudflare D1 SQL statement size limits.
+  - **Proactive Fixes Applied**:
+    - **Safe Action Return Model**: Refactored `lib/actions/clubs.ts`, `lib/actions/activities.ts`, `lib/actions/yearbook.ts`, and `lib/actions/testimonials.ts` to use `safeParse` and comprehensive `try/catch` blocks, safely returning structured `{ success: false, error: ... }` payloads with actionable error messages instead of throwing uncaught exceptions.
+    - **Flexible Categories & Form Support**: Widened Zod schemas for clubs and activities categories, added missing category options (`STEM & Technology`, `Computing & Tech`, `Arts & Design`) to admin select dropdowns, and provided dynamic fallback options for custom database categories. Added editable month/day/full date fields to the Edit Activity modal.
+    - **Image & Gallery Fallback Preprocessing**: Added Zod `preprocess` guards to default empty image inputs to valid fallbacks rather than saving empty string `""` (which breaks Next.js `<Image>`), and sanitized `galleryUrls` to filter out empty strings and invalid formats.
+    - **Server Action Body Size Limit**: Configured `experimental.serverActions.bodySizeLimit: "10mb"` in `next.config.ts`.
+    - **Audit Log Sanitization**: Added automatic truncation and data-URL stripping in `logAudit()` to protect D1 query statement limits.
+    - **Resilient Upload API**: Added automatic MIME-type inference from file extensions when browser MIME types are missing, and enabled safe local-dev base64 fallback in `app/api/admin/upload/route.ts` when local R2 bindings are detached.

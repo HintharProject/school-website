@@ -22,7 +22,6 @@ import {
   createClubAction,
   updateClubAction,
   deleteClubAction,
-  setClubStatusAction,
 } from "@/lib/actions/clubs";
 import {
   getPortalActivities,
@@ -189,6 +188,10 @@ export default function AdminClubsPage() {
     if (!clubForm.name.trim()) return;
     try {
       const res = await createClubAction(clubForm);
+      if (!res.success) {
+        showToast(`Error: ${res.error || "Failed to create club."}`);
+        return;
+      }
       showToast(
         isAdmin
           ? `Club "${clubForm.name}" created and published.`
@@ -217,7 +220,11 @@ export default function AdminClubsPage() {
     e.preventDefault();
     if (!editingClub) return;
     try {
-      await updateClubAction(editingClub.id, editingClub);
+      const res = await updateClubAction(editingClub.id, editingClub);
+      if (!res.success) {
+        showToast(`Error: ${res.error || "Failed to update club."}`);
+        return;
+      }
       setClubs((prev) =>
         prev.map((c) => (c.id === editingClub.id ? editingClub : c))
       );
@@ -231,7 +238,11 @@ export default function AdminClubsPage() {
   const handleDeleteClub = async () => {
     if (!deletingClub) return;
     try {
-      await deleteClubAction(deletingClub.id);
+      const res = await deleteClubAction(deletingClub.id);
+      if (!res.success) {
+        showToast(`Error: ${res.error || "Failed to delete club."}`);
+        return;
+      }
       setClubs((prev) => prev.filter((c) => c.id !== deletingClub.id));
       showToast(`Club "${deletingClub.name}" removed.`);
       setDeletingClub(null);
@@ -297,7 +308,11 @@ export default function AdminClubsPage() {
     e.preventDefault();
     if (!activityForm.title.trim()) return;
     try {
-      await createActivityAction(activityForm);
+      const res = await createActivityAction(activityForm);
+      if (!res.success) {
+        showToast(`Error: ${res.error || "Failed to create activity."}`);
+        return;
+      }
       showToast(
         isAdmin
           ? `Activity "${activityForm.title}" added to school calendar.`
@@ -314,7 +329,11 @@ export default function AdminClubsPage() {
     e.preventDefault();
     if (!editingActivity) return;
     try {
-      await updateActivityAction(editingActivity.id, editingActivity);
+      const res = await updateActivityAction(editingActivity.id, editingActivity);
+      if (!res.success) {
+        showToast(`Error: ${res.error || "Failed to update activity."}`);
+        return;
+      }
       setActivities((prev) =>
         prev.map((a) => (a.id === editingActivity.id ? editingActivity : a))
       );
@@ -328,7 +347,11 @@ export default function AdminClubsPage() {
   const handleDeleteActivity = async () => {
     if (!deletingActivity) return;
     try {
-      await deleteActivityAction(deletingActivity.id);
+      const res = await deleteActivityAction(deletingActivity.id);
+      if (!res.success) {
+        showToast(`Error: ${res.error || "Failed to delete activity."}`);
+        return;
+      }
       setActivities((prev) => prev.filter((a) => a.id !== deletingActivity.id));
       showToast(`Activity "${deletingActivity.title}" removed.`);
       setDeletingActivity(null);
@@ -595,6 +618,7 @@ export default function AdminClubsPage() {
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
                   >
                     <option value="STEM & Tech">STEM & Tech</option>
+                    <option value="STEM & Technology">STEM & Technology</option>
                     <option value="Academic & Debate">Academic & Debate</option>
                     <option value="STEM & Science">STEM & Science</option>
                     <option value="Creative Arts">Creative Arts</option>
@@ -716,10 +740,14 @@ export default function AdminClubsPage() {
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
                   >
                     <option value="STEM & Tech">STEM & Tech</option>
+                    <option value="STEM & Technology">STEM & Technology</option>
                     <option value="Academic & Debate">Academic & Debate</option>
                     <option value="STEM & Science">STEM & Science</option>
                     <option value="Creative Arts">Creative Arts</option>
                     <option value="Sports & Fitness">Sports & Fitness</option>
+                    {editingClub && !["STEM & Tech", "STEM & Technology", "Academic & Debate", "STEM & Science", "Creative Arts", "Sports & Fitness"].includes(editingClub.category) && (
+                      <option value={editingClub.category}>{editingClub.category}</option>
+                    )}
                   </select>
                 </div>
                 <div>
@@ -835,8 +863,10 @@ export default function AdminClubsPage() {
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
                   >
                     <option value="academic">Academic</option>
-                    <option value="sports">Sports</option>
+                    <option value="computing">Computing & Tech</option>
+                    <option value="arts">Arts & Design</option>
                     <option value="cultural">Cultural</option>
+                    <option value="sports">Sports</option>
                     <option value="science">Science</option>
                   </select>
                 </div>
@@ -1007,9 +1037,14 @@ export default function AdminClubsPage() {
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
                   >
                     <option value="academic">Academic</option>
-                    <option value="sports">Sports</option>
+                    <option value="computing">Computing & Tech</option>
+                    <option value="arts">Arts & Design</option>
                     <option value="cultural">Cultural</option>
+                    <option value="sports">Sports</option>
                     <option value="science">Science</option>
+                    {editingActivity && !["academic", "computing", "arts", "cultural", "sports", "science"].includes(editingActivity.category) && (
+                      <option value={editingActivity.category}>{editingActivity.category}</option>
+                    )}
                   </select>
                 </div>
                 <div>
@@ -1023,6 +1058,42 @@ export default function AdminClubsPage() {
                     <option value="Active Registration">Active Registration</option>
                     <option value="Past Highlight">Past Highlight</option>
                   </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Month Code</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="SEP"
+                    value={editingActivity.month}
+                    onChange={(e) => setEditingActivity({ ...editingActivity, month: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Day</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="18"
+                    value={editingActivity.day}
+                    onChange={(e) => setEditingActivity({ ...editingActivity, day: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Full Date</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="September 18, 2026"
+                    value={editingActivity.date}
+                    onChange={(e) => setEditingActivity({ ...editingActivity, date: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                  />
                 </div>
               </div>
 

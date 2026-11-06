@@ -126,94 +126,127 @@ export async function getAllTestimonials() {
 export async function createTestimonialAction(
   data: unknown
 ): Promise<{ success: boolean; error?: string; id?: number }> {
-  const user = await requireAdmin();
+  let user;
+  try {
+    user = await requireAdmin();
+  } catch (authErr: any) {
+    return { success: false, error: authErr.message || "Administrator session required." };
+  }
+
   const parsed = testimonialSchema.safeParse(data);
   if (!parsed.success) {
     return { success: false, error: "Please provide an author name and quote." };
   }
   const v = parsed.data;
-  const db = await getDb();
 
-  const result = await db
-    .insert(testimonials)
-    .values({
-      authorName: v.authorName,
-      authorRole: v.authorRole || null,
-      authorRoleMy: v.authorRoleMy || null,
-      quote: v.quote,
-      quoteMy: v.quoteMy || null,
-      image: v.image || null,
-      rating: v.rating ?? 5,
-      sortOrder: v.sortOrder,
-      status: v.status,
-    })
-    .returning({ id: testimonials.id });
+  try {
+    const db = await getDb();
+    const result = await db
+      .insert(testimonials)
+      .values({
+        authorName: v.authorName,
+        authorRole: v.authorRole || null,
+        authorRoleMy: v.authorRoleMy || null,
+        quote: v.quote,
+        quoteMy: v.quoteMy || null,
+        image: v.image || null,
+        rating: v.rating ?? 5,
+        sortOrder: v.sortOrder,
+        status: v.status,
+      })
+      .returning({ id: testimonials.id });
 
-  invalidatePublicCache(["testimonials"], ["/", "/admin/home"]);
-  await logAudit({
-    actor: user,
-    action: "ADMIN_CREATED_TESTIMONIAL",
-    resource: "testimonials",
-    resourceId: String(result[0]?.id),
-    details: { authorName: v.authorName },
-  });
+    invalidatePublicCache(["testimonials"], ["/", "/admin/home"]);
+    await logAudit({
+      actor: user,
+      action: "ADMIN_CREATED_TESTIMONIAL",
+      resource: "testimonials",
+      resourceId: String(result[0]?.id),
+      details: { authorName: v.authorName },
+    });
 
-  return { success: true, id: result[0]?.id };
+    return { success: true, id: result[0]?.id };
+  } catch (err: any) {
+    console.error("Failed to create testimonial:", err);
+    return { success: false, error: err?.message || "Database error creating testimonial." };
+  }
 }
 
 export async function updateTestimonialAction(
   id: number,
   data: unknown
 ): Promise<{ success: boolean; error?: string }> {
-  const user = await requireAdmin();
+  let user;
+  try {
+    user = await requireAdmin();
+  } catch (authErr: any) {
+    return { success: false, error: authErr.message || "Administrator session required." };
+  }
+
   const parsed = testimonialSchema.safeParse(data);
   if (!parsed.success) {
     return { success: false, error: "Please provide an author name and quote." };
   }
   const v = parsed.data;
-  const db = await getDb();
 
-  const updated = await db
-    .update(testimonials)
-    .set({
-      authorName: v.authorName,
-      authorRole: v.authorRole || null,
-      authorRoleMy: v.authorRoleMy || null,
-      quote: v.quote,
-      quoteMy: v.quoteMy || null,
-      image: v.image || null,
-      rating: v.rating ?? 5,
-      sortOrder: v.sortOrder,
-      status: v.status,
-      updatedAt: new Date().toISOString(),
-    })
-    .where(eq(testimonials.id, id))
-    .returning({ id: testimonials.id });
+  try {
+    const db = await getDb();
+    const updated = await db
+      .update(testimonials)
+      .set({
+        authorName: v.authorName,
+        authorRole: v.authorRole || null,
+        authorRoleMy: v.authorRoleMy || null,
+        quote: v.quote,
+        quoteMy: v.quoteMy || null,
+        image: v.image || null,
+        rating: v.rating ?? 5,
+        sortOrder: v.sortOrder,
+        status: v.status,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(testimonials.id, id))
+      .returning({ id: testimonials.id });
 
-  if (!updated.length) return { success: false, error: "Testimonial not found." };
+    if (!updated.length) return { success: false, error: "Testimonial not found." };
 
-  invalidatePublicCache(["testimonials"], ["/", "/admin/home"]);
-  await logAudit({
-    actor: user,
-    action: "ADMIN_UPDATED_TESTIMONIAL",
-    resource: "testimonials",
-    resourceId: String(id),
-  });
-  return { success: true };
+    invalidatePublicCache(["testimonials"], ["/", "/admin/home"]);
+    await logAudit({
+      actor: user,
+      action: "ADMIN_UPDATED_TESTIMONIAL",
+      resource: "testimonials",
+      resourceId: String(id),
+    });
+    return { success: true };
+  } catch (err: any) {
+    console.error("Failed to update testimonial:", err);
+    return { success: false, error: err?.message || "Database error updating testimonial." };
+  }
 }
 
 export async function deleteTestimonialAction(
   id: number
 ): Promise<{ success: boolean; error?: string }> {
-  const user = await requireAdmin();
-  const db = await getDb();
-  await db.delete(testimonials).where(eq(testimonials.id, id));
-  invalidatePublicCache(["testimonials"], ["/", "/admin/home"]);
-  await logAudit({
-    actor: user,
-    action: "ADMIN_DELETED_TESTIMONIAL",
-    resource: "testimonials",
-    resourceId: String(id),
-  });
-  return { success: true };
+  let user;
+  try {
+    user = await requireAdmin();
+  } catch (authErr: any) {
+    return { success: false, error: authErr.message || "Administrator session required." };
+  }
+
+  try {
+    const db = await getDb();
+    await db.delete(testimonials).where(eq(testimonials.id, id));
+    invalidatePublicCache(["testimonials"], ["/", "/admin/home"]);
+    await logAudit({
+      actor: user,
+      action: "ADMIN_DELETED_TESTIMONIAL",
+      resource: "testimonials",
+      resourceId: String(id),
+    });
+    return { success: true };
+  } catch (err: any) {
+    console.error("Failed to delete testimonial:", err);
+    return { success: false, error: err?.message || "Database error deleting testimonial." };
+  }
 }

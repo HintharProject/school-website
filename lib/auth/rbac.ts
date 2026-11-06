@@ -129,6 +129,25 @@ export async function logAudit({
 }) {
   try {
     const db = await getDb();
+    let serializedDetails: string | null = null;
+    if (typeof details === "string") {
+      serializedDetails = details.length > 2000 ? details.slice(0, 2000) + "... [truncated]" : details;
+    } else if (details && typeof details === "object") {
+      try {
+        const copy: Record<string, any> = { ...details };
+        for (const [k, v] of Object.entries(copy)) {
+          if (typeof v === "string" && v.startsWith("data:")) {
+            copy[k] = `[data URL truncated: ${v.slice(0, 30)}... total ${v.length} chars]`;
+          } else if (typeof v === "string" && v.length > 1000) {
+            copy[k] = v.slice(0, 1000) + "... [truncated]";
+          }
+        }
+        serializedDetails = JSON.stringify(copy);
+      } catch {
+        serializedDetails = "[unserializable details]";
+      }
+    }
+
     await db.insert(auditLogs).values({
       actorId: actor?.id ?? "system",
       actorEmail: actor?.email ?? "system@hinthar.education",
@@ -137,7 +156,7 @@ export async function logAudit({
       resource,
       resourceId: resourceId ?? null,
       success,
-      details: typeof details === "object" ? JSON.stringify(details) : details ?? null,
+      details: serializedDetails,
       ipAddress: ipAddress ?? null,
       timestamp: new Date().toISOString(),
     });
